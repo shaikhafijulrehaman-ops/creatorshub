@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  /* Colors */
+  --bg-deep: #000000;       /* Primary Background */
+  --bg-darker: #050816;     /* Darker Matte */
+  --bg-dark: #0A0F1F;       /* Secondary Background */
+  --bg-surface: rgba(255, 255, 255, 0.03); /* Dark Glassmorphism */
+  
+  --accent-cyan-bright: #00D9FF; /* Accent Electric Cyan */
+  --accent-cyan: #00D9FF;
+  --accent-cyan-light: #7DDFFF;  /* Accent Secondary */
+  --accent-cyan-glow: rgba(0, 217, 255, 0.4);
+  
+  --text-white: #ffffff;
+  --text-gray-light: #f1f5f9;
+  --text-gray: #94A3B8;     /* Secondary Text */
+  --text-muted: #64748b;
+  
+  /* Buttons */
+  --btn-primary-bg: #00D9FF;
+  --btn-primary-text: #000000;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-border: #00D9FF;
+  --btn-secondary-text: #00D9FF;
+  --btn-secondary-hover-bg: rgba(0, 217, 255, 0.08);
+  
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #00D9FF 0%, #00B6D4 50%, #7DDFFF 100%);
+  --grad-cyan-white: linear-gradient(135deg, #ffffff 0%, #7DDFFF 50%, #00D9FF 100%);
+  --grad-text-primary: linear-gradient(135deg, #ffffff 30%, #00D9FF 100%);
+  --grad-text-secondary: linear-gradient(135deg, #ffffff 0%, #7DDFFF 50%, #00D9FF 100%);
+  --grad-dark-mesh: radial-gradient(circle at 50% 50%, rgba(0, 217, 255, 0.06) 0%, rgba(0, 182, 212, 0.02) 60%, #050816 100%);
+  --grad-glow: radial-gradient(circle, rgba(0, 217, 255, 0.12) 0%, rgba(0, 182, 212, 0.04) 50%, transparent 100%);
+  
+  /* Shadows & Glows */
+  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.75);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --glow-cyan-soft: 0 0 25px rgba(0, 217, 255, 0.35);
+  --glow-cyan: 0 0 25px rgba(0, 217, 255, 0.35);
+  --glow-white: 0 0 15px rgba(255, 255, 255, 0.15);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(0, 217, 255, 0.15);
+  --glass-border-hover: rgba(0, 217, 255, 0.35);
+  --glass-filter: blur(16px) saturate(180%);
+  
+  /* Moving Grid */
+  --grid-color: rgba(0, 217, 255, 0.025);
+  
+  /* Transitions */
+  --transition-fast: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: all 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  /* Fonts */
+  --font-logo: 'Outfit', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+}
+
+/* Light Theme overrides */
+html[data-theme='light'] {
+  --bg-deep: #F8FAFC;       /* Primary Background */
+  --bg-darker: #F8FAFC;
+  --bg-dark: #FFFFFF;       /* Secondary Background */
+  --bg-surface: rgba(255, 255, 255, 0.75); /* Surface Cards */
+  
+  --accent-cyan-bright: #0EA5E9; /* Accent Blue/Cyan */
+  --accent-cyan: #06B6D4;        /* Accent Medium Cyan */
+  --accent-cyan-light: #0284C7;   /* Accent Darker Blue */
+  --accent-cyan-glow: rgba(2, 132, 199, 0.2);
+  
+  --text-white: #0F172A;     /* Primary Text */
+  --text-gray-light: #334155;
+  --text-gray: #475569;      /* Secondary Text */
+  --text-muted: #94A3B8;
+  
+  /* Buttons */
+  --btn-primary-bg: linear-gradient(135deg, #0284C7, #06B6D4, #0EA5E9);
+  --btn-primary-text: #FFFFFF;
+  --btn-secondary-bg: rgba(255, 255, 255, 0.65);
+  --btn-secondary-border: rgba(2, 132, 199, 0.35);
+  --btn-secondary-text: #0284C7;
+  --btn-secondary-hover-bg: rgba(2, 132, 199, 0.08);
+  
+  --grad-primary: linear-gradient(135deg, #0284C7, #06B6D4, #0EA5E9);
+  --grad-cyan-white: linear-gradient(135deg, #0F172A 0%, #0284C7 50%, #06B6D4 100%);
+  --grad-text-primary: linear-gradient(135deg, #0F172A 30%, #0284C7 100%);
+  --grad-text-secondary: linear-gradient(135deg, #0F172A 0%, #0284C7 50%, #06B6D4 100%);
+  --grad-dark-mesh: radial-gradient(circle at 50% 50%, rgba(2, 132, 199, 0.04) 0%, rgba(6, 182, 212, 0.02) 60%, #F8FAFC 100%);
+  --grad-glow: radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, rgba(6, 182, 212, 0.02) 50%, transparent 100%);
+  
+  --shadow-premium: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
+  --shadow-glass: 0 8px 32px 0 rgba(15, 23, 42, 0.05);
+  --glow-cyan-soft: 0 0 25px rgba(2, 132, 199, 0.15);
+  --glow-cyan: 0 0 20px rgba(6, 182, 212, 0.15);
+  --glow-white: 0 0 15px rgba(15, 23, 42, 0.05);
+  
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg-hover: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(2, 132, 199, 0.2);
+  --glass-border-hover: rgba(2, 132, 199, 0.35);
+  
+  --grid-color: rgba(2, 132, 199, 0.035);
+}

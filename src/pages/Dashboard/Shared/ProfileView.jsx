@@ -1,0 +1,859 @@
+import React, { useContext, useState, useEffect } from 'react';
+import { AppContext } from '../../../context/AppContext';
+import { 
+  Star, Heart, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
+  MapPin, Phone, Award, Plus, X, Video, Code, CheckCircle, FileText,
+  Briefcase, ChevronDown, ChevronUp
+} from 'lucide-react';
+
+const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) => {
+  return (
+    <div 
+      className="glass-panel collapsible-section-card" 
+      style={{ 
+        marginBottom: '16px', 
+        overflow: 'hidden', 
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '12px',
+        transition: 'all 0.3s ease'
+      }}
+    >
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          padding: '16px 20px',
+          background: 'rgba(255, 255, 255, 0.01)',
+          border: 'none',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'var(--text-white)',
+          cursor: 'pointer',
+          textAlign: 'left',
+          minHeight: '48px', // Tap target
+          outline: 'none'
+        }}
+        className="collapsible-header"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700', fontSize: '15px' }}>
+          {Icon && <Icon size={18} style={{ color: 'var(--accent-cyan)' }} />}
+          <span>{title}</span>
+        </div>
+        <div style={{ color: 'var(--text-gray)', display: 'flex', alignItems: 'center' }}>
+          {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+      </button>
+      
+      <div style={{ 
+        maxHeight: isOpen ? '2000px' : '0px',
+        opacity: isOpen ? 1 : 0,
+        overflow: 'hidden',
+        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+        borderTop: isOpen ? '1px solid rgba(255,255,255,0.05)' : 'none',
+        background: 'rgba(0, 0, 0, 0.15)'
+      }}>
+        <div style={{ padding: '20px' }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const ProfileView = ({ userId, onClose }) => {
+  const { 
+    users, currentUser, toggleSaveUser, savedProfiles, 
+    toggleFollowUser, followedProfiles, updateProfile 
+  } = useContext(AppContext);
+
+  // Review states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+
+  // Detect mobile width for responsive default collapsed states
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const [openSections, setOpenSections] = useState({
+    bio: true,
+    businessInfo: true,
+    contactInfo: false,
+    platforms: true,
+    portfolio: true,
+    audience: true,
+    reviews: false,
+    services: true,
+    skills: true,
+    verification: true
+  });
+
+  // Adjust expanded panels when mobile is detected initially
+  useEffect(() => {
+    if (isMobile) {
+      setOpenSections({
+        bio: true, // Keep bio open
+        businessInfo: false,
+        contactInfo: false,
+        platforms: false,
+        portfolio: false,
+        audience: false,
+        reviews: false,
+        services: false,
+        skills: false,
+        verification: false
+      });
+    } else {
+      setOpenSections({
+        bio: true,
+        businessInfo: true,
+        contactInfo: false, // Keep contact closed to avoid clutter
+        platforms: true,
+        portfolio: true,
+        audience: true,
+        reviews: false,
+        services: true,
+        skills: true,
+        verification: true
+      });
+    }
+  }, [isMobile]);
+
+  const toggleSection = (section) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  const user = users.find(u => u.id === userId);
+  if (!user) return <div>User not found.</div>;
+
+  const isSaved = savedProfiles.includes(user.id);
+  const isFollowing = followedProfiles.includes(user.id);
+
+  const handlePostReview = (e) => {
+    e.preventDefault();
+    if (!reviewComment) {
+      alert('Please write a comment.');
+      return;
+    }
+
+    const newReview = {
+      id: `r-${Date.now()}`,
+      businessName: currentUser ? (currentUser.businessName || currentUser.fullName) : 'Anonymous client',
+      rating: Number(reviewRating),
+      comment: reviewComment
+    };
+
+    const updatedReviews = [...(user.reviews || []), newReview];
+    
+    // Recalculate average rating
+    const totalRating = updatedReviews.reduce((sum, r) => sum + r.rating, 0);
+    const avgRating = totalRating / updatedReviews.length;
+
+    updateProfile(user.id, {
+      reviews: updatedReviews,
+      rating: avgRating
+    });
+
+    setReviewComment('');
+    setShowReviewModal(false);
+  };
+
+  return (
+    <div className="glass-panel animate-scale-up profile-view-container">
+      
+      {/* Back button */}
+      <button 
+        onClick={onClose}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          background: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '50%',
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--text-gray)',
+          cursor: 'pointer',
+          zIndex: 10,
+          transition: 'all 0.2s ease'
+        }}
+        className="close-button"
+      >
+        <X size={20} />
+      </button>
+
+      {/* Header Profile Meta */}
+      <div className="profile-header-meta">
+        <img 
+          src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'} 
+          alt={user.fullName}
+          className="profile-avatar"
+          style={{ borderRadius: user.role === 'Business Holder' ? '16px' : '50%' }}
+        />
+
+        <div className="profile-info-main">
+          <div className="profile-name-row">
+            <h2>{user.fullName}</h2>
+            <span className={user.verificationStatus === 'Premium Verified' ? 'badge-premium' : (user.verificationStatus === 'Professional Verified' ? 'badge-pro' : 'badge-basic')}>
+              {user.verificationStatus}
+            </span>
+          </div>
+
+          <p className="profile-role-text">
+            {user.role} {user.businessCategory && `• ${user.businessCategory}`}
+          </p>
+
+          <div className="profile-meta-details">
+            <span>
+              <MapPin size={14} /> {user.location}
+            </span>
+            <span>
+              <Mail size={14} /> {user.email}
+            </span>
+            {user.mobileNumber && (
+              <span>
+                <Phone size={14} /> {user.mobileNumber}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action triggers (Save/Follow) */}
+        {currentUser && currentUser.id !== user.id && (
+          <div className="profile-actions-wrapper">
+            <button 
+              onClick={() => toggleFollowUser(user.id)}
+              className={isFollowing ? 'btn-secondary' : 'btn-outline-cyan'}
+              style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Heart size={14} fill={isFollowing ? 'var(--text-white)' : 'none'} style={{ marginRight: '6px' }} /> 
+              {isFollowing ? 'Following' : 'Follow'}
+            </button>
+
+            <button 
+              onClick={() => toggleSaveUser(user.id)}
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '10px',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid var(--glass-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                cursor: 'pointer'
+              }}
+            >
+              <Bookmark size={16} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Grid: Details & Side info */}
+      <div className="profile-details-grid">
+        
+        {/* Left column: Bio, Details, Reviews */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          
+          {/* Bio Card */}
+          <CollapsibleSection 
+            title="Bio & Summary" 
+            icon={FileText} 
+            isOpen={openSections.bio} 
+            onToggle={() => toggleSection('bio')}
+          >
+            <p style={{ fontSize: '14px', color: 'var(--text-gray)', lineHeight: '1.6', margin: 0 }}>
+              {user.bio || user.description || 'No summary bio provided.'}
+            </p>
+          </CollapsibleSection>
+
+          {/* Business Info (Business Holder specific) */}
+          {user.role === 'Business Holder' && (
+            <CollapsibleSection 
+              title="Business Information" 
+              icon={Briefcase} 
+              isOpen={openSections.businessInfo} 
+              onToggle={() => toggleSection('businessInfo')}
+            >
+              <div className="info-grid-2-col">
+                <div className="info-item">
+                  <span className="info-label">Business Name</span>
+                  <p className="info-val">{user.businessName || 'N/A'}</p>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Business Category</span>
+                  <p className="info-val">{user.businessCategory || 'N/A'}</p>
+                </div>
+                {user.website && (
+                  <div className="info-item">
+                    <span className="info-label">Website</span>
+                    <p className="info-val">
+                      <a href={user.website} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        {user.website.replace('https://', '')} <Globe size={12} />
+                      </a>
+                    </p>
+                  </div>
+                )}
+                {user.teamSize && (
+                  <div className="info-item">
+                    <span className="info-label">Team Size</span>
+                    <p className="info-val">{user.teamSize}</p>
+                  </div>
+                )}
+                {user.monthlyMarketingBudget && (
+                  <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                    <span className="info-label">Monthly Marketing Budget</span>
+                    <p className="info-val" style={{ color: 'var(--accent-cyan)', fontWeight: '700' }}>{user.monthlyMarketingBudget}</p>
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {/* Platform Channels (Influencer specific) */}
+          {user.role === 'Influencer' && user.platforms && (
+            <CollapsibleSection 
+              title="Platform Channels & Reach" 
+              icon={Globe} 
+              isOpen={openSections.platforms} 
+              onToggle={() => toggleSection('platforms')}
+            >
+              <div className="platform-channels-grid">
+                {Object.keys(user.platforms).map(pName => {
+                  const plat = user.platforms[pName];
+                  return (
+                    <div key={pName} className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent-cyan)' }}>{pName}</span>
+                        <a href={plat.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                          Channel <Globe size={10} />
+                        </a>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Followers</span>
+                          <p style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{plat.followers}</p>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Avg. Reach</span>
+                          <p style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{plat.reach}</p>
+                        </div>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Engagement Rate</span>
+                          <p style={{ fontSize: '13px', fontWeight: '700', margin: 0, color: 'var(--accent-cyan-bright)' }}>{plat.engagement || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {/* Portfolio (Freelancer specific) */}
+          {user.role === 'Freelancer' && user.portfolio && (
+            <CollapsibleSection 
+              title="Portfolio & Work Gallery" 
+              icon={FileText} 
+              isOpen={openSections.portfolio} 
+              onToggle={() => toggleSection('portfolio')}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {user.portfolio.map((port, idx) => (
+                  <div key={idx} className="glass-panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flex: '1', minWidth: '200px' }}>
+                      <div style={{ padding: '8px', background: 'rgba(0, 217, 255, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
+                        <FileText size={18} />
+                      </div>
+                      <div>
+                        <h4 style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{port.service}</h4>
+                        <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', margin: 0 }}>{port.description}</p>
+                      </div>
+                    </div>
+                    <a 
+                      href={port.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="btn-secondary" 
+                      style={{ padding: '0 16px', height: '36px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      View Project <Globe size={11} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {/* Reviews Card */}
+          <CollapsibleSection 
+            title={`Collaboration Reviews (${user.reviews ? user.reviews.length : 0})`} 
+            icon={Star} 
+            isOpen={openSections.reviews} 
+            onToggle={() => toggleSection('reviews')}
+          >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '14px' }}>
+              {currentUser && currentUser.id !== user.id && (
+                <button 
+                  onClick={() => setShowReviewModal(true)} 
+                  className="btn-outline-cyan"
+                  style={{ height: '36px', padding: '0 16px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Plus size={12} /> Post Review
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {!user.reviews || user.reviews.length === 0 ? (
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', margin: 0 }}>
+                  No reviews recorded yet for this profile.
+                </p>
+              ) : (
+                user.reviews.map(rev => (
+                  <div key={rev.id} style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '700' }}>{rev.businessName}</span>
+                      <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={11} fill={i < rev.rating ? '#eab308' : 'none'} stroke={i < rev.rating ? 'none' : 'var(--text-muted)'} />
+                        ))}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-gray)', lineHeight: '1.4', margin: 0 }}>{rev.comment}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </CollapsibleSection>
+
+        </div>
+
+        {/* Right column: Summary Stats, Ratings, Fraud Audits */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          
+          {/* Trust Score & Verification Card */}
+          <CollapsibleSection 
+            title="Identity Verification & Trust Score" 
+            icon={ShieldCheck} 
+            isOpen={openSections.verification} 
+            onToggle={() => toggleSection('verification')}
+          >
+            <div className="profile-strength-layout">
+              <div className="rating-card-speedometer">
+                <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '8px', marginTop: 0 }}>Ecosystem Collaboration Rating</h4>
+                <span style={{ fontSize: '36px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
+                  {user.rating ? user.rating.toFixed(1) : '5.0'}
+                </span>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '4px 0 10px 0' }}>
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={14} fill={i < Math.round(user.rating || 5) ? '#eab308' : 'none'} stroke={i < Math.round(user.rating || 5) ? 'none' : 'var(--text-muted)'} />
+                  ))}
+                </div>
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0 }}>Based on verified collaboration escrow logs</p>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '4px', marginTop: 0 }}>Profile Strength Indicator</h4>
+                <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                  <div style={{ width: `${user.profileStrength || 85}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-cyan-bright) 100%)' }}></div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                  <span>Completion Strength:</span>
+                  <span style={{ color: 'var(--accent-cyan)', fontWeight: '700' }}>{user.profileStrength || 85}%</span>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', color: 'var(--text-white)', fontSize: '12px' }}>
+                  <CheckCircle size={14} className="text-accent-cyan" style={{ color: 'var(--accent-cyan)' }} />
+                  <span>Stripe Escrow Verified</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: 'var(--text-white)', fontSize: '12px' }}>
+                  <CheckCircle size={14} className="text-accent-cyan" style={{ color: 'var(--accent-cyan)' }} />
+                  <span>Background Check Cleared</span>
+                </div>
+              </div>
+            </div>
+          </CollapsibleSection>
+
+          {/* AI Audience Audit Card (Influencer specific) */}
+          {user.role === 'Influencer' && user.fraudAudit && (
+            <CollapsibleSection 
+              title="🛡️ AI Audience Audit" 
+              icon={ShieldCheck} 
+              isOpen={openSections.audience} 
+              onToggle={() => toggleSection('audience')}
+            >
+              <div className="info-grid-2-col" style={{ gap: '12px' }}>
+                <div className="info-item">
+                  <span className="info-label">Fake Followers:</span>
+                  <span className="info-val" style={{ fontWeight: '700', color: parseFloat(user.fraudAudit.fakeFollowers) > 10 ? '#ef4444' : '#22c55e' }}>
+                    {user.fraudAudit.fakeFollowers}
+                  </span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label">Authenticity:</span>
+                  <span className="info-val">{user.fraudAudit.engagementAuthenticity}</span>
+                </div>
+                <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                  <span className="info-label">Growth Pattern:</span>
+                  <span className="info-val">{user.fraudAudit.suspiciousGrowth}</span>
+                </div>
+
+                <div style={{ 
+                  gridColumn: 'span 2',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  marginTop: '8px',
+                  padding: '8px 12px', 
+                  borderRadius: '8px',
+                  background: user.fraudAudit.badge === 'Verified Audience' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                  border: user.fraudAudit.badge === 'Verified Audience' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                  color: user.fraudAudit.badge === 'Verified Audience' ? '#22c55e' : '#ef4444',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {user.fraudAudit.badge === 'Verified Audience' ? <ShieldCheck size={14} /> : <AlertTriangle size={14} />}
+                  <span>{user.fraudAudit.badge}</span>
+                </div>
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {/* Skills & Stack Card (Freelancer specific) */}
+          {user.role === 'Freelancer' && (
+            <CollapsibleSection 
+              title="Skills & Tech Stack" 
+              icon={Code} 
+              isOpen={openSections.skills} 
+              onToggle={() => toggleSection('skills')}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {user.skills ? user.skills.map(s => (
+                  <span key={s} className="badge-tag" style={{ fontSize: '11px' }}>{s}</span>
+                )) : null}
+              </div>
+            </CollapsibleSection>
+          )}
+
+          {/* Contact Details Card */}
+          <CollapsibleSection 
+            title="Contact & Connections" 
+            icon={Mail} 
+            isOpen={openSections.contactInfo} 
+            onToggle={() => toggleSection('contactInfo')}
+          >
+            <div className="info-grid-2-col">
+              <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                <span className="info-label">Email Address</span>
+                <p className="info-val">{user.email}</p>
+              </div>
+              {user.mobileNumber && (
+                <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                  <span className="info-label">Mobile Number</span>
+                  <p className="info-val">{user.mobileNumber}</p>
+                </div>
+              )}
+              {user.address && (
+                <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                  <span className="info-label">Business Address</span>
+                  <p className="info-val" style={{ fontSize: '13px' }}>{user.address}</p>
+                </div>
+              )}
+              {user.socialLinks && Object.keys(user.socialLinks).length > 0 && (
+                <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
+                  <span className="info-label">Social Connections</span>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    {Object.entries(user.socialLinks).map(([platform, url]) => (
+                      <a 
+                        key={platform} 
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="btn-secondary" 
+                        style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
+                      >
+                        {platform}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
+
+        </div>
+
+      </div>
+
+      {/* POST REVIEW MODAL */}
+      {showReviewModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(11, 15, 25, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9000
+        }}>
+          <div className="glass-panel animate-scale-up" style={{ padding: '24px', width: '90%', maxWidth: '450px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Post Collaboration Review</h3>
+              <button 
+                onClick={() => setShowReviewModal(false)} 
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: 'var(--text-gray)', 
+                  cursor: 'pointer',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePostReview} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>Rating Score</label>
+                <select 
+                  className="form-input" 
+                  value={reviewRating} 
+                  onChange={(e) => setReviewRating(Number(e.target.value))}
+                  style={{ background: 'var(--bg-dark)', width: '100%' }}
+                >
+                  <option value={5}>5 Stars (Excellent)</option>
+                  <option value={4}>4 Stars (Good)</option>
+                  <option value={3}>3 Stars (Average)</option>
+                  <option value={2}>2 Stars (Subpar)</option>
+                  <option value={1}>1 Star (Poor)</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label" style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>Collaboration Comment</label>
+                <textarea 
+                  className="form-input" 
+                  rows={4} 
+                  placeholder="Detail the experience, reach deliverables, promptness..." 
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  style={{ resize: 'none', width: '100%', padding: '12px' }}
+                  required
+                />
+              </div>
+              <button type="submit" className="btn-primary" style={{ width: '100%', height: '48px', marginTop: '10px' }}>
+                Submit Review Rating
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .profile-view-container {
+          padding: 32px;
+          position: relative;
+        }
+        .profile-header-meta {
+          display: flex;
+          gap: 28px;
+          align-items: flex-start;
+          border-bottom: 1px solid rgba(255,255,255,0.06);
+          padding-bottom: 28px;
+          margin-bottom: 28px;
+          flex-wrap: wrap;
+        }
+        .profile-avatar {
+          width: 100px;
+          height: 100px;
+          object-fit: cover;
+          border: 2px solid var(--accent-cyan-bright);
+          box-shadow: var(--glow-cyan) 0px 0px 15px -5px;
+        }
+        .profile-info-main {
+          flex: 1;
+          min-width: 260px;
+        }
+        .profile-name-row {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+        .profile-name-row h2 {
+          font-size: 24px;
+          font-weight: 800;
+          margin: 0;
+        }
+        .profile-role-text {
+          font-size: 13px;
+          color: var(--accent-cyan);
+          margin-top: 4px;
+          font-weight: 600;
+        }
+        .profile-meta-details {
+          display: flex;
+          gap: 16px;
+          color: var(--text-gray);
+          font-size: 12.5px;
+          margin-top: 12px;
+          flex-wrap: wrap;
+        }
+        .profile-meta-details span {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .profile-actions-wrapper {
+          display: flex;
+          gap: 10px;
+        }
+        .profile-details-grid {
+          display: grid;
+          grid-template-columns: 1.8fr 1.2fr;
+          gap: 24px;
+        }
+        .info-grid-2-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .info-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .info-label {
+          font-size: 11px;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .info-val {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-white);
+          margin: 0;
+          word-break: break-all;
+        }
+        .badge-tag {
+          font-size: 11px;
+          background: rgba(255,255,255,0.04);
+          border: 1px solid rgba(255,255,255,0.08);
+          padding: 4px 10px;
+          border-radius: 6px;
+          color: var(--text-white);
+        }
+        .platform-channels-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .profile-strength-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .rating-card-speedometer {
+          text-align: center;
+          padding: 16px;
+          background: rgba(0, 0, 0, 0.2);
+          border: 1px solid rgba(255,255,255,0.04);
+          border-radius: 10px;
+        }
+        
+        /* Interactive touch-friendly states */
+        .collapsible-section-card:hover {
+          border-color: rgba(0, 217, 255, 0.2) !important;
+          box-shadow: rgba(0, 217, 255, 0.02) 0px 4px 20px;
+        }
+        .collapsible-header:hover {
+          background: rgba(255, 255, 255, 0.03) !important;
+        }
+        .close-button:hover {
+          background: rgba(255, 255, 255, 0.1) !important;
+          color: var(--text-white) !important;
+        }
+
+        @media (max-width: 900px) {
+          .profile-details-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .profile-view-container {
+            padding: 16px;
+          }
+        }
+
+        @media (max-width: 600px) {
+          .profile-header-meta {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 16px;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+          }
+          .profile-info-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: unset;
+            width: 100%;
+          }
+          .profile-name-row {
+            flex-direction: column;
+            gap: 8px;
+          }
+          .profile-meta-details {
+            justify-content: center;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+          }
+          .profile-actions-wrapper {
+            width: 100%;
+            justify-content: center;
+            margin-top: 8px;
+          }
+          .profile-actions-wrapper button {
+            flex: 1;
+          }
+          .info-grid-2-col {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          .platform-channels-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+    </div>
+  );
+};
