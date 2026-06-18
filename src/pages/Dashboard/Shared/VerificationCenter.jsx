@@ -1,6 +1,6 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { AppContext } from '../../../context/AppContext';
-import { Shield, ShieldCheck, Mail, Phone, Award, CheckCircle, ArrowRight, Upload, Info, FileText } from 'lucide-react';
+import { Shield, ShieldCheck, Award, CheckCircle, Upload, Info } from 'lucide-react';
 
 export const VerificationCenter = () => {
   const { currentUser, updateProfile } = useContext(AppContext);

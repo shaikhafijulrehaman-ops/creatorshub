@@ -1,78 +1,94 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
 import { 
-  Code, Star, Briefcase, Award, ArrowRight, ShieldCheck, 
-  Layers, Upload, X, Check, FileText, Globe, DollarSign, Eye, Heart, Home, MessageSquare, User
+  LayoutDashboard, Search, Briefcase, FileText, CheckSquare, 
+  Award, MessageSquare, Star, BarChart3, User, Settings, LogOut,
+  SlidersHorizontal, IndianRupee, Bookmark, Upload, X, Plus, 
+  MapPin, Clock, ArrowRight, Send, ExternalLink
 } from 'lucide-react';
 import { VerificationCenter } from './Shared/VerificationCenter';
-import { OnboardingWidget } from '../../components/OnboardingWidget';
 
-export const FreelancerDashboard = ({ onNavigate, onOpenWorkspace }) => {
-  const { currentUser, projects, applyToProject, updateProfile, users, followedProfiles } = useContext(AppContext);
+const generateTaskId = () => `t-${Date.now()}`;
+
+export const FreelancerDashboard = ({ onNavigate }) => {
+  const { 
+    currentUser, logoutUser, projects, applyToProject, updateProfile, 
+    users, activityFeed, messages, sendMessage
+  } = useContext(AppContext);
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState('dashboard');
   
-  // Tab State: 'home', 'projects', 'messages', 'profile'
-  const [activeTab, setActiveTab] = useState('home');
+  // Left Sidebar Collapsibility State
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [showApplyModal, setShowApplyModal] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [portfolioValidating, setPortfolioValidating] = useState(false);
-
-  // Proposal Form
-  const [coverLetter, setCoverLetter] = useState('');
-  const [bidPrice, setBidPrice] = useState('');
-  const [days, setDays] = useState(10);
-  
-  // Custom Portfolio upload validator form
-  const [missingService, setMissingService] = useState('');
-  const [newPortfolioUrl, setNewPortfolioUrl] = useState('');
-
-  // Filters
-  const openProjects = projects.filter(p => p.status === 'Open');
-  const activeWorkspaces = projects.filter(p => {
-    if (p.status !== 'Active Workspace') return false;
-    if (!p.team || !p.team.members) return false;
-    return Object.values(p.team.members).includes(currentUser.id);
+  // Saved Projects (Bookmarks) State
+  const [savedProjects, setSavedProjects] = useState(() => {
+    try {
+      const saved = localStorage.getItem('ch_saved_projects');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
-  const savedClients = users.filter(u => u.role === 'Business Holder' && followedProfiles.includes(u.id));
+  // Proposal Form State
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [coverLetter, setCoverLetter] = useState('');
+  const [bidPrice, setBidPrice] = useState('');
+  const [daysToComplete, setDaysToComplete] = useState(7);
 
-  const checkPortfolioValidation = (proj) => {
-    setSelectedProjectId(proj.id);
-    const hasPortfolio = currentUser.portfolio && currentUser.portfolio.length > 0;
-    if (!hasPortfolio) {
-      setMissingService(proj.category || 'Website Development');
-      setPortfolioValidating(true);
-    } else {
-      setShowApplyModal(true);
-    }
+  // Filters State for Discover Work
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [budgetFilter, setBudgetFilter] = useState('All'); // All, <1k, 1k-3k, >3k
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [sortOrder, setSortOrder] = useState('Newest');
+
+  // Portfolio addition form state
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [portTitle, setPortTitle] = useState('');
+  const [portType, setPortType] = useState('Link'); // Link, Image, Video
+  const [portUrl, setPortUrl] = useState('');
+  const [portDesc, setPortDesc] = useState('');
+
+  // Certificates State
+  const [certTitle, setCertTitle] = useState('');
+  const [certOrg, setCertOrg] = useState('');
+  const [certYear, setCertYear] = useState('');
+
+  // Active Workspace / Projects View State
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(null);
+  const [workspaceChatInput, setWorkspaceChatInput] = useState('');
+  const [workspaceTaskInput, setWorkspaceTaskInput] = useState('');
+
+  // Sync Saved Projects
+  useEffect(() => {
+    localStorage.setItem('ch_saved_projects', JSON.stringify(savedProjects));
+  }, [savedProjects]);
+
+  const toggleSaveProject = (projId) => {
+    setSavedProjects(prev => {
+      const exists = prev.includes(projId);
+      if (exists) {
+        return prev.filter(id => id !== projId);
+      } else {
+        return [...prev, projId];
+      }
+    });
   };
 
-  const handlePortfolioSubmit = (e) => {
-    e.preventDefault();
-    if (!newPortfolioUrl) {
-      alert('Please enter a portfolio link.');
-      return;
-    }
-
-    const newItem = {
-      service: missingService,
-      type: 'Link',
-      url: newPortfolioUrl,
-      description: `Quick validation upload for bid on Project`
-    };
-
-    const updatedPortfolio = [...(currentUser.portfolio || []), newItem];
-    updateProfile(currentUser.id, { portfolio: updatedPortfolio });
-    
-    setNewPortfolioUrl('');
-    setPortfolioValidating(false);
+  const handleApplyClick = (projId) => {
+    setSelectedProjectId(projId);
     setShowApplyModal(true);
   };
 
-  const handleApply = (e) => {
+  const handleApplySubmit = (e) => {
     e.preventDefault();
     if (!coverLetter || !bidPrice) {
-      alert('Please enter cover letter and pricing quote.');
+      alert('Please fill out cover letter and bid price.');
       return;
     }
 
@@ -81,276 +97,1347 @@ export const FreelancerDashboard = ({ onNavigate, onOpenWorkspace }) => {
       creatorName: currentUser.fullName,
       coverLetter,
       pricing: bidPrice,
-      daysToComplete: Number(days),
-      status: 'Pending'
+      daysToComplete: Number(daysToComplete)
     });
 
+    // Reset and close
     setCoverLetter('');
     setBidPrice('');
     setShowApplyModal(false);
+    alert('Application Pitch submitted successfully!');
+    setActiveTab('applications');
   };
 
-  // Mock Earnings
-  const escrowLocked = '$1,500';
-  const paidOut = '$3,200';
-  const pendingApproval = '$400';
+  // Add Portfolio Item
+  const handleAddPortfolioItem = (e) => {
+    e.preventDefault();
+    if (!portTitle || !portUrl) {
+      alert('Please fill out required fields.');
+      return;
+    }
+
+    const newItem = {
+      title: portTitle,
+      type: portType,
+      url: portUrl,
+      description: portDesc
+    };
+
+    const currentPortfolio = currentUser.portfolio || [];
+    updateProfile(currentUser.id, { portfolio: [...currentPortfolio, newItem] });
+
+    setPortTitle('');
+    setPortUrl('');
+    setPortDesc('');
+    setShowPortfolioModal(false);
+    alert('Portfolio item published!');
+  };
+
+  // Add Certificate Item
+  const handleAddCertificate = (e) => {
+    e.preventDefault();
+    if (!certTitle || !certOrg) {
+      alert('Please fill out certificate fields.');
+      return;
+    }
+
+    const newItem = {
+      title: certTitle,
+      authority: certOrg,
+      year: certYear || '2026'
+    };
+
+    const currentCerts = currentUser.certificates || [];
+    updateProfile(currentUser.id, { certificates: [...currentCerts, newItem] });
+
+    setCertTitle('');
+    setCertOrg('');
+    setCertYear('');
+    alert('Certificate added!');
+  };
+
+  // Handle Workspace Chat Send
+  const handleSendWorkspaceChat = (projId, text) => {
+    if (!text.trim()) return;
+    sendMessage(projId, text, currentUser.id, currentUser.fullName);
+    setWorkspaceChatInput('');
+  };
+
+  // Profile Strength Calculation
+  const getProfileCompletion = () => {
+    let score = 15;
+    if (currentUser.profilePhoto) score += 20;
+    if (currentUser.skills && currentUser.skills.length > 0) score += 25;
+    if (currentUser.portfolio && currentUser.portfolio.length > 0) score += 20;
+    if (currentUser.verificationStatus && currentUser.verificationStatus !== 'Basic Verified') score += 20;
+    return score;
+  };
+  const profileCompletion = getProfileCompletion();
+
+  // Filter Projects
+  const openProjects = projects.filter(p => p.status === 'Open');
+  const activeWorkspaces = projects.filter(p => {
+    if (p.status !== 'Active Workspace') return false;
+    return p.team && p.team.members && Object.values(p.team.members).includes(currentUser.id);
+  });
+
+  const filteredProjects = openProjects.filter(p => {
+    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (p.skills && p.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())));
+    
+    const matchesCategory = categoryFilter === 'All' || p.category === categoryFilter;
+    
+    let matchesBudget = true;
+    if (budgetFilter === '<1k') {
+      matchesBudget = parseFloat(p.budget.replace(/[^0-9.]/g, '')) < 1000;
+    } else if (budgetFilter === '1k-3k') {
+      const amt = parseFloat(p.budget.replace(/[^0-9.]/g, ''));
+      matchesBudget = amt >= 1000 && amt <= 3000;
+    } else if (budgetFilter === '>3k') {
+      matchesBudget = parseFloat(p.budget.replace(/[^0-9.]/g, '')) > 3000;
+    }
+
+    let matchesVerified = true;
+    if (verifiedOnly) {
+      const biz = users.find(u => u.id === p.businessId);
+      matchesVerified = biz?.verificationStatus && biz.verificationStatus !== 'Basic Verified';
+    }
+
+    return matchesSearch && matchesCategory && matchesBudget && matchesVerified;
+  }).sort((a, b) => {
+    if (sortOrder === 'Newest') return new Date(b.createdAt || '') - new Date(a.createdAt || '');
+    if (sortOrder === 'Budget: High-Low') {
+      const amtA = parseFloat(a.budget.replace(/[^0-9.]/g, '')) || 0;
+      const amtB = parseFloat(b.budget.replace(/[^0-9.]/g, '')) || 0;
+      return amtB - amtA;
+    }
+    return 0;
+  });
+
+  // Recommended Jobs based on freelancer focus area services
+  const recommendedJobs = openProjects.filter(p => 
+    currentUser.services && currentUser.services.includes(p.category)
+  );
+
+  // Sent Applications list
+  const sentApplications = [];
+  projects.forEach(p => {
+    if (p.proposals) {
+      const myProp = p.proposals.find(prop => prop.creatorId === currentUser.id);
+      if (myProp) {
+        sentApplications.push({
+          ...myProp,
+          projectTitle: p.title,
+          projectCategory: p.category,
+          projectBudget: p.budget,
+          projectDeadline: p.deadline,
+          status: myProp.status || 'Pending'
+        });
+      }
+    }
+  });
+
+  // Sidebar Links Configuration
+  const sidebarTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
+    { id: 'discover', label: 'Discover Work', icon: <Search size={18} /> },
+    { id: 'applications', label: 'Applications', icon: <FileText size={18} /> },
+    { id: 'projects', label: 'Active Contracts', icon: <CheckSquare size={18} /> },
+    { id: 'portfolio', label: 'Portfolio Projects', icon: <Upload size={18} /> },
+    { id: 'certificates', label: 'Certificates', icon: <Award size={18} /> },
+    { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+    { id: 'reviews', label: 'Client Reviews', icon: <Star size={18} /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} /> },
+    { id: 'profile', label: 'Public Profile', icon: <User size={18} /> },
+    { id: 'settings', label: 'Settings', icon: <Settings size={18} /> }
+  ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', paddingBottom: '90px' }} className="mobile-dashboard-container">
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', position: 'relative' }}>
       
-      {/* Mobile Top App Header */}
-      <div className="dashboard-mobile-header" style={{ display: 'none', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginTop: '10px' }}>
+      {/* ==================== LEFT SIDEBAR ==================== */}
+      <aside 
+        className="glass-panel" 
+        style={{
+          width: sidebarCollapsed ? '78px' : '260px',
+          position: 'sticky',
+          top: '24px',
+          height: 'calc(100vh - 48px)',
+          margin: '24px 0 24px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          padding: '24px 16px',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '24px',
+          transition: 'width 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          zIndex: 100,
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(16px)'
+        }}
+        id="desktop-sidebar"
+      >
         <div>
-          <span className="badge-premium" style={{ fontSize: '10px', textTransform: 'uppercase' }}>Freelancer Space</span>
-          <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', marginTop: '2px' }}>Welcome back, {currentUser.fullName.split(' ')[0]}</h3>
+          {/* Sidebar Brand Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 8px 20px 8px', borderBottom: '1px solid var(--glass-border)' }}>
+            <div 
+              style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--grad-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', color: '#000', cursor: 'pointer' }}
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            >
+              CH
+            </div>
+            {!sidebarCollapsed && (
+              <div>
+                <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)' }}>Creators Hub</h4>
+                <span style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Freelancer space</span>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar Links */}
+          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '20px', overflowY: 'auto', maxHeight: '55vh' }}>
+            {sidebarTabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="sidebar-tab-link"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    background: isActive ? 'var(--accent-cyan-glow)' : 'transparent',
+                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                    cursor: 'pointer',
+                    width: '100%',
+                    textAlign: 'left',
+                    fontWeight: isActive ? '700' : '500',
+                    fontSize: '13.5px',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isActive ? '0 0 15px rgba(91, 174, 155, 0.05)' : 'none',
+                    borderLeft: isActive ? '2.5px solid var(--accent-cyan)' : '2.5px solid transparent'
+                  }}
+                >
+                  <span style={{ color: isActive ? 'var(--accent-cyan)' : 'inherit' }}>{tab.icon}</span>
+                  {!sidebarCollapsed && <span>{tab.label}</span>}
+                </button>
+              );
+            })}
+          </nav>
         </div>
-        <button 
-          onClick={() => setActiveTab('profile')}
+
+        {/* Sidebar Footer User Details */}
+        <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 8px' }}>
+            <img 
+              src={currentUser.profilePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} 
+              alt={currentUser.fullName} 
+              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+            />
+            {!sidebarCollapsed && (
+              <div style={{ overflow: 'hidden' }}>
+                <h5 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-white)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                  {currentUser.fullName}
+                </h5>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pro Freelancer</span>
+              </div>
+            )}
+          </div>
+          <button 
+            onClick={() => { logoutUser(); onNavigate('landing'); }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: sidebarCollapsed ? 'center' : 'flex-start',
+              gap: '12px',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(239, 68, 68, 0.04)',
+              color: '#ef4444',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '13px',
+              width: '100%',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <LogOut size={16} />
+            {!sidebarCollapsed && <span>Log Out</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* ==================== MAIN CONTENT ==================== */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowX: 'hidden' }}>
+        
+        {/* Sticky Dashboard Header */}
+        <header 
+          className="glass-panel" 
           style={{
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-            width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center'
+            position: 'sticky',
+            top: '24px',
+            margin: '24px 24px 0 24px',
+            padding: '16px 32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderRadius: '20px',
+            border: '1px solid var(--glass-border)',
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(12px)',
+            zIndex: 90
           }}
         >
-          <img src={currentUser.profilePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </button>
-      </div>
+          {/* Header Left (Title) */}
+          <div>
+            <h2 style={{ fontSize: '20px', fontWeight: '800', textTransform: 'capitalize' }}>
+              {sidebarTabs.find(t => t.id === activeTab)?.label}
+            </h2>
+          </div>
 
-      {/* Desktop Sub Header & Tabs Toggle */}
-      <div className="dashboard-desktop-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px' }}>
-        <div>
-          <span className="badge-pro">Professional Dev Suite</span>
-          <h2 style={{ fontSize: '24px', fontWeight: '800', marginTop: '4px' }}>Welcome back, {currentUser.fullName.split(' ')[0]}</h2>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[
-            { id: 'home', label: 'Home' },
-            { id: 'projects', label: 'Explore Contracts' },
-            { id: 'messages', label: 'Team Chats' },
-            { id: 'profile', label: 'Verification Center' }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === t.id ? 'rgba(255,255,255,0.04)' : 'none',
-                border: 'none',
-                borderBottom: activeTab === t.id ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-                color: activeTab === t.id ? 'var(--text-white)' : 'var(--text-gray)',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                minHeight: '44px'
-              }}
+          {/* Header Right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            
+            {/* Search Bar */}
+            <div style={{ position: 'relative', width: '220px' }} className="header-search-bar">
+              <Search size={14} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Search contracts..." 
+                className="form-input" 
+                style={{ height: '36px', minHeight: '36px', paddingLeft: '36px', fontSize: '13px', borderRadius: '10px' }}
+              />
+            </div>
+
+            {/* Profile Completion Indicator */}
+            {profileCompletion < 100 && (
+              <div 
+                onClick={() => setActiveTab('profile')}
+                className="glass-panel"
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(91, 174, 155, 0.25)',
+                  background: 'rgba(91, 174, 155, 0.06)'
+                }}
+              >
+                <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: '700' }}>Completion: {profileCompletion}%</span>
+                <div style={{ width: '40px', height: '6px', background: 'rgba(91, 174, 155, 0.12)', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${profileCompletion}%`, height: '100%', background: 'var(--accent-cyan)' }} />
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Hamburger menu */}
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-white)', cursor: 'pointer' }}
+              id="mobile-drawer-toggle"
             >
-              {t.label}
+              <LayoutDashboard size={20} />
             </button>
-          ))}
-        </div>
-      </div>
+          </div>
+        </header>
 
-      {/* RENDER ACTIVE TAB */}
+        {/* Dashboard Main Scrollable Area */}
+        <main style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+          
+          {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
+          {activeTab === 'dashboard' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              
+              {/* Profile strength check card */}
+              {profileCompletion < 100 && (
+                <div className="glass-panel" style={{ padding: '20px', border: '1px solid rgba(91, 174, 155, 0.25)', background: 'radial-gradient(ellipse at right, rgba(91, 174, 155, 0.08), transparent 70%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', color: 'var(--text-white)' }}>Build your Portfolio Space</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '4px' }}>Add services, previous work links, and verify your ID to boost match compatibility scores by up to 4x.</p>
+                  </div>
+                  <button onClick={() => setActiveTab('portfolio')} className="btn-primary" style={{ padding: '8px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12.5px' }}>
+                    Publish Projects <ArrowRight size={14} />
+                  </button>
+                </div>
+              )}
 
-      {/* 1. HOME TAB */}
-      {activeTab === 'home' && (
-        <>
-          <OnboardingWidget />
+              {/* Stats overview */}
+              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }} className="stats-cards-grid">
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
+                    <Briefcase size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Active Contracts</span>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{activeWorkspaces.length}</h3>
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(126, 197, 180, 0.08)', color: 'var(--accent-cyan-light)', borderRadius: '12px' }}>
+                    <FileText size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Submitted Bids</span>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{sentApplications.length}</h3>
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
+                    <Bookmark size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Saved Jobs</span>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{savedProjects.length}</h3>
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
+                    <IndianRupee size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Earnings</span>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹4,600</h3>
+                  </div>
+                </div>
+              </section>
 
-          {/* Top Cards Grid */}
-          <section className="responsive-grid-3-2-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-            <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Portfolio Performance</span>
-                <Eye size={16} style={{ color: 'var(--accent-cyan)' }} />
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '800' }}>342 Clicks</h3>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>45 Project Saves</p>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Escrow Locked</span>
-                <DollarSign size={16} style={{ color: '#eab308' }} />
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '800' }}>{escrowLocked}</h3>
-              <p style={{ fontSize: '11px', color: '#eab308' }}>Awaiting Milestone release</p>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Pending Approval</span>
-                <Award size={16} style={{ color: 'var(--accent-cyan-light)' }} />
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '800' }}>{pendingApproval}</h3>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>In review checklist</p>
-            </div>
-
-            <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Total Paid Out</span>
-                <Check size={16} style={{ color: '#22c55e' }} />
-              </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '800' }}>{paidOut}</h3>
-              <p style={{ fontSize: '11px', color: '#22c55e' }}>Transferred to Bank Node</p>
-            </div>
-          </section>
-
-          {/* Active Workspaces summary */}
-          <section className="dashboard-two-col" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '28px', marginTop: '12px' }}>
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px' }}>Active Developer Workspaces</h3>
-              {activeWorkspaces.length === 0 ? (
-                <p style={{ color: 'var(--text-gray)', textAlign: 'center', padding: '30px' }}>
-                  No active developer cells. Submit contract pitches in the Explorer tab!
-                </p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {activeWorkspaces.map(proj => (
-                    <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div>
-                        <h5 style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{proj.title}</h5>
-                        <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>Business Partner: {proj.businessName}</p>
-                      </div>
-                      <button 
-                        onClick={() => onOpenWorkspace(proj.id)}
-                        className="btn-outline-cyan"
-                        style={{ padding: '8px 16px', fontSize: '12px', minHeight: '36px', borderRadius: '8px' }}
-                      >
-                        Enter Code Studio
+              {/* Main dashboard widgets split */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1.3fr', gap: '24px' }} className="home-dashboard-two-col">
+                
+                {/* Left side list */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  
+                  {/* Recommended jobs board */}
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h3 style={{ fontSize: '16.5px', fontWeight: '800' }}>Recommended Contracts</h3>
+                      <button onClick={() => setActiveTab('discover')} style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
+                        View All
                       </button>
+                    </div>
+
+                    {recommendedJobs.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        <SlidersHorizontal size={24} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                        <p style={{ fontSize: '13px' }}>No contracts match your focus areas.</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {recommendedJobs.slice(0, 3).map(proj => (
+                          <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                            <div>
+                              <strong style={{ color: 'var(--text-white)', fontSize: '13.5px' }}>{proj.title}</strong>
+                              <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                <span>Budget: {proj.budget}</span>
+                                <span>Category: {proj.category}</span>
+                              </div>
+                            </div>
+                            <button onClick={() => handleApplyClick(proj.id)} className="btn-primary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11.5px' }}>
+                              Apply
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Active workspaces brief */}
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', marginBottom: '20px' }}>Current Workspaces</h3>
+                    {activeWorkspaces.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                        <CheckSquare size={24} style={{ opacity: 0.3, marginBottom: '8px' }} />
+                        <p style={{ fontSize: '13px' }}>No active collaboration workspaces.</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {activeWorkspaces.map(proj => (
+                          <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                            <div>
+                              <strong style={{ color: 'var(--text-white)', fontSize: '13.5px' }}>{proj.title}</strong>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Client: {proj.businessName}</span>
+                            </div>
+                            <button onClick={() => { setSelectedWorkspaceId(proj.id); setActiveTab('projects'); }} className="btn-outline-cyan" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11px' }}>
+                              Enter Cell
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Right side activity stream / calendar */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  
+                  {/* Saved Jobs summary */}
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', marginBottom: '16px' }}>Saved Jobs</h3>
+                    {savedProjects.length === 0 ? (
+                      <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Bookmark briefs in the feed to save them here.</p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {savedProjects.map(id => {
+                          const p = projects.find(item => item.id === id);
+                          if (!p) return null;
+                          return (
+                            <div key={id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
+                              <div>
+                                <span style={{ color: 'var(--text-white)', fontWeight: '700' }}>{p.title}</span>
+                                <span style={{ display: 'block', color: 'var(--accent-cyan)', fontSize: '11px', marginTop: '2px' }}>{p.budget}</span>
+                              </div>
+                              <button onClick={() => handleApplyClick(id)} className="btn-primary" style={{ padding: '4px 10px', fontSize: '10.5px', minHeight: '26px', borderRadius: '6px' }}>Apply</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Activity Feed */}
+                  <div className="glass-panel" style={{ padding: '24px' }}>
+                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', marginBottom: '20px' }}>Ecosystem Feed</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {activityFeed.slice(0, 4).map(act => (
+                        <div key={act.id} style={{ fontSize: '12.5px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)', marginTop: '6px' }} />
+                          <div>
+                            <p style={{ color: 'var(--text-gray-light)', lineHeight: '1.4' }}>{act.text}</p>
+                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{act.time}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* ==================== 2. DISCOVER WORK FEED VIEW ==================== */}
+          {activeTab === 'discover' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Browse Active Contracts</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Discover open requirements and secure payments in escrow.</p>
+              </div>
+
+              {/* Advanced filter interface */}
+              <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', gap: '12px' }} className="discover-filters-main-row">
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Search size={16} style={{ position: 'absolute', left: '16px', top: '16px', color: 'var(--text-muted)' }} />
+                    <input 
+                      type="text" 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="form-input" 
+                      placeholder="Search jobs by title, description or skills..." 
+                      style={{ paddingLeft: '44px' }}
+                    />
+                  </div>
+
+                  <select 
+                    value={categoryFilter} 
+                    onChange={(e) => setCategoryFilter(e.target.value)} 
+                    className="form-input" 
+                    style={{ width: '180px', background: 'var(--bg-dark)' }}
+                  >
+                    <option value="All">All Categories</option>
+                    <option value="Website Development">Website Dev</option>
+                    <option value="App Development">App Dev</option>
+                    <option value="UI/UX Design">UI/UX Design</option>
+                    <option value="Video Editing">Video Editing</option>
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: '11.5px', marginBottom: '4px' }}>Budget Range</label>
+                      <select value={budgetFilter} onChange={(e) => setBudgetFilter(e.target.value)} className="form-input" style={{ width: '130px', height: '36px', minHeight: '36px', padding: '0 8px', background: 'var(--bg-dark)', fontSize: '12px' }}>
+                        <option value="All">Any Budget</option>
+                        <option value="<1k">&lt; ₹1,000</option>
+                        <option value="1k-3k">₹1,000 - ₹3,000</option>
+                        <option value=">3k">&gt; ₹3,000</option>
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', marginTop: '24px' }}>
+                      <input 
+                        type="checkbox" 
+                        id="verifiedCheck"
+                        checked={verifiedOnly} 
+                        onChange={(e) => setVerifiedOnly(e.target.checked)} 
+                        style={{ accentColor: 'var(--accent-cyan)', marginRight: '8px' }} 
+                      />
+                      <label htmlFor="verifiedCheck" style={{ fontSize: '12.5px', cursor: 'pointer', userSelect: 'none' }}>Verified Businesses Only</label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: '11.5px', marginBottom: '4px' }}>Sort By</label>
+                    <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className="form-input" style={{ width: '150px', height: '36px', minHeight: '36px', padding: '0 8px', background: 'var(--bg-dark)', fontSize: '12px' }}>
+                      <option value="Newest">Newest Listed</option>
+                      <option value="Budget: High-Low">Highest Budget</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Feed Results */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {filteredProjects.length === 0 ? (
+                  <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
+                    <Search size={36} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+                    <p style={{ color: 'var(--text-gray)' }}>No active briefs discovered matching your filters.</p>
+                  </div>
+                ) : (
+                  filteredProjects.map(proj => {
+                    const isSaved = savedProjects.includes(proj.id);
+                    return (
+                      <div key={proj.id} className="glass-panel glass-panel-hover" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <span className="badge-pro" style={{ fontSize: '9px', textTransform: 'uppercase' }}>{proj.category}</span>
+                            <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)', marginTop: '8px' }}>{proj.title}</h4>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Client: {proj.businessName}</span>
+                          </div>
+                          
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>Due: {proj.deadline}</span>
+                          </div>
+                        </div>
+
+                        <p style={{ fontSize: '13.5px', color: 'var(--text-gray-light)', margin: '14px 0', lineHeight: '1.5' }}>
+                          {proj.description}
+                        </p>
+
+                        {/* Skills needed tags */}
+                        {proj.skills && proj.skills.length > 0 && (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                            {proj.skills.map(s => (
+                              <span key={s} style={{ fontSize: '11px', background: 'var(--bg-dark)', padding: '2px 8px', borderRadius: '6px', color: 'var(--text-gray)', border: '1px solid var(--glass-border)' }}>
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Work Type: <strong>{proj.remoteType || 'Remote'}</strong></span>
+                          
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                              onClick={() => toggleSaveProject(proj.id)}
+                              style={{
+                                background: 'var(--bg-dark)',
+                                border: '1px solid var(--glass-border)',
+                                width: '36px', height: '36px', borderRadius: '10px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                                cursor: 'pointer', transition: 'all 0.2s ease'
+                              }}
+                            >
+                              <Bookmark size={15} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
+                            </button>
+                            <button 
+                              onClick={() => handleApplyClick(proj.id)} 
+                              className="btn-primary" 
+                              style={{ padding: '6px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12px' }}
+                            >
+                              Apply Now
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ==================== 3. APPLICATIONS TRACKER VIEW ==================== */}
+          {activeTab === 'applications' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800' }}>My Submitted Proposals</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Check evaluation updates for pitches submitted to business leaders.</p>
+              </div>
+
+              {sentApplications.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
+                  <FileText size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+                  <h4 style={{ color: 'var(--text-white)', fontSize: '18px', fontWeight: '800' }}>No active proposals</h4>
+                  <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px', maxWidth: '380px', margin: '6px auto' }}>
+                    Submit pitches to campaign briefs in the Discover feed to start pitching your professional developer/designer services.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {sentApplications.map((app, index) => (
+                    <div key={index} className="glass-panel" style={{ padding: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                        <div>
+                          <span className="badge-pro" style={{ fontSize: '9px' }}>{app.projectCategory}</span>
+                          <h4 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-white)', marginTop: '6px' }}>{app.projectTitle}</h4>
+                        </div>
+                        <span style={{
+                          background: app.status === 'Hired' ? 'rgba(34,197,94,0.08)' : 'var(--bg-dark)',
+                          color: app.status === 'Hired' ? '#22c55e' : 'var(--text-gray)',
+                          padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700'
+                        }}>
+                          {app.status === 'Hired' ? 'Selected' : app.status}
+                        </span>
+                      </div>
+
+                      <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', marginTop: '10px', fontStyle: 'italic' }}>
+                        Your Cover Letter: "{app.coverLetter}"
+                      </p>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--glass-border)', paddingTop: '12px', marginTop: '12px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Pitch Bid: <strong>{app.pricing}</strong></span>
+                        {app.status === 'Hired' && (
+                          <button onClick={() => setActiveTab('projects')} className="btn-primary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11px' }}>
+                            Enter Workspace
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+          )}
 
-            <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Quick Actions</h3>
-              <button onClick={() => setActiveTab('projects')} className="btn-primary" style={{ width: '100%', minHeight: '48px' }}>
-                <Briefcase size={16} /> Explore Contracts
-              </button>
-            </div>
-          </section>
-        </>
-      )}
+          {/* ==================== 4. ACTIVE CONTRACTS WORKSPACES ==================== */}
+          {activeTab === 'projects' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Developer Workspaces</h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Secure environment for tracking milestones, task sprints, escrow releases, and code briefings.</p>
+              </div>
 
-      {/* 2. PROJECTS TAB (Explore Brand Contracts) */}
-      {activeTab === 'projects' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Available Developer Contracts</h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {openProjects.map(proj => {
-              const hasApplied = proj.proposals?.some(p => p.creatorId === currentUser.id);
-              return (
-                <div key={proj.id} className="glass-panel" style={{ padding: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-                    <div>
-                      <span className="badge-pro" style={{ fontSize: '10px' }}>{proj.category}</span>
-                      <h4 style={{ fontSize: '16px', fontWeight: '800', color: '#fff', marginTop: '6px' }}>{proj.title}</h4>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Briefed by: {proj.businessName}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Due: {proj.deadline}</span>
-                    </div>
+              {activeWorkspaces.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
+                  <CheckSquare size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+                  <h4 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: '800' }}>No active contracts</h4>
+                  <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>Submit proposals to campaign briefs to spawn active contract workspaces.</p>
+                </div>
+              ) : (
+                <div>
+                  <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontSize: '13.5px', color: 'var(--text-gray)' }}>Select Active Cell:</span>
+                    <select 
+                      value={selectedWorkspaceId || ''} 
+                      onChange={(e) => setSelectedWorkspaceId(e.target.value)} 
+                      className="form-input"
+                      style={{ width: '280px', background: 'var(--bg-dark)', height: '40px', minHeight: '40px', padding: '0 12px' }}
+                    >
+                      <option value="">-- Choose Workspace --</option>
+                      {activeWorkspaces.map(c => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
                   </div>
-                  
-                  <p style={{ fontSize: '13px', color: 'var(--text-gray-light)', margin: '14px 0', lineHeight: '1.5' }}>
-                    {proj.description}
-                  </p>
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '14px' }}>
-                    {hasApplied ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#22c55e', fontWeight: '700' }}>
-                        <Check size={16} /> Pitch Submitted
-                      </span>
-                    ) : (
-                      <button 
-                        onClick={() => checkPortfolioValidation(proj)}
-                        className="btn-primary" 
-                        style={{ padding: '10px 24px', fontSize: '13px', minHeight: '40px', borderRadius: '8px' }}
-                      >
-                        Submit Project Bid
-                      </button>
-                    )}
+                  {selectedWorkspaceId && (
+                    (() => {
+                      const proj = activeWorkspaces.find(p => p.id === selectedWorkspaceId);
+                      if (!proj || !proj.team) return null;
+                      const projMessages = messages[proj.id] || [];
+
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }} className="workspace-main-grid">
+                          
+                          {/* Workspace Progress */}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            
+                            {/* Milestones list */}
+                            <div className="glass-panel" style={{ padding: '24px' }}>
+                              <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Clock size={16} style={{ color: 'var(--accent-cyan)' }} /> Campaign Milestones
+                              </h4>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {proj.team.milestones?.map(m => (
+                                  <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
+                                    <div>
+                                      <h5 style={{ fontSize: '13.5px', color: 'var(--text-white)', fontWeight: '700' }}>{m.title}</h5>
+                                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Due: {m.deadline}</span>
+                                    </div>
+                                    <span style={{
+                                      background: m.status === 'Completed' ? 'rgba(34, 197, 94, 0.08)' : (m.status === 'In Progress' ? 'var(--accent-cyan-glow)' : 'rgba(141, 164, 160, 0.1)'),
+                                      color: m.status === 'Completed' ? '#22c55e' : (m.status === 'In Progress' ? 'var(--accent-cyan)' : 'var(--text-muted)'),
+                                      padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600'
+                                    }}>
+                                      {m.status}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Task Checklist */}
+                            <div className="glass-panel" style={{ padding: '24px' }}>
+                              <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <CheckSquare size={16} style={{ color: 'var(--accent-cyan)' }} /> Sprint Tasks Checklist
+                              </h4>
+                              
+                              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                                <input 
+                                  type="text" 
+                                  value={workspaceTaskInput}
+                                  onChange={(e) => setWorkspaceTaskInput(e.target.value)}
+                                  className="form-input" 
+                                  placeholder="Add team task item..."
+                                  style={{ height: '38px', minHeight: '38px', fontSize: '13px' }}
+                                />
+                                <button onClick={() => {
+                                  if (!workspaceTaskInput.trim()) return;
+                                  if (!proj.team.tasks) proj.team.tasks = [];
+                                  proj.team.tasks.push({ id: generateTaskId(), title: workspaceTaskInput, completed: false });
+                                  sendMessage(proj.id, `📋 Freelancer added task: "${workspaceTaskInput}"`, 'system', 'Creators Hub AI');
+                                  setWorkspaceTaskInput('');
+                                }} className="btn-primary" style={{ padding: '0 16px', minHeight: '38px', borderRadius: '12px' }}>
+                                  <Plus size={16} />
+                                </button>
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {(proj.team.tasks || []).map(t => (
+                                  <div 
+                                    key={t.id} 
+                                    onClick={() => {
+                                      t.completed = !t.completed;
+                                      sendMessage(proj.id, `✅ Task ${t.completed ? 'Completed' : 'Reopened'} by Talent: "${t.title}"`, 'system', 'Creators Hub AI');
+                                      setSelectedWorkspaceId(proj.id);
+                                    }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                  >
+                                    <input type="checkbox" checked={t.completed} readOnly style={{ accentColor: 'var(--accent-cyan)' }} />
+                                    <span style={{ fontSize: '13px', color: t.completed ? 'var(--text-muted)' : 'var(--text-white)', textDecoration: t.completed ? 'line-through' : 'none' }}>
+                                      {t.title}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Escrow Payments */}
+                            <div className="glass-panel" style={{ padding: '24px' }}>
+                              <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <IndianRupee size={16} style={{ color: 'var(--accent-cyan)' }} /> Escrow Funding Milestones
+                              </h4>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {proj.team.payments?.map(p => (
+                                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
+                                    <div>
+                                      <h5 style={{ fontSize: '13.5px', color: 'var(--text-white)', fontWeight: '700' }}>{p.title}</h5>
+                                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Value: <strong>{p.amount}</strong></span>
+                                    </div>
+                                    <span style={{
+                                      color: p.status === 'Paid' ? '#22c55e' : '#eab308',
+                                      fontSize: '11.5px', fontWeight: '700'
+                                    }}>
+                                      {p.status === 'Paid' ? 'Paid Out' : 'Escrow Locked'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                          </div>
+
+                          {/* Chat Stream */}
+                          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '580px', justifyContent: 'space-between' }}>
+                            <h4 style={{ fontSize: '15px', fontWeight: '800', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px' }}>
+                              Workspace Chat Node
+                            </h4>
+
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {projMessages.map((msg, index) => {
+                                const isSys = msg.senderId === 'system';
+                                return (
+                                  <div key={index} style={{
+                                    alignSelf: isSys ? 'center' : (msg.senderId === currentUser.id ? 'flex-end' : 'flex-start'),
+                                    background: isSys ? 'var(--accent-cyan-glow)' : (msg.senderId === currentUser.id ? 'var(--accent-cyan)' : 'var(--bg-dark)'),
+                                    border: '1px solid var(--glass-border)',
+                                    padding: '10px 14px',
+                                    borderRadius: '12px',
+                                    maxWidth: '85%',
+                                    fontSize: '12.5px'
+                                  }}>
+                                    {!isSys && <strong style={{ color: msg.senderId === currentUser.id ? 'rgba(255,255,255,0.9)' : 'var(--accent-cyan)', fontSize: '10.5px', display: 'block', marginBottom: '2px' }}>{msg.senderName}</strong>}
+                                    <p style={{ color: isSys ? 'var(--text-gray)' : (msg.senderId === currentUser.id ? '#ffffff' : 'var(--text-white)'), lineHeight: '1.4' }}>{msg.text}</p>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block', textAlign: 'right', marginTop: '4px' }}>
+                                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
+                              <input 
+                                type="text" 
+                                value={workspaceChatInput}
+                                onChange={(e) => setWorkspaceChatInput(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkspaceChat(proj.id, workspaceChatInput); }}
+                                className="form-input" 
+                                placeholder="Message client cell..." 
+                                style={{ height: '38px', minHeight: '38px', fontSize: '13px' }}
+                              />
+                              <button onClick={() => handleSendWorkspaceChat(proj.id, workspaceChatInput)} className="btn-primary" style={{ padding: '0 14px', minHeight: '38px', borderRadius: '10px' }}>
+                                <Send size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== 5. PORTFOLIO PROJECTS VIEW ==================== */}
+          {activeTab === 'portfolio' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Portfolio Workspace</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Manage public design books, code links, and website showcases.</p>
+                </div>
+                <button onClick={() => setShowPortfolioModal(true)} className="btn-primary" style={{ minHeight: '40px', borderRadius: '10px' }}>
+                  <Plus size={16} /> Add Project
+                </button>
+              </div>
+
+              {/* Portfolio Grid */}
+              {(!currentUser.portfolio || currentUser.portfolio.length === 0) ? (
+                <div className="glass-panel" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Upload size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <p>Your portfolio space is currently empty. Upload portfolio projects to stand out.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }} className="portfolio-projects-grid">
+                  {currentUser.portfolio.map((item, idx) => (
+                    <div key={idx} className="glass-panel" style={{ padding: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <span className="badge-pro" style={{ fontSize: '9px', textTransform: 'uppercase' }}>{item.type || 'Link'}</span>
+                        <button 
+                          onClick={() => {
+                            const updated = currentUser.portfolio.filter((_, i) => i !== idx);
+                            updateProfile(currentUser.id, { portfolio: updated });
+                            alert('Project removed.');
+                          }} 
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                      <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)', marginTop: '10px' }}>{item.title || item.service}</h4>
+                      <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', marginTop: '6px', lineHeight: '1.4' }}>{item.description || 'Professional portfolio showcase project.'}</p>
+                      
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--accent-cyan)', fontSize: '12px', marginTop: '12px', fontWeight: '600' }}>
+                          Launch Project <ExternalLink size={12} />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== 6. CERTIFICATES VIEW ==================== */}
+          {activeTab === 'certificates' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Professional Certifications</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '24px' }} className="certificates-main-grid">
+                
+                {/* Form left */}
+                <div className="glass-panel" style={{ padding: '24px', height: 'fit-content' }}>
+                  <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px' }}>Add Certification</h4>
+                  <form onSubmit={handleAddCertificate} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div>
+                      <label className="form-label">Certificate Title</label>
+                      <input type="text" value={certTitle} onChange={(e) => setCertTitle(e.target.value)} className="form-input" placeholder="E.g. React Certified Developer" />
+                    </div>
+                    <div>
+                      <label className="form-label">Issuing Organization</label>
+                      <input type="text" value={certOrg} onChange={(e) => setCertOrg(e.target.value)} className="form-input" placeholder="E.g. Meta / Google" />
+                    </div>
+                    <div>
+                      <label className="form-label">Year Issued</label>
+                      <input type="text" value={certYear} onChange={(e) => setCertYear(e.target.value)} className="form-input" placeholder="E.g. 2026" />
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ minHeight: '38px', borderRadius: '10px', fontSize: '12.5px', marginTop: '8px' }}>Save Certificate</button>
+                  </form>
+                </div>
+
+                {/* List right */}
+                <div className="glass-panel" style={{ padding: '24px' }}>
+                  <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px' }}>Credential Records</h4>
+                  {(!currentUser.certificates || currentUser.certificates.length === 0) ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No certification credentials verified. Add details on the left.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {currentUser.certificates.map((cert, idx) => (
+                        <div key={idx} style={{ padding: '14px', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <strong style={{ color: 'var(--text-white)', fontSize: '13.5px' }}>{cert.title}</strong>
+                            <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Issued by: {cert.authority} • {cert.year}</span>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              const updated = currentUser.certificates.filter((_, i) => i !== idx);
+                              updateProfile(currentUser.id, { certificates: updated });
+                            }} 
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* ==================== 7. MESSAGES VIEW ==================== */}
+          {activeTab === 'messages' && (
+            <div className="glass-panel" style={{ padding: '24px', minHeight: '400px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '16px' }}>Direct Messaging</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13.5px' }}>Active contract secure channels will show up here for live discussions.</p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
+                {activeWorkspaces.map(c => (
+                  <div 
+                    key={c.id} 
+                    onClick={() => { setSelectedWorkspaceId(c.id); setActiveTab('projects'); }}
+                    style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                    className="glass-panel-hover"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
+                        <MessageSquare size={18} />
+                      </div>
+                      <div>
+                        <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-white)' }}>{c.title} Secure Chat</h4>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Real-time team collaboration cell</span>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>Open Chat →</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ==================== 8. CLIENT REVIEWS VIEW ==================== */}
+          {activeTab === 'reviews' && (
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Client Collaboration Reviews</h3>
+              {(!currentUser.reviews || currentUser.reviews.length === 0) ? (
+                <p style={{ color: 'var(--text-muted)', fontSize: '13.5px' }}>No review postings. Ratings will populate when active contracts close.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {currentUser.reviews.map((rev, idx) => (
+                    <div key={idx} style={{ padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ color: 'var(--text-white)', fontSize: '14px' }}>{rev.businessName}</strong>
+                        <div style={{ display: 'flex', gap: '2px', color: '#eab308' }}>
+                          {Array.from({ length: rev.rating }).map((_, i) => <Star key={i} size={12} fill="#eab308" />)}
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '8px', lineHeight: '1.4' }}>"{rev.comment}"</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== 9. ANALYTICS VIEW ==================== */}
+          {activeTab === 'analytics' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Portfolio Impression Analytics</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
+                <div className="glass-panel" style={{ padding: '20px' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Portfolio Clicks</span>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>432 Clicks</h3>
+                </div>
+                <div className="glass-panel" style={{ padding: '20px' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Pitches Accepted</span>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>82.5%</h3>
+                </div>
+                <div className="glass-panel" style={{ padding: '20px' }}>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Net Earned</span>
+                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>₹4,600</h3>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ==================== 10. PUBLIC PROFILE VIEW ==================== */}
+          {activeTab === 'profile' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Cover Banner */}
+              <div className="glass-panel" style={{ overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                <div style={{ height: '180px', background: 'linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(103, 232, 249, 0.02))', position: 'relative' }}>
+                  <img 
+                    src={currentUser.cover || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'} 
+                    alt="cover" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  <span className="badge-premium" style={{ position: 'absolute', top: '16px', right: '16px' }}>
+                    {currentUser.verificationStatus}
+                  </span>
+                </div>
+
+                <div style={{ padding: '24px', position: 'relative', marginTop: '-44px', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <img 
+                    src={currentUser.profilePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} 
+                    alt={currentUser.fullName}
+                    style={{ width: '84px', height: '84px', borderRadius: '50%', border: '3px solid var(--bg-dark)', objectFit: 'cover' }}
+                  />
+                  <div style={{ flex: 1, minWidth: '220px' }}>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-white)' }}>{currentUser.fullName}</h3>
+                    <div style={{ display: 'flex', gap: '14px', color: 'var(--text-gray)', fontSize: '13px', marginTop: '6px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {currentUser.location || 'New York, NY'}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} /> {currentUser.experience || '4+ Years Experience'}</span>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+
+              {/* Edit Form */}
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '24px' }} className="profile-edit-two-col">
+                <div className="glass-panel" style={{ padding: '24px' }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Update Bio & Skills</h4>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    updateProfile(currentUser.id, {
+                      fullName: e.target.fullName.value,
+                      location: e.target.location.value,
+                      experience: e.target.experience.value,
+                      bio: e.target.bio.value,
+                      skills: e.target.skills.value ? e.target.skills.value.split(',').map(s => s.trim()) : []
+                    });
+                    alert('Profile details saved!');
+                  }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label className="form-label">Full Name</label>
+                      <input type="text" name="fullName" defaultValue={currentUser.fullName} className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">Location</label>
+                      <input type="text" name="location" defaultValue={currentUser.location || ''} className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">Experience Tier</label>
+                      <input type="text" name="experience" defaultValue={currentUser.experience || ''} className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">Skills (Comma separated)</label>
+                      <input type="text" name="skills" defaultValue={currentUser.skills ? currentUser.skills.join(', ') : ''} className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">Public Bio</label>
+                      <textarea name="bio" rows={3} defaultValue={currentUser.bio || ''} className="form-input" />
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', minHeight: '38px', borderRadius: '10px' }}>Save Profile</button>
+                  </form>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                  <VerificationCenter />
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ==================== 11. SETTINGS VIEW ==================== */}
+          {activeTab === 'settings' && (
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Freelancer Settings</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                  <span>Visible in Business Search Directory</span>
+                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+                  <span>Escrow Deposit Notification Alert</span>
+                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+        </main>
+      </div>
+
+      {/* ==================== APPLY PROPOSAL MODAL ==================== */}
+      {showApplyModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div className="glass-panel animate-scale-up" style={{ width: '92%', maxWidth: '500px', padding: '32px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Submit Proposal Pitch</h3>
+              <button onClick={() => setShowApplyModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleApplySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="form-label">Escrow Bid Price*</label>
+                <input 
+                  type="text" 
+                  value={bidPrice} 
+                  onChange={(e) => setBidPrice(e.target.value)} 
+                  className="form-input" 
+                  placeholder="E.g. ₹1,200" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Days to Complete*</label>
+                <input 
+                  type="number" 
+                  value={daysToComplete} 
+                  onChange={(e) => setDaysToComplete(e.target.value)} 
+                  className="form-input" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Pitch Pitch / Cover Letter*</label>
+                <textarea 
+                  value={coverLetter} 
+                  onChange={(e) => setCoverLetter(e.target.value)} 
+                  className="form-input" 
+                  rows={4} 
+                  placeholder="Explain why you are the best fit for this campaign, highlight your past portfolio links..." 
+                  required 
+                />
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Submit Bid Pitch</button>
+            </form>
           </div>
         </div>
       )}
 
-      {/* 3. MESSAGES TAB */}
-      {activeTab === 'messages' && (
-        <div className="glass-panel" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '16px' }}>Active Developer Chats</h3>
-          {activeWorkspaces.length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-gray)' }}>
-              No active conversations. Submit contract bids to brands to begin chat channels.
+      {/* ==================== PORTFOLIO UPLOAD MODAL ==================== */}
+      {showPortfolioModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div className="glass-panel animate-scale-up" style={{ width: '92%', maxWidth: '500px', padding: '32px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800' }}>Publish Portfolio Project</h3>
+              <button onClick={() => setShowPortfolioModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {activeWorkspaces.map(proj => (
-                <div 
-                  key={proj.id} 
-                  onClick={() => onOpenWorkspace(proj.id)}
-                  className="glass-panel-hover"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '16px',
-                    borderRadius: '16px',
-                    background: 'rgba(15,23,42,0.3)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(6, 182, 212, 0.1)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MessageSquare size={20} />
-                    </div>
-                    <div>
-                      <h4 style={{ fontSize: '15px', fontWeight: '800', color: '#fff' }}>{proj.title} Chat</h4>
-                      <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '2px' }}>Client: {proj.businessName}</p>
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '12px', color: 'var(--accent-cyan)' }}>Open Chat →</span>
-                </div>
-              ))}
-            </div>
-          )}
+
+            <form onSubmit={handleAddPortfolioItem} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="form-label">Project Title*</label>
+                <input type="text" value={portTitle} onChange={(e) => setPortTitle(e.target.value)} className="form-input" placeholder="E.g. E-Commerce Core API" required />
+              </div>
+
+              <div>
+                <label className="form-label">Link Type*</label>
+                <select value={portType} onChange={(e) => setPortType(e.target.value)} className="form-input" style={{ background: 'var(--bg-dark)' }}>
+                  <option value="Link">Live Website URL</option>
+                  <option value="GitHub">GitHub Repository</option>
+                  <option value="Behance">Behance Showcase</option>
+                  <option value="Dribbble">Dribbble Mockups</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Project URL*</label>
+                <input type="text" value={portUrl} onChange={(e) => setPortUrl(e.target.value)} className="form-input" placeholder="https://github.com/..." required />
+              </div>
+
+              <div>
+                <label className="form-label">Short Description</label>
+                <textarea value={portDesc} onChange={(e) => setPortDesc(e.target.value)} className="form-input" rows={2} placeholder="Explain stack details..." />
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Publish Project</button>
+            </form>
+          </div>
         </div>
       )}
 
-      {/* 4. PROFILE / SETTINGS TAB */}
-      {activeTab === 'profile' && (
-        <VerificationCenter />
-      )}
-
-      {/* PERSISTENT BOTTOM NAVIGATION BAR */}
-      <nav className="dashboard-mobile-nav" style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '64px',
-        background: 'rgba(5, 8, 22, 0.94)',
-        borderTop: '1px solid rgba(0, 217, 255, 0.15)',
-        display: 'none',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        zIndex: 1001,
-        backdropFilter: 'blur(12px)',
-        paddingBottom: 'env(safe-area-inset-bottom)'
-      }}>
+      {/* Persistent Bottom Mobile Navigation Bar */}
+      <nav 
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '64px',
+          background: 'rgba(255, 255, 255, 0.96)',
+          borderTop: '1px solid var(--glass-border)',
+          display: 'none',
+          justifyContent: 'space-around',
+          alignItems: 'center',
+          zIndex: 1001,
+          backdropFilter: 'blur(12px)',
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}
+        id="mobile-nav-bar"
+      >
         {[
-          { id: 'home', label: 'Home', icon: <Home size={18} /> },
-          { id: 'projects', label: 'Campaigns', icon: <Briefcase size={18} /> },
-          { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-          { id: 'profile', label: 'Profile', icon: <User size={18} /> }
+          { id: 'dashboard', label: 'Home', icon: <LayoutDashboard size={18} /> },
+          { id: 'discover', label: 'Browse', icon: <Search size={18} /> },
+          { id: 'projects', label: 'Contracts', icon: <CheckSquare size={18} /> },
+          { id: 'messages', label: 'Chats', icon: <MessageSquare size={18} /> }
         ].map(tab => (
           <button
             key={tab.id}
@@ -364,7 +1451,7 @@ export const FreelancerDashboard = ({ onNavigate, onOpenWorkspace }) => {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '4px',
-              fontSize: '10px',
+              fontSize: '10.5px',
               fontWeight: '700',
               cursor: 'pointer',
               minWidth: '60px',
@@ -377,129 +1464,56 @@ export const FreelancerDashboard = ({ onNavigate, onOpenWorkspace }) => {
         ))}
       </nav>
 
-      {/* PORTFOLIO VALIDATION SUBMIT POPUP */}
-      {portfolioValidating && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div className="glass-panel animate-scale-up" style={{ width: '90%', maxWidth: '480px', padding: '32px', background: '#090f1d', border: '1px solid rgba(0,217,255,0.15)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Portfolio Verification</h3>
-              <button onClick={() => setPortfolioValidating(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', lineHeight: '1.5', marginBottom: '20px' }}>
-              To bid on this contract, you must link at least one live URL or Drive link matching <strong>{missingService}</strong>.
-            </p>
-
-            <form onSubmit={handlePortfolioSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label className="form-label">Portfolio URL / Live Link</label>
-                <input 
-                  type="url" 
-                  value={newPortfolioUrl} 
-                  onChange={(e) => setNewPortfolioUrl(e.target.value)} 
-                  className="form-input" 
-                  placeholder="https://behance.net/username or github link" 
-                  required 
-                />
-              </div>
-              <button type="submit" className="btn-primary">Verify & Continue Bid</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* SUBMIT BID MODAL */}
-      {showApplyModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div className="glass-panel animate-scale-up" style={{ width: '90%', maxWidth: '500px', padding: '32px', background: '#090f1d', border: '1px solid rgba(0,217,255,0.15)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Submit Project Bid Quote</h3>
-              <button onClick={() => setShowApplyModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleApply} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label className="form-label">Proposal Statement</label>
-                <textarea 
-                  value={coverLetter} 
-                  onChange={(e) => setCoverLetter(e.target.value)} 
-                  className="form-input" 
-                  rows={4} 
-                  placeholder="Briefly pitch your tech stack and client project deliverables..." 
-                  required 
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label className="form-label">Pricing Bid Quote</label>
-                  <input 
-                    type="text" 
-                    value={bidPrice} 
-                    onChange={(e) => setBidPrice(e.target.value)} 
-                    className="form-input" 
-                    placeholder="E.g. $1,200" 
-                    required 
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Days to Complete</label>
-                  <input 
-                    type="number" 
-                    value={days} 
-                    onChange={(e) => setDays(e.target.value)} 
-                    className="form-input" 
-                    min="1" 
-                    required 
-                  />
-                </div>
-              </div>
-
-              <button type="submit" className="btn-primary" style={{ marginTop: '8px' }}>Submit Proposal Bid</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Styled Inline overrides */}
+      {/* Styled Responsive Queries */}
       <style>{`
-        @media (max-width: 768px) {
-          .dashboard-desktop-header {
+        @media (max-width: 992px) {
+          #desktop-sidebar {
             display: none !important;
           }
-          .dashboard-mobile-header {
+          #mobile-drawer-toggle {
+            display: block !important;
+          }
+          #mobile-nav-bar {
             display: flex !important;
           }
-          .dashboard-mobile-nav {
-            display: flex !important;
+          .header-search-bar {
+            display: none !important;
           }
-          .mobile-dashboard-container {
-            padding: 10px 12px 100px 12px !important;
+        }
+        @media (max-width: 768px) {
+          .stats-cards-grid {
+            grid-template-columns: 1fr 1fr !important;
           }
-          .dashboard-two-col {
+          .home-dashboard-two-col {
+            grid-template-columns: 1fr !important;
+          }
+          .discover-filters-main-row {
+            grid-template-columns: 1fr !important;
+            flex-direction: column !important;
+          }
+          .discover-filters-main-row select {
+            width: 100% !important;
+          }
+          .portfolio-projects-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .certificates-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .workspace-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .profile-edit-two-col {
+            grid-template-columns: 1fr !important;
+          }
+          .analytics-grid {
             grid-template-columns: 1fr !important;
           }
         }
       `}</style>
+
     </div>
   );
 };
+
 export default FreelancerDashboard;

@@ -1,6 +1,12 @@
-import React, { createContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useEffect } from 'react';
 
 export const AppContext = createContext();
+
+const generateUserId = (role) => {
+  const now = Date.now();
+  return role === 'Business Holder' ? `bh-${now}` : (role === 'Influencer' ? `inf-${now}` : `fl-${now}`);
+};
 
 // Pre-seeded high quality profiles for immersive experience
 const INITIAL_USERS = [
@@ -21,7 +27,7 @@ const INITIAL_USERS = [
     socialLinks: { instagram: 'https://instagram.com/sterlingcafe', twitter: 'https://twitter.com/sterlingcafe' },
     address: '456 Market St, San Francisco, CA',
     teamSize: '15-50',
-    monthlyMarketingBudget: '$5,000 - $10,000',
+    monthlyMarketingBudget: '₹5,000 - ₹10,000',
     verificationStatus: 'Premium Verified',
     profileStrength: 95,
   },
@@ -41,7 +47,7 @@ const INITIAL_USERS = [
     socialLinks: { instagram: 'https://instagram.com/aurorahotels' },
     address: '100 Ocean Dr, Miami, FL',
     teamSize: '50-100',
-    monthlyMarketingBudget: '$20,000+',
+    monthlyMarketingBudget: '₹20,000+',
     verificationStatus: 'Professional Verified',
     profileStrength: 90,
   },
@@ -65,7 +71,7 @@ const INITIAL_USERS = [
     averageReach: '4.2M Monthly',
     engagementRate: '5.5%',
     languages: ['English', 'Spanish'],
-    collaborationPricing: '$1,500/Post',
+    collaborationPricing: '₹1,500/Post',
     bio: 'Visual storyteller exploring luxury eco-destinations and highlighting sustainable fashion brands worldwide.',
     verificationStatus: 'Premium Verified',
     profileStrength: 100,
@@ -98,7 +104,7 @@ const INITIAL_USERS = [
     averageReach: '5.2M Monthly',
     engagementRate: '8.2%',
     languages: ['English'],
-    collaborationPricing: '$3,000/Video',
+    collaborationPricing: '₹3,000/Video',
     bio: 'No-nonsense review of consumer hardware, developer tools, and cutting-edge software products.',
     verificationStatus: 'Professional Verified',
     profileStrength: 92,
@@ -128,7 +134,7 @@ const INITIAL_USERS = [
     averageReach: '500K Monthly',
     engagementRate: '5.9%',
     languages: ['English', 'French'],
-    collaborationPricing: '$750/Post',
+    collaborationPricing: '₹750/Post',
     bio: 'Finding the finest street food, hidden bistros, and high-end culinary concepts across North America.',
     verificationStatus: 'Basic Verified',
     profileStrength: 85,
@@ -218,12 +224,12 @@ const INITIAL_PROJECTS = [
     title: 'Modern Summer Campaign Launch',
     category: 'Cafe',
     description: 'We are looking to promote our new organic cold brew series and ice pastries. We need a combination of video editing, influencer posts, and a landing page refresh.',
-    budget: '$3,500',
+    budget: '₹3,500',
     deadline: '2026-08-15',
     attachments: ['summer_concept.pdf'],
     proposals: [
-      { creatorId: 'inf-3', creatorName: 'Chloe Jean', coverLetter: 'I would love to highlight your drinks at Sterling Cafe. My Chicago food audience absolutely loves coffee reels!', pricing: '$750', daysToComplete: 10, status: 'Pending' },
-      { creatorId: 'fl-3', creatorName: 'Noah Wilder', coverLetter: 'I can create premium high-energy kinetic text video commercials using your footage.', pricing: '$1,200', daysToComplete: 7, status: 'Pending' }
+      { creatorId: 'inf-3', creatorName: 'Chloe Jean', coverLetter: 'I would love to highlight your drinks at Sterling Cafe. My Chicago food audience absolutely loves coffee reels!', pricing: '₹750', daysToComplete: 10, status: 'Pending' },
+      { creatorId: 'fl-3', creatorName: 'Noah Wilder', coverLetter: 'I can create premium high-energy kinetic text video commercials using your footage.', pricing: '₹1,200', daysToComplete: 7, status: 'Pending' }
     ],
     invitedCreators: ['inf-1', 'fl-1'],
     status: 'Open',
@@ -279,29 +285,16 @@ export const AppProvider = ({ children }) => {
     };
   });
 
-  const [theme, setTheme] = useState(() => {
-    try {
-      const storedTheme = localStorage.getItem('creatorsHubTheme');
-      return storedTheme || 'dark';
-    } catch (e) {
-      return 'dark';
-    }
-  });
+  const [theme] = useState('light');
 
   const toggleTheme = () => {
-    setTheme(prev => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      try {
-        localStorage.setItem('creatorsHubTheme', next);
-      } catch (e) {}
-      return next;
-    });
+    // Dark mode disabled
   };
 
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute('data-theme', theme);
-  }, [theme]);
+    root.setAttribute('data-theme', 'light');
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ch_users', JSON.stringify(users));
@@ -337,7 +330,7 @@ export const AppProvider = ({ children }) => {
 
   // Auth Operations
   const registerUser = (role, basicDetails, profileDetails = {}, verificationLevel = 'Basic Verified') => {
-    const newId = role === 'Business Holder' ? `bh-${Date.now()}` : (role === 'Influencer' ? `inf-${Date.now()}` : `fl-${Date.now()}`);
+    const newId = generateUserId(role);
     
     // Add custom fraud audits for influencer
     let fraudAudit = null;
@@ -544,9 +537,9 @@ export const AppProvider = ({ children }) => {
               { id: 'm-4', title: 'Website Launch & Campaign Rollout', status: 'Pending', deadline: '2026-08-10' }
             ],
             payments: [
-              { id: 'p-1', title: 'Initial Deposit (Escrowed)', amount: '$1,000', status: 'Paid' },
-              { id: 'p-2', title: 'Milestone 2 Release', amount: '$1,200', status: 'Pending' },
-              { id: 'p-3', title: 'Final Deliverable Settlement', amount: '$1,300', status: 'Pending' }
+              { id: 'p-1', title: 'Initial Deposit (Escrowed)', amount: '₹1,000', status: 'Paid' },
+              { id: 'p-2', title: 'Milestone 2 Release', amount: '₹1,200', status: 'Pending' },
+              { id: 'p-3', title: 'Final Deliverable Settlement', amount: '₹1,300', status: 'Pending' }
             ],
             deliverables: [
               { id: 'd-1', title: 'Summer Campaign Branding Book', type: 'Figma File', status: 'Uploaded', url: 'https://figma.com/design-book' },
@@ -613,10 +606,6 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  const toggleBookmarkProject = (projectId) => {
-    // We can store bookmarks inside client states or list
-  };
-
   // AI Match Engine logic
   const calculateMatchPercentage = (business, creator) => {
     let score = 65; // Baseline match
@@ -662,14 +651,14 @@ export const AppProvider = ({ children }) => {
         return {
           bio: 'Wanderlust-driven travel content creator documenting hidden boutique gems, outdoor adventures, and sustainable eco-tourism hubs.',
           description: 'Specializing in cinematic aesthetic reels on Instagram and high-quality vlogs on YouTube that motivate viewers to discover off-the-beaten-path destinations.',
-          pricing: '$850/Post',
+          pricing: '₹850/Post',
           suggestedCategories: ['Travel', 'Lifestyle', 'Photography']
         };
       }
       return {
         bio: 'Tech-focused content creator translating complex digital trends, hardware engineering, and startup ideas into short, engaging social video packages.',
         description: 'Publishing deep-dive comparison guides and aesthetic daily-vlog workspaces that captivate tech enthusiasts and software engineers alike.',
-        pricing: '$1,200/Post',
+        pricing: '₹1,200/Post',
         suggestedCategories: ['Technology', 'Education', 'Business']
       };
     } else {

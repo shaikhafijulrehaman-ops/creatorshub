@@ -1,10 +1,10 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
-import { LogOut, Bell, Menu, X, Rocket, Sun, Moon, Layers } from 'lucide-react';
+import { Bell, Menu, X } from 'lucide-react';
 import { AnimatedLogo } from './AnimatedLogo';
 
 export const Header = ({ onNavigate, currentPage }) => {
-  const { currentUser, logoutUser, activityFeed, theme, toggleTheme } = useContext(AppContext);
+  const { currentUser, logoutUser, activityFeed } = useContext(AppContext);
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -101,19 +101,7 @@ export const Header = ({ onNavigate, currentPage }) => {
           >
             Features
           </a>
-          <a 
-            href="#leaderboard" 
-            onClick={(e) => { e.preventDefault(); handleLinkClick('leaderboard'); }}
-            style={{
-              fontSize: '15px',
-              fontWeight: '500',
-              color: currentPage === 'leaderboard' ? 'var(--text-white)' : 'var(--text-gray)',
-              borderBottom: currentPage === 'leaderboard' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
-              paddingBottom: '4px'
-            }}
-          >
-            Leaderboard
-          </a>
+
           {currentUser && (
             <a 
               href="#dashboard" 
@@ -139,27 +127,6 @@ export const Header = ({ onNavigate, currentPage }) => {
           flex: '1',
           justifyContent: 'flex-end'
         }}>
-          {/* Theme Toggle Button */}
-          <button 
-            onClick={toggleTheme}
-            style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(6, 182, 212, 0.25)',
-              borderRadius: '12px',
-              width: '42px',
-              height: '42px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--text-white)',
-              transition: 'all 0.3s ease'
-            }}
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-
           {currentUser ? (
             <>
               {/* Notification Bell */}
@@ -204,12 +171,12 @@ export const Header = ({ onNavigate, currentPage }) => {
                     maxHeight: '300px',
                     overflowY: 'auto'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
                       <span style={{ fontWeight: '600', fontSize: '14px' }}>Activity Stream</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {activityFeed.map(act => (
-                        <div key={act.id} style={{ fontSize: '13px', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <div key={act.id} style={{ fontSize: '13px', padding: '6px 0', borderBottom: '1px solid var(--glass-border)' }}>
                           <p style={{ color: 'var(--text-gray-light)', lineHeight: '1.4' }}>{act.text}</p>
                           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{act.time}</span>
                         </div>
@@ -335,13 +302,13 @@ export const Header = ({ onNavigate, currentPage }) => {
           height: '100vh',
           width: '100%',
           maxWidth: '300px',
-          background: 'rgba(5, 8, 22, 0.94)',
-          borderLeft: '1px solid rgba(0, 217, 255, 0.12)',
+          background: 'rgba(255, 255, 255, 0.98)',
+          borderLeft: '1px solid var(--glass-border)',
           zIndex: 2000,
           padding: '36px 24px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.5)',
+          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.05)',
           transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
           transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)'
         }}
@@ -352,8 +319,8 @@ export const Header = ({ onNavigate, currentPage }) => {
           <button 
             onClick={() => setMobileMenuOpen(false)}
             style={{
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'rgba(91, 174, 155, 0.06)',
+              border: '1px solid var(--glass-border)',
               borderRadius: '50%',
               width: '44px',
               height: '44px',
@@ -391,55 +358,17 @@ export const Header = ({ onNavigate, currentPage }) => {
             Features
           </button>
 
-          <button 
-            onClick={() => handleLinkClick('leaderboard')}
-            className="drawer-nav-item"
-          >
-            Leaderboard
-          </button>
+
 
           {currentUser && (
             <button 
               onClick={() => handleLinkClick('dashboard')}
               className="drawer-nav-item"
-              style={{ color: 'var(--accent-cyan-light)', fontWeight: '700' }}
+              style={{ color: 'var(--accent-cyan)', fontWeight: '700' }}
             >
               Go to Dashboard
             </button>
           )}
-
-          {/* Theme switcher inside mobile menu */}
-          <div style={{ 
-            marginTop: '20px', 
-            paddingTop: '20px', 
-            borderTop: '1px solid rgba(255,255,255,0.06)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span style={{ fontSize: '14px', color: 'var(--text-gray)' }}>App Theme</span>
-            <button 
-              onClick={toggleTheme}
-              style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#fff',
-                fontSize: '13px',
-                cursor: 'pointer'
-              }}
-            >
-              {theme === 'dark' ? (
-                <><Sun size={14} /> Light Mode</>
-              ) : (
-                <><Moon size={14} /> Dark Mode</>
-              )}
-            </button>
-          </div>
         </div>
 
         {/* Drawer Auth Footer Actions */}
@@ -489,7 +418,7 @@ export const Header = ({ onNavigate, currentPage }) => {
           min-height: 48px;
         }
         .drawer-nav-item:hover {
-          background: rgba(255, 255, 255, 0.04);
+          background: var(--accent-cyan-glow);
           color: var(--accent-cyan);
           transform: translateX(4px);
         }

@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ArrowRight, Play, Sparkles, Shield, Cpu, Users, Layers, 
-  CreditCard, BarChart2, Star, CheckCircle2, Globe, ExternalLink, X,
-  Briefcase, Video, Code, ShieldCheck, Award, Eye, MessageSquare
+  CreditCard, BarChart2, ExternalLink, X,
+  Briefcase, Video, Code, ShieldCheck, Eye, MessageSquare
 } from 'lucide-react';
-import { AppContext } from '../context/AppContext';
 import { AnimatedLogo } from '../components/AnimatedLogo';
 
 export const Landing = ({ onNavigate }) => {
@@ -13,15 +12,14 @@ export const Landing = ({ onNavigate }) => {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  const { theme } = useContext(AppContext);
-  const isLight = theme === 'light';
+  const isLight = true;
 
   // Check if logo should animate once per session
   const [shouldAnimateLogo] = useState(() => {
     try {
       const hasAnimated = localStorage.getItem('creatorsHubLogoAnimated');
       return !hasAnimated;
-    } catch (e) {
+    } catch {
       return true;
     }
   });
@@ -578,7 +576,6 @@ export const Landing = ({ onNavigate }) => {
               e.preventDefault();
               document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
             }} style={{ color: 'var(--text-gray)' }}>Features</a>
-            <a href="#leaderboard" onClick={(e) => { e.preventDefault(); onNavigate('leaderboard'); }} style={{ color: 'var(--text-gray)' }}>Leaderboard</a>
             <a href="#join" onClick={(e) => { e.preventDefault(); onNavigate('onboarding'); }} style={{ color: 'var(--text-gray)' }}>Join Hub</a>
           </div>
         </div>

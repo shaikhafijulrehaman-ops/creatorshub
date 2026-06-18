@@ -1,8 +1,7 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { AppContext } from '../context/AppContext';
 import { 
-  Check, Edit3, X, Award, ShieldCheck, Mail, User, 
-  MapPin, Phone, Globe, Briefcase, Video, Code, Sparkles, TrendingUp
+  Check, Edit3, X, Award, ShieldCheck, Sparkles
 } from 'lucide-react';
 
 export const OnboardingWidget = () => {
@@ -17,7 +16,7 @@ export const OnboardingWidget = () => {
   const [mobileNumber, setMobileNumber] = useState(currentUser?.mobileNumber || '');
   const [address, setAddress] = useState(currentUser?.address || '');
   const [teamSize, setTeamSize] = useState(currentUser?.teamSize || '1-10');
-  const [monthlyMarketingBudget, setMonthlyMarketingBudget] = useState(currentUser?.monthlyMarketingBudget || '<$1,000');
+  const [monthlyMarketingBudget, setMonthlyMarketingBudget] = useState(currentUser?.monthlyMarketingBudget || '<₹1,000');
   const [website, setWebsite] = useState(currentUser?.website || '');
 
   // Form States - Influencer
@@ -84,7 +83,7 @@ export const OnboardingWidget = () => {
 
   // Render Role Cards
   const renderCards = () => {
-    let cards = [];
+    let cards;
     if (currentUser.role === 'Business Holder') {
       cards = [
         { id: 'business_profile', name: 'Business Profile', desc: 'Add brand category and overview details.' },
@@ -121,8 +120,8 @@ export const OnboardingWidget = () => {
           style={{
             padding: '20px',
             borderRadius: '16px',
-            background: isComplete ? 'rgba(34, 197, 94, 0.04)' : 'rgba(15, 23, 42, 0.35)',
-            border: isComplete ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(255, 255, 255, 0.05)',
+            background: isComplete ? 'rgba(34, 197, 94, 0.04)' : 'var(--bg-dark)',
+            border: isComplete ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid var(--glass-border)',
             cursor: isComplete ? 'default' : 'pointer',
             display: 'flex',
             flexDirection: 'column',
@@ -132,7 +131,7 @@ export const OnboardingWidget = () => {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <h4 style={{ fontSize: '15px', fontWeight: '800', color: isComplete ? '#22c55e' : '#fff' }}>
+            <h4 style={{ fontSize: '15px', fontWeight: '800', color: isComplete ? '#22c55e' : 'var(--text-white)' }}>
               {c.name}
             </h4>
             {isComplete ? (
@@ -185,9 +184,9 @@ export const OnboardingWidget = () => {
     <div className="glass-panel" style={{
       padding: '28px',
       borderRadius: '20px',
-      background: 'rgba(10, 15, 30, 0.45)',
-      border: '1px solid rgba(0, 217, 255, 0.1)',
-      boxShadow: '0 8px 32px 0 rgba(0, 217, 255, 0.03)',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--glass-border)',
+      boxShadow: 'var(--shadow-glass)',
       marginBottom: '24px'
     }}>
       
@@ -204,12 +203,12 @@ export const OnboardingWidget = () => {
           <span className="badge-premium" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
             <Sparkles size={12} /> Onboarding Status
           </span>
-          <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#fff', margin: 0 }}>
-            Profile Completion: <span style={{ color: 'var(--accent-cyan)', textShadow: '0 0 8px rgba(0,217,255,0.4)' }}>{strength}%</span>
+          <h3 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-white)', margin: 0 }}>
+            Profile Completion: <span style={{ color: 'var(--accent-cyan)' }}>{strength}%</span>
           </h3>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '8px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-dark)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
           <Award size={16} style={{ color: 'var(--accent-cyan)' }} />
           <span style={{ fontSize: '12px', color: 'var(--text-gray-light)', fontWeight: '600' }}>
             {getRewardStatusMessage()}
@@ -221,7 +220,7 @@ export const OnboardingWidget = () => {
       <div style={{
         height: '8px',
         width: '100%',
-        background: 'rgba(255, 255, 255, 0.05)',
+        background: 'var(--bg-dark)',
         borderRadius: '4px',
         overflow: 'hidden',
         marginBottom: '28px'
@@ -260,12 +259,13 @@ export const OnboardingWidget = () => {
               maxWidth: '480px', 
               padding: '32px',
               borderRadius: '24px',
-              background: '#090f1d',
-              border: '1px solid rgba(0, 217, 255, 0.15)'
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--glass-border)',
+              boxShadow: 'var(--shadow-premium)'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h4 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', textTransform: 'capitalize' }}>
+              <h4 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-white)', textTransform: 'capitalize' }}>
                 Update {activeModal.replace('_', ' ')}
               </h4>
               <button 
@@ -390,11 +390,11 @@ export const OnboardingWidget = () => {
                     className="form-input"
                     style={{ background: 'var(--bg-dark)' }}
                   >
-                    <option value="<$1,000">&lt;$1,000</option>
-                    <option value="$1,000 - $5,000">$1,000 - $5,000</option>
-                    <option value="$5,000 - $10,000">$5,000 - $10,000</option>
-                    <option value="$10,000 - $20,000">$10,000 - $20,000</option>
-                    <option value="$20,000+">$20,000+</option>
+                    <option value="<₹1,000">&lt;₹1,000</option>
+                    <option value="₹1,000 - ₹5,000">₹1,000 - ₹5,000</option>
+                    <option value="₹5,000 - ₹10,000">₹5,000 - ₹10,000</option>
+                    <option value="₹10,000 - ₹20,000">₹10,000 - ₹20,000</option>
+                    <option value="₹20,000+">₹20,000+</option>
                   </select>
                 </div>
                 <button type="submit" className="btn-primary" style={{ marginTop: '8px' }}>Save Preferences</button>
@@ -512,7 +512,7 @@ export const OnboardingWidget = () => {
                 handleUpdate({ 
                   followersCount: followers || currentUser.followersCount || '50K', 
                   averageReach: reach || currentUser.averageReach || '200K', 
-                  collaborationPricing: pricing || currentUser.collaborationPricing || '$300/Post', 
+                  collaborationPricing: pricing || currentUser.collaborationPricing || '₹300/Post', 
                   bio 
                 });
               }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -527,7 +527,7 @@ export const OnboardingWidget = () => {
                   </div>
                   <div>
                     <label className="form-label">Base Rate</label>
-                    <input type="text" value={pricing} onChange={(e) => setPricing(e.target.value)} className="form-input" placeholder="$300/Post" />
+                    <input type="text" value={pricing} onChange={(e) => setPricing(e.target.value)} className="form-input" placeholder="₹300/Post" />
                   </div>
                 </div>
                 <div>
@@ -644,7 +644,7 @@ export const OnboardingWidget = () => {
                 <div style={{ color: 'var(--accent-cyan)', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
                   <ShieldCheck size={48} />
                 </div>
-                <h5 style={{ fontSize: '16px', fontWeight: '800', color: '#fff', marginBottom: '8px' }}>
+                <h5 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px' }}>
                   Authenticate Profile Status
                 </h5>
                 <p style={{ fontSize: '12px', color: 'var(--text-gray)', lineHeight: '1.5', marginBottom: '24px' }}>

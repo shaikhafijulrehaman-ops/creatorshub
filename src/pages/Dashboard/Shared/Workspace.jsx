@@ -1,9 +1,11 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import { useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { 
-  MessageSquare, Mic, Paperclip, Send, CheckCircle2, DollarSign, 
-  Layers, Clock, FileDown, UploadCloud, Play, Pause, X, Check
+  MessageSquare, Mic, Paperclip, Send, CheckCircle2, 
+  Layers, FileDown, UploadCloud, Play, Pause, X, Check
 } from 'lucide-react';
+
+const generateAssetId = () => `d-${Date.now()}`;
 
 export const Workspace = ({ projectId, onClose }) => {
   const { projects, currentUser, messages, sendMessage, users } = useContext(AppContext);
@@ -22,12 +24,7 @@ export const Workspace = ({ projectId, onClose }) => {
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadUrl, setUploadUrl] = useState('');
 
-  // Find project and team details
-  const project = projects.find(p => p.id === projectId);
-  if (!project) return <div>Workspace project not found.</div>;
-
-  const team = project.team;
-  const projectMessages = messages[projectId] || [];
+  const projectMessages = useMemo(() => messages[projectId] || [], [messages, projectId]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -36,17 +33,18 @@ export const Workspace = ({ projectId, onClose }) => {
 
   // Voice recording duration timer
   useEffect(() => {
-    let interval;
-    if (voiceNoteRecording) {
-      setRecordSeconds(0);
-      interval = setInterval(() => {
-        setRecordSeconds(prev => prev + 1);
-      }, 1000);
-    } else {
-      setRecordSeconds(0);
-    }
+    if (!voiceNoteRecording) return;
+    const interval = setInterval(() => {
+      setRecordSeconds(prev => prev + 1);
+    }, 1000);
     return () => clearInterval(interval);
   }, [voiceNoteRecording]);
+
+  // Find project and team details
+  const project = projects.find(p => p.id === projectId);
+  if (!project) return <div>Workspace project not found.</div>;
+
+  const team = project.team;
 
   const handleSendChat = (e) => {
     if (e) e.preventDefault();
@@ -60,6 +58,7 @@ export const Workspace = ({ projectId, onClose }) => {
       setVoiceNoteRecording(false);
       sendMessage(projectId, `🎤 Voice Note (${formatTime(recordSeconds)})`, currentUser.id, currentUser.fullName);
     } else {
+      setRecordSeconds(0);
       setVoiceNoteRecording(true);
     }
   };
@@ -78,7 +77,7 @@ export const Workspace = ({ projectId, onClose }) => {
     }
     
     project.team.deliverables.push({
-      id: `d-${Date.now()}`,
+      id: generateAssetId(),
       title: uploadTitle,
       type: 'Reference Link',
       status: 'Uploaded',
@@ -120,17 +119,17 @@ export const Workspace = ({ projectId, onClose }) => {
       display: 'flex', 
       flexDirection: 'column', 
       gap: '20px',
-      background: 'rgba(5, 8, 22, 0.45)',
+      background: 'rgba(255, 255, 255, 0.8)',
       backdropFilter: 'blur(20px)'
     }}>
       
       {/* Workspace Header (WhatsApp Style) */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px' }} className="workspace-header">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '16px' }} className="workspace-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button 
             onClick={onClose} 
             style={{ 
-              background: 'rgba(255,255,255,0.04)', 
+              background: 'var(--accent-cyan-glow)', 
               border: 'none', 
               color: 'var(--accent-cyan)', 
               width: '44px',
@@ -147,7 +146,7 @@ export const Workspace = ({ projectId, onClose }) => {
           </button>
           <div>
             <span className="badge-premium" style={{ fontSize: '9px', textTransform: 'uppercase' }}>Workspace Cell</span>
-            <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', marginTop: '2px', lineHeight: '1.2' }}>{project.title}</h3>
+            <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-white)', marginTop: '2px', lineHeight: '1.2' }}>{project.title}</h3>
             <p style={{ fontSize: '11px', color: 'var(--text-gray)', marginTop: '2px' }}>Client: {project.businessName}</p>
           </div>
         </div>
@@ -159,7 +158,7 @@ export const Workspace = ({ projectId, onClose }) => {
       </div>
 
       {/* Active Team Row */}
-      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.04)', scrollbarWidth: 'none' }} className="team-avatars-scroll">
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '10px 0', borderBottom: '1px solid var(--glass-border)', scrollbarWidth: 'none' }} className="team-avatars-scroll">
         {(() => {
           const owner = users.find(u => u.id === project.businessId);
           if (!owner) return null;
@@ -184,20 +183,15 @@ export const Workspace = ({ projectId, onClose }) => {
       </div>
 
       {/* Tabs Menu */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', gap: '4px' }}>
-        {[
-          { id: 'chat', label: 'Chat', icon: <MessageSquare size={14} /> },
-          { id: 'deliverables', label: 'Assets', icon: <Layers size={14} /> },
-          { id: 'milestones', label: 'Milestones', icon: <CheckCircle2 size={14} /> }
-        ].map(t => (
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--glass-border)', gap: '4px' }}>
+        {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             style={{
-              flex: 1,
-              padding: '12px 8px',
-              background: activeTab === t.id ? 'rgba(255,255,255,0.04)' : 'none',
+              padding: '10px 18px',
               border: 'none',
+              background: activeTab === t.id ? 'var(--bg-dark)' : 'none',
               borderBottom: activeTab === t.id ? '2px solid var(--accent-cyan)' : '2px solid transparent',
               color: activeTab === t.id ? 'var(--text-white)' : 'var(--text-gray)',
               fontSize: '13px',
@@ -262,12 +256,12 @@ export const Workspace = ({ projectId, onClose }) => {
                     style={{
                       padding: '12px 16px',
                       borderRadius: isMe ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                      background: isMe ? 'linear-gradient(135deg, #00C2FF 0%, #06B6D4 100%)' : 'rgba(255,255,255,0.03)',
-                      border: isMe ? 'none' : '1px solid rgba(255,255,255,0.06)',
-                      color: 'var(--text-white)',
+                      background: isMe ? 'var(--grad-primary)' : 'var(--bg-dark)',
+                      border: isMe ? 'none' : '1px solid var(--glass-border)',
+                      color: isMe ? '#FFFFFF' : 'var(--text-white)',
                       fontSize: '13.5px',
                       lineHeight: '1.4',
-                      boxShadow: isMe ? '0 4px 12px rgba(6, 182, 212, 0.2)' : 'none'
+                      boxShadow: isMe ? '0 4px 12px rgba(91, 174, 155, 0.2)' : 'none'
                     }}
                   >
                     {isVoice ? (
@@ -296,7 +290,7 @@ export const Workspace = ({ projectId, onClose }) => {
                         {playingAudioId === idx && (
                           <div style={{ display: 'flex', gap: '3px', alignItems: 'center', height: '16px', marginLeft: '6px' }}>
                             {[2, 4, 1, 3, 2, 4, 1].map((h, i) => (
-                              <div key={i} style={{ width: '2px', height: `${h * 4}px`, background: '#fff', animation: 'voice-pulse 1s infinite alternate' }} />
+                              <div key={i} style={{ width: '2px', height: `${h * 4}px`, background: isMe ? '#FFFFFF' : 'var(--accent-cyan)', animation: 'voice-pulse 1s infinite alternate' }} />
                             ))}
                           </div>
                         )}
@@ -318,8 +312,8 @@ export const Workspace = ({ projectId, onClose }) => {
               type="button"
               onClick={() => setShowUploadModal(true)}
               style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.08)',
+                background: 'var(--bg-dark)',
+                border: '1px solid var(--glass-border)',
                 width: '46px',
                 height: '46px',
                 borderRadius: '50%',
@@ -371,8 +365,8 @@ export const Workspace = ({ projectId, onClose }) => {
               type="button"
               onClick={handleMockVoiceNote}
               style={{
-                background: voiceNoteRecording ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.03)',
-                border: voiceNoteRecording ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.08)',
+                background: voiceNoteRecording ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-dark)',
+                border: voiceNoteRecording ? '1px solid #ef4444' : '1px solid var(--glass-border)',
                 width: '46px',
                 height: '46px',
                 borderRadius: '50%',
@@ -467,7 +461,7 @@ export const Workspace = ({ projectId, onClose }) => {
                     <div style={{
                       position: 'absolute',
                       left: '11px', top: '24px', width: '2px', height: 'calc(100% + 8px)',
-                      background: mil.status === 'Completed' ? 'var(--accent-cyan-bright)' : 'rgba(255,255,255,0.06)'
+                      background: mil.status === 'Completed' ? 'var(--accent-cyan-bright)' : 'var(--glass-border)'
                     }} />
                   )}
 
@@ -477,9 +471,9 @@ export const Workspace = ({ projectId, onClose }) => {
                       width: '24px',
                       height: '24px',
                       borderRadius: '50%',
-                      background: mil.status === 'Completed' ? 'var(--grad-primary)' : 'rgba(11,15,25,0.8)',
-                      border: '1.5px solid rgba(255,255,255,0.2)',
-                      borderColor: mil.status === 'Completed' ? 'var(--accent-cyan-bright)' : 'rgba(255,255,255,0.2)',
+                      background: mil.status === 'Completed' ? 'var(--grad-primary)' : 'var(--bg-dark)',
+                      border: '1.5px solid var(--glass-border)',
+                      borderColor: mil.status === 'Completed' ? 'var(--accent-cyan-bright)' : 'var(--glass-border)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       cursor: currentUser.role === 'Business Holder' ? 'pointer' : 'default',
                       zIndex: 2

@@ -43,12 +43,12 @@ body::before {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(6, 182, 212, 0.3);
+  background: rgba(91, 174, 155, 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(6, 182, 212, 0.6);
+  background: rgba(91, 174, 155, 0.6);
 }
 
 /* Layout Utilities */
@@ -91,8 +91,8 @@ a {
   width: 100%;
   padding: 14px 18px;
   min-height: 48px;
-  background: rgba(15, 23, 42, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #FFFFFF;
+  border: 1px solid #D7E8E2;
   border-radius: 12px;
   color: var(--text-white);
   font-size: 15px;
@@ -101,9 +101,9 @@ a {
 }
 
 .form-input:focus {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 15px rgba(0, 194, 255, 0.25);
-  background: rgba(15, 23, 42, 0.6);
+  border-color: #5BAE9B;
+  box-shadow: 0 0 0 3px rgba(91, 174, 155, 0.2);
+  background: #FFFFFF;
 }
 
 .form-label {
@@ -123,15 +123,15 @@ a {
   gap: 8px;
   padding: 14px 28px;
   min-height: 48px;
-  background: var(--grad-primary);
+  background: var(--btn-primary-bg);
   border: none;
   border-radius: 12px;
-  color: var(--text-white);
+  color: var(--btn-primary-text);
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 15px;
   cursor: pointer;
-  box-shadow: 0 4px 14px 0 rgba(0, 194, 255, 0.3);
+  box-shadow: 0 4px 14px 0 rgba(91, 174, 155, 0.2);
   transition: var(--transition-spring);
   position: relative;
   overflow: hidden;
@@ -144,7 +144,7 @@ a {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: 0.5s;
 }
 
@@ -153,8 +153,9 @@ a {
 }
 
 .btn-primary:hover {
+  background: #4A9A88; /* Hover Accent */
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px 0 rgba(0, 194, 255, 0.45), var(--glow-cyan);
+  box-shadow: 0 6px 20px 0 rgba(91, 174, 155, 0.3);
 }
 
 .btn-primary:active {
@@ -168,24 +169,22 @@ a {
   gap: 8px;
   padding: 14px 28px;
   min-height: 48px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(6, 182, 212, 0.35);
+  background: #FFFFFF;
+  border: 1px solid #5BAE9B;
   border-radius: 12px;
-  color: var(--text-white);
+  color: #5BAE9B;
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 15px;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   cursor: pointer;
   transition: var(--transition-fast);
 }
 
 .btn-secondary:hover {
-  background: rgba(6, 182, 212, 0.12);
-  border-color: rgba(6, 182, 212, 0.65);
+  background: #D9F2EB; /* Light Mint */
+  border-color: #5BAE9B;
   transform: translateY(-2px);
-  box-shadow: var(--shadow-glass), 0 0 15px rgba(6, 182, 212, 0.2);
+  box-shadow: var(--shadow-glass);
 }
 
 .btn-secondary:active {
@@ -211,8 +210,8 @@ a {
 }
 
 .btn-outline-cyan:hover {
-  background: rgba(6, 182, 212, 0.1);
-  box-shadow: var(--glow-cyan);
+  background: #D9F2EB;
+  border-color: #5BAE9B;
   transform: translateY(-2px);
 }
 
@@ -231,9 +230,9 @@ a {
 
 /* Badge verification statuses */
 .badge-basic {
-  background: rgba(148, 163, 184, 0.15);
-  color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(141, 164, 160, 0.1);
+  color: #8da4a0;
+  border: 1px solid rgba(141, 164, 160, 0.25);
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 12px;
@@ -241,9 +240,9 @@ a {
 }
 
 .badge-pro {
-  background: rgba(6, 182, 212, 0.15);
-  color: #67e8f9;
-  border: 1px solid rgba(6, 182, 212, 0.3);
+  background: rgba(91, 174, 155, 0.1);
+  color: #5bae9b;
+  border: 1px solid rgba(91, 174, 155, 0.25);
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 12px;
@@ -251,14 +250,14 @@ a {
 }
 
 .badge-premium {
-  background: rgba(6, 182, 212, 0.15);
-  color: #22d3ee;
-  border: 1px solid rgba(6, 182, 212, 0.3);
+  background: rgba(91, 174, 155, 0.15);
+  color: #4b9e8c;
+  border: 1px solid rgba(91, 174, 155, 0.3);
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 0 10px rgba(91, 174, 155, 0.1);
 }
 
 /* Page transitions overlay styling */

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useId, useContext } from 'react';
-import { AppContext } from '../context/AppContext';
+import { useState, useEffect, useId } from 'react';
 
 // Custom SVG path coordinates for the futuristic geometric font:
 const LETTER_PATHS = {
@@ -18,29 +17,23 @@ const LETTER_PATHS = {
 const WORD_CREATORS = ['C', 'R', 'E', 'A', 'T', 'O', 'R', 'S'];
 const WORD_HUB = ['H', 'U', 'B'];
 
-export const AnimatedLogo = ({ fontSize = '34px', animate = true, loop = true, isLoader = false }) => {
+export const AnimatedLogo = ({ fontSize = '34px', animate = true, loop = true }) => {
   const uniqueId = useId().replace(/:/g, '');
   const maskCreatorsId = `mask-creators-${uniqueId}`;
   const maskHubId = `mask-hub-${uniqueId}`;
 
-  // Get active theme from context or document element
-  const context = useContext(AppContext);
-  const theme = context?.theme || (typeof document !== 'undefined' ? document.documentElement.getAttribute('data-theme') : 'dark') || 'dark';
-
-  const isLight = theme === 'light';
-  const textColor = isLight ? '#0F172A' : '#ffffff';
-  const guideLineColor = isLight ? 'rgba(15, 23, 42, 0.35)' : '#ffffff';
-  const glowFilter = isLight 
-    ? 'drop-shadow(0 0 4px rgba(2, 132, 199, 0.25))' 
-    : 'drop-shadow(0 0 8px rgba(0, 217, 255, 0.6)) drop-shadow(0 0 16px rgba(0, 217, 255, 0.2))';
+  const isLight = true;
+  const textColor = '#152826';
+  const guideLineColor = 'rgba(21, 40, 38, 0.35)';
+  const glowFilter = 'drop-shadow(0 0 4px rgba(91, 174, 155, 0.25))';
 
   // Check localStorage for animation preference (run once per session if not looping)
-  const [shouldAnimate, setShouldAnimate] = useState(() => {
+  const [shouldAnimate] = useState(() => {
     if (!animate) return false;
     try {
       const hasAnimated = localStorage.getItem('creatorsHubLogoAnimated');
       return !hasAnimated;
-    } catch (e) {
+    } catch {
       return true;
     }
   });
@@ -51,7 +44,9 @@ export const AnimatedLogo = ({ fontSize = '34px', animate = true, loop = true, i
       const timer = setTimeout(() => {
         try {
           localStorage.setItem('creatorsHubLogoAnimated', 'true');
-        } catch (e) {}
+        } catch {
+          // Ignore localStorage blocked write errors
+        }
       }, 2000);
       return () => clearTimeout(timer);
     }

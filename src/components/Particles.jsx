@@ -1,11 +1,8 @@
-import React, { useEffect, useRef, useContext } from 'react';
-import { AppContext } from '../context/AppContext';
+import React, { useEffect, useRef } from 'react';
 
 export const Particles = () => {
   const canvasRef = useRef(null);
-  const context = useContext(AppContext);
-  const theme = context?.theme || 'dark';
-  const isLight = theme === 'light';
+  const isLight = true;
 
   const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
 
@@ -120,7 +117,7 @@ export const Particles = () => {
         let directionY = (Math.random() * 0.4) - 0.2;
         
         // Define colors based on light/dark mode
-        let color = '';
+        let color;
         if (isLight) {
           color = Math.random() > 0.5 
             ? 'rgba(2, 132, 199, 0.15)'  // Light Sky Blue
@@ -136,7 +133,7 @@ export const Particles = () => {
     };
     
     const connect = () => {
-      let opacityValue = 1;
+      let opacityValue;
       for (let a = 0; a < particlesArray.length; a++) {
         for (let b = a; b < particlesArray.length; b++) {
           let dx = particlesArray[a].x - particlesArray[b].x;

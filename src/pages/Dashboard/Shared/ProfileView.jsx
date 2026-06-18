@@ -1,8 +1,8 @@
-import React, { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { 
   Star, Heart, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
-  MapPin, Phone, Award, Plus, X, Video, Code, CheckCircle, FileText,
+  MapPin, Phone, Plus, X, Code, CheckCircle, FileText,
   Briefcase, ChevronDown, ChevronUp
 } from 'lucide-react';
 
@@ -13,47 +13,37 @@ const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) =
       style={{ 
         marginBottom: '16px', 
         overflow: 'hidden', 
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: '12px',
-        transition: 'all 0.3s ease'
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '16px',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
       }}
     >
-      <button
+      <div 
         onClick={onToggle}
-        style={{
-          width: '100%',
-          padding: '16px 20px',
-          background: 'rgba(255, 255, 255, 0.01)',
-          border: 'none',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: 'var(--text-white)',
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          padding: '20px 24px', 
           cursor: 'pointer',
-          textAlign: 'left',
-          minHeight: '48px', // Tap target
-          outline: 'none'
+          background: isOpen ? 'rgba(255,255,255,0.02)' : 'none',
+          userSelect: 'none'
         }}
-        className="collapsible-header"
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700', fontSize: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {Icon && <Icon size={18} style={{ color: 'var(--accent-cyan)' }} />}
-          <span>{title}</span>
+          <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-white)' }}>{title}</span>
         </div>
-        <div style={{ color: 'var(--text-gray)', display: 'flex', alignItems: 'center' }}>
-          {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </div>
-      </button>
-      
+        {isOpen ? <ChevronUp size={16} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-muted)' }} />}
+      </div>
+
       <div style={{ 
-        maxHeight: isOpen ? '2000px' : '0px',
-        opacity: isOpen ? 1 : 0,
+        maxHeight: isOpen ? '2500px' : '0px', 
         overflow: 'hidden',
-        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
-        borderTop: isOpen ? '1px solid rgba(255,255,255,0.05)' : 'none',
-        background: 'rgba(0, 0, 0, 0.15)'
+        transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        borderTop: isOpen ? '1px solid var(--glass-border)' : 'none'
       }}>
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '24px' }}>
           {children}
         </div>
       </div>
@@ -72,61 +62,45 @@ export const ProfileView = ({ userId, onClose }) => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
 
-  // Detect mobile width for responsive default collapsed states
-  const [isMobile, setIsMobile] = useState(false);
+  const [openSections, setOpenSections] = useState(() => {
+    const isMob = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+    return {
+      bio: true,
+      businessInfo: !isMob,
+      contactInfo: false,
+      platforms: !isMob,
+      portfolio: !isMob,
+      audience: !isMob,
+      reviews: false,
+      services: !isMob,
+      skills: !isMob,
+      verification: !isMob
+    };
+  });
 
   useEffect(() => {
+    let lastMob = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      const mob = window.innerWidth < 768;
+      if (mob !== lastMob) {
+        lastMob = mob;
+        setOpenSections({
+          bio: true,
+          businessInfo: !mob,
+          contactInfo: false,
+          platforms: !mob,
+          portfolio: !mob,
+          audience: !mob,
+          reviews: false,
+          services: !mob,
+          skills: !mob,
+          verification: !mob
+        });
+      }
     };
-    checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
-
-  const [openSections, setOpenSections] = useState({
-    bio: true,
-    businessInfo: true,
-    contactInfo: false,
-    platforms: true,
-    portfolio: true,
-    audience: true,
-    reviews: false,
-    services: true,
-    skills: true,
-    verification: true
-  });
-
-  // Adjust expanded panels when mobile is detected initially
-  useEffect(() => {
-    if (isMobile) {
-      setOpenSections({
-        bio: true, // Keep bio open
-        businessInfo: false,
-        contactInfo: false,
-        platforms: false,
-        portfolio: false,
-        audience: false,
-        reviews: false,
-        services: false,
-        skills: false,
-        verification: false
-      });
-    } else {
-      setOpenSections({
-        bio: true,
-        businessInfo: true,
-        contactInfo: false, // Keep contact closed to avoid clutter
-        platforms: true,
-        portfolio: true,
-        audience: true,
-        reviews: false,
-        services: true,
-        skills: true,
-        verification: true
-      });
-    }
-  }, [isMobile]);
 
   const toggleSection = (section) => {
     setOpenSections(prev => ({
