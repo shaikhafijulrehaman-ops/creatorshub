@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
 
 export const AppContext = createContext();
 
@@ -245,6 +246,124 @@ const INITIAL_ACTIVITIES = [
   { id: 'act-4', text: 'Alex Tech reached 1.2M subscribers on YouTube.', time: '3 days ago' }
 ];
 
+const mapUserToDb = (user) => {
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    email: user.email,
+    password: user.password,
+    full_name: user.fullName,
+    mobile_number: user.mobileNumber || null,
+    location: user.location || null,
+    description: user.description || null,
+    business_name: user.businessName || null,
+    business_category: user.businessCategory || null,
+    logo: user.logo || null,
+    profile_photo: user.profilePhoto || null,
+    bio: user.bio || null,
+    website: user.website || null,
+    team_size: user.teamSize || null,
+    monthly_marketing_budget: user.monthlyMarketingBudget || null,
+    content_categories: user.contentCategories || null,
+    platforms: user.platforms || null,
+    followers_count: user.followersCount || null,
+    average_reach: user.averageReach || null,
+    engagement_rate: user.engagementRate || null,
+    languages: user.languages || null,
+    collaboration_pricing: user.collaborationPricing || null,
+    verification_status: user.verificationStatus || 'Basic Verified',
+    profile_strength: user.profileStrength || 15,
+    rating: user.rating || 5.0,
+    reviews: user.reviews || [],
+    fraud_audit: user.fraudAudit || null,
+    services: user.services || [],
+    portfolio: user.portfolio || [],
+    skills: user.skills || [],
+    experience: user.experience || null,
+    verification_requested: user.verificationRequested || false
+  };
+};
+
+const mapUserFromDb = (dbUser) => {
+  if (!dbUser) return null;
+  return {
+    id: dbUser.id,
+    role: dbUser.role,
+    email: dbUser.email,
+    password: dbUser.password,
+    fullName: dbUser.full_name,
+    mobileNumber: dbUser.mobile_number,
+    location: dbUser.location,
+    description: dbUser.description,
+    businessName: dbUser.business_name,
+    businessCategory: dbUser.business_category,
+    logo: dbUser.logo,
+    profilePhoto: dbUser.profile_photo,
+    bio: dbUser.bio,
+    website: dbUser.website,
+    teamSize: dbUser.team_size,
+    monthlyMarketingBudget: dbUser.monthly_marketing_budget,
+    contentCategories: typeof dbUser.content_categories === 'string' ? JSON.parse(dbUser.content_categories) : (dbUser.content_categories || []),
+    platforms: typeof dbUser.platforms === 'string' ? JSON.parse(dbUser.platforms) : (dbUser.platforms || {}),
+    followersCount: dbUser.followers_count,
+    averageReach: dbUser.average_reach,
+    engagementRate: dbUser.engagement_rate,
+    languages: typeof dbUser.languages === 'string' ? JSON.parse(dbUser.languages) : (dbUser.languages || []),
+    collaborationPricing: dbUser.collaboration_pricing,
+    verificationStatus: dbUser.verification_status,
+    profileStrength: dbUser.profile_strength,
+    rating: dbUser.rating ? parseFloat(dbUser.rating) : 5.0,
+    reviews: typeof dbUser.reviews === 'string' ? JSON.parse(dbUser.reviews) : (dbUser.reviews || []),
+    fraudAudit: typeof dbUser.fraud_audit === 'string' ? JSON.parse(dbUser.fraud_audit) : dbUser.fraud_audit,
+    services: typeof dbUser.services === 'string' ? JSON.parse(dbUser.services) : (dbUser.services || []),
+    portfolio: typeof dbUser.portfolio === 'string' ? JSON.parse(dbUser.portfolio) : (dbUser.portfolio || []),
+    skills: typeof dbUser.skills === 'string' ? JSON.parse(dbUser.skills) : (dbUser.skills || []),
+    experience: dbUser.experience,
+    verificationRequested: dbUser.verification_requested
+  };
+};
+
+const mapProjectToDb = (proj) => {
+  if (!proj) return null;
+  return {
+    id: proj.id,
+    business_id: proj.businessId,
+    business_name: proj.businessName,
+    title: proj.title,
+    category: proj.category || null,
+    description: proj.description || null,
+    budget: proj.budget || null,
+    deadline: proj.deadline || null,
+    status: proj.status || 'Open',
+    attachments: proj.attachments || [],
+    proposals: proj.proposals || [],
+    invited_creators: proj.invitedCreators || [],
+    team: proj.team || null,
+    created_at: proj.createdAt || new Date().toISOString().split('T')[0]
+  };
+};
+
+const mapProjectFromDb = (dbProj) => {
+  if (!dbProj) return null;
+  return {
+    id: dbProj.id,
+    businessId: dbProj.business_id,
+    businessName: dbProj.business_name,
+    title: dbProj.title,
+    category: dbProj.category,
+    description: dbProj.description,
+    budget: dbProj.budget,
+    deadline: dbProj.deadline,
+    status: dbProj.status,
+    attachments: typeof dbProj.attachments === 'string' ? JSON.parse(dbProj.attachments) : (dbProj.attachments || []),
+    proposals: typeof dbProj.proposals === 'string' ? JSON.parse(dbProj.proposals) : (dbProj.proposals || []),
+    invitedCreators: typeof dbProj.invited_creators === 'string' ? JSON.parse(dbProj.invited_creators) : (dbProj.invited_creators || []),
+    team: typeof dbProj.team === 'string' ? JSON.parse(dbProj.team) : dbProj.team,
+    createdAt: dbProj.created_at
+  };
+};
+
 export const AppProvider = ({ children }) => {
   const [users, setUsers] = useState(() => {
     const saved = localStorage.getItem('ch_users');
@@ -296,6 +415,113 @@ export const AppProvider = ({ children }) => {
     root.setAttribute('data-theme', 'light');
   }, []);
 
+  // Fetch initial data from Supabase, seed if empty, and sync local state
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        // 1. Fetch Users
+        const { data: dbUsers, error: usersErr } = await supabase.from('users').select('*');
+        let finalUsers = dbUsers || [];
+        if (!usersErr && finalUsers.length === 0) {
+          const mappedUsers = INITIAL_USERS.map(mapUserToDb);
+          const { error: seedUsersErr } = await supabase.from('users').insert(mappedUsers);
+          if (seedUsersErr) console.error('Error seeding users:', seedUsersErr);
+          finalUsers = INITIAL_USERS;
+        } else if (!usersErr) {
+          finalUsers = dbUsers.map(mapUserFromDb);
+        }
+        setUsers(finalUsers);
+        localStorage.setItem('ch_users', JSON.stringify(finalUsers));
+
+        // 2. Fetch Projects
+        const { data: dbProjects, error: projErr } = await supabase.from('projects').select('*');
+        let finalProjects = dbProjects || [];
+        if (!projErr && finalProjects.length === 0) {
+          const mappedProj = INITIAL_PROJECTS.map(mapProjectToDb);
+          const { error: seedProjErr } = await supabase.from('projects').insert(mappedProj);
+          if (seedProjErr) console.error('Error seeding projects:', seedProjErr);
+          finalProjects = INITIAL_PROJECTS;
+        } else if (!projErr) {
+          finalProjects = dbProjects.map(mapProjectFromDb);
+        }
+        setProjects(finalProjects);
+        localStorage.setItem('ch_projects', JSON.stringify(finalProjects));
+
+        // 3. Fetch Activities
+        const { data: dbActivities, error: actErr } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
+        let finalActivities = dbActivities || [];
+        if (!actErr && finalActivities.length === 0) {
+          const mappedAct = INITIAL_ACTIVITIES.map(a => ({ id: a.id, text: a.text, time: a.time }));
+          await supabase.from('activities').insert(mappedAct);
+          finalActivities = INITIAL_ACTIVITIES;
+        }
+        setActivityFeed(finalActivities);
+        localStorage.setItem('ch_activity', JSON.stringify(finalActivities));
+
+        // 4. Fetch Messages
+        const { data: dbMessages } = await supabase.from('messages').select('*');
+        const groupedMessages = {};
+        if (dbMessages && dbMessages.length > 0) {
+          dbMessages.forEach(msg => {
+            if (!groupedMessages[msg.project_id]) {
+              groupedMessages[msg.project_id] = [];
+            }
+            groupedMessages[msg.project_id].push({
+              senderId: msg.sender_id,
+              senderName: msg.sender_name,
+              text: msg.text,
+              timestamp: msg.timestamp
+            });
+          });
+        } else {
+          const initialMsg = {
+            project_id: 'proj-1',
+            sender_id: 'bh-1',
+            sender_name: 'Robert Sterling',
+            text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!'
+          };
+          await supabase.from('messages').insert([initialMsg]);
+          groupedMessages['proj-1'] = [{
+            senderId: 'bh-1',
+            senderName: 'Robert Sterling',
+            text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!',
+            timestamp: new Date().toISOString()
+          }];
+        }
+        setMessages(groupedMessages);
+        localStorage.setItem('ch_messages', JSON.stringify(groupedMessages));
+
+        // 5. Sync logged in user session & relationships
+        const cachedUser = localStorage.getItem('ch_current_user');
+        if (cachedUser) {
+          const parsedUser = JSON.parse(cachedUser);
+          const { data: refreshedUser } = await supabase.from('users').select('*').eq('id', parsedUser.id).maybeSingle();
+          if (refreshedUser) {
+            const mappedRefreshed = mapUserFromDb(refreshedUser);
+            setCurrentUser(mappedRefreshed);
+            localStorage.setItem('ch_current_user', JSON.stringify(mappedRefreshed));
+          } else {
+            setCurrentUser(parsedUser);
+          }
+
+          const { data: dbSaved } = await supabase.from('saved_profiles').select('saved_user_id').eq('user_id', parsedUser.id);
+          const savedIds = dbSaved ? dbSaved.map(s => s.saved_user_id) : [];
+          setSavedProfiles(savedIds);
+          localStorage.setItem('ch_saved', JSON.stringify(savedIds));
+
+          const { data: dbFollowed } = await supabase.from('followed_profiles').select('followed_user_id').eq('user_id', parsedUser.id);
+          const followedIds = dbFollowed ? dbFollowed.map(f => f.followed_user_id) : [];
+          setFollowedProfiles(followedIds);
+          localStorage.setItem('ch_followed', JSON.stringify(followedIds));
+        }
+      } catch (err) {
+        console.error('Error loading Supabase data:', err);
+      }
+    };
+    initData();
+  }, []);
+
+  // Sync state mutations to LocalStorage as a local cache/fallback
   useEffect(() => {
     localStorage.setItem('ch_users', JSON.stringify(users));
   }, [users]);
@@ -312,27 +538,9 @@ export const AppProvider = ({ children }) => {
     }
   }, [currentUser]);
 
-  useEffect(() => {
-    localStorage.setItem('ch_activity', JSON.stringify(activityFeed));
-  }, [activityFeed]);
-
-  useEffect(() => {
-    localStorage.setItem('ch_saved', JSON.stringify(savedProfiles));
-  }, [savedProfiles]);
-
-  useEffect(() => {
-    localStorage.setItem('ch_followed', JSON.stringify(followedProfiles));
-  }, [followedProfiles]);
-
-  useEffect(() => {
-    localStorage.setItem('ch_messages', JSON.stringify(messages));
-  }, [messages]);
-
   // Auth Operations
   const registerUser = (role, basicDetails, profileDetails = {}, verificationLevel = 'Basic Verified') => {
     const newId = generateUserId(role);
-    
-    // Add custom fraud audits for influencer
     let fraudAudit = null;
     if (role === 'Influencer') {
       fraudAudit = {
@@ -343,7 +551,6 @@ export const AppProvider = ({ children }) => {
       };
     }
 
-    // Initialize clean defaults to prevent crashes
     const defaultData = {
       socialLinks: { instagram: '', twitter: '' },
       platforms: {},
@@ -378,9 +585,13 @@ export const AppProvider = ({ children }) => {
 
     setUsers(prev => [...prev, newUser]);
     setCurrentUser(newUser);
-
-    // Add activity
     addActivity(`${newUser.fullName} (${newUser.businessName || newUser.role}) joined Creators Hub!`);
+
+    // Supabase Insert
+    supabase.from('users').insert([mapUserToDb(newUser)]).then(({ error }) => {
+      if (error) console.error('Error inserting user to Supabase:', error);
+    });
+
     return newUser;
   };
 
@@ -398,9 +609,10 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateProfile = (userId, updatedDetails) => {
+    let merged = null;
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
-        const merged = { ...u, ...updatedDetails };
+        merged = { ...u, ...updatedDetails };
         merged.profileStrength = calculateProfileStrength(u.role, merged);
         if (currentUser && currentUser.id === userId) {
           setCurrentUser(merged);
@@ -409,16 +621,21 @@ export const AppProvider = ({ children }) => {
       }
       return u;
     }));
+
+    setTimeout(() => {
+      if (merged) {
+        supabase.from('users').update(mapUserToDb(merged)).eq('id', userId).then(({ error }) => {
+          if (error) console.error('Error updating user in Supabase:', error);
+        });
+      }
+    }, 0);
   };
 
   // Helper to calculate profile strength dynamically
   const calculateProfileStrength = (role, user) => {
     if (!user) return 15;
-    
     let score = 15; // baseline
-    
     if (role === 'Business Holder') {
-      // 4 cards: Business Profile, Contact Details, Verification, Preferences
       const hasBusinessProfile = user.businessName && user.businessCategory && user.description;
       const hasContactDetails = user.mobileNumber && user.address;
       const hasVerification = user.verificationRequested || (user.verificationStatus && user.verificationStatus !== 'Basic Verified');
@@ -429,7 +646,6 @@ export const AppProvider = ({ children }) => {
       if (hasVerification) score += 20;    // to 80%
       if (hasPreferences) score += 20;      // to 100%
     } else if (role === 'Influencer') {
-      // 5 cards: Content Category, Platform, Profile URL, Audience Details, Verification
       const hasContentCategory = user.contentCategories && user.contentCategories.length > 0;
       const hasPlatform = user.platforms && Object.keys(user.platforms).length > 0;
       const hasProfileUrl = user.profileUrl || (user.platforms && Object.values(user.platforms).some(p => p.url));
@@ -442,7 +658,6 @@ export const AppProvider = ({ children }) => {
       if (hasVerification) score += 20;     // to 80%
       if (hasAudienceDetails) score += 20;  // to 100%
     } else {
-      // Freelancer - 5 cards: Services, Portfolio, Previous Work, Skills, Verification
       const hasServices = user.services && user.services.length > 0;
       const hasPortfolio = user.portfolio && user.portfolio.length > 0;
       const hasPreviousWork = user.experience && user.bio;
@@ -455,7 +670,6 @@ export const AppProvider = ({ children }) => {
       if (hasSkills) score += 20;            // to 80%
       if (hasVerification) score += 20;      // to 100%
     }
-    
     return Math.min(100, score);
   };
 
@@ -467,6 +681,11 @@ export const AppProvider = ({ children }) => {
       time: 'Just now'
     };
     setActivityFeed(prev => [newAct, ...prev.slice(0, 9)]);
+
+    // Supabase Insert
+    supabase.from('activities').insert([{ id: newAct.id, text: newAct.text, time: newAct.time }]).then(({ error }) => {
+      if (error) console.error('Error inserting activity to Supabase:', error);
+    });
   };
 
   // Project Operations
@@ -484,85 +703,134 @@ export const AppProvider = ({ children }) => {
     };
     setProjects(prev => [newProject, ...prev]);
     addActivity(`${newProject.businessName} posted a new project: "${newProject.title}"`);
+
+    // Supabase Insert
+    supabase.from('projects').insert([mapProjectToDb(newProject)]).then(({ error }) => {
+      if (error) console.error('Error inserting project to Supabase:', error);
+    });
+
     return newProject;
   };
 
   const applyToProject = (projectId, proposal) => {
+    let updatedProject = null;
     setProjects(prev => prev.map(p => {
       if (p.id === projectId) {
-        // Avoid duplicate proposals
         const exists = p.proposals.some(prop => prop.creatorId === proposal.creatorId);
         if (exists) return p;
-        return {
+        updatedProject = {
           ...p,
           proposals: [...p.proposals, { ...proposal, status: 'Pending' }]
         };
+        return updatedProject;
       }
       return p;
     }));
     addActivity(`${proposal.creatorName} submitted a proposal for "${projects.find(p => p.id === projectId)?.title}"`);
+
+    setTimeout(() => {
+      if (updatedProject) {
+        supabase.from('projects').update({ proposals: updatedProject.proposals }).eq('id', projectId).then(({ error }) => {
+          if (error) console.error('Error applying to project in Supabase:', error);
+        });
+      }
+    }, 0);
   };
 
   const inviteCreatorToProject = (projectId, creatorId) => {
     const creator = users.find(u => u.id === creatorId);
+    let updatedProject = null;
     setProjects(prev => prev.map(p => {
       if (p.id === projectId) {
         if (p.invitedCreators.includes(creatorId)) return p;
-        return {
+        updatedProject = {
           ...p,
           invitedCreators: [...p.invitedCreators, creatorId]
         };
+        return updatedProject;
       }
       return p;
     }));
     if (creator) {
       addActivity(`Invited ${creator.fullName} to join "${projects.find(p => p.id === projectId)?.title}"`);
     }
+
+    setTimeout(() => {
+      if (updatedProject) {
+        supabase.from('projects').update({ invited_creators: updatedProject.invitedCreators }).eq('id', projectId).then(({ error }) => {
+          if (error) console.error('Error inviting to project in Supabase:', error);
+        });
+      }
+    }, 0);
   };
 
   // USP Creator Teams Workspace Activation
   const activateCreatorTeam = (projectId, teamMembers) => {
-    // teamMembers: { 'Influencer': 'inf-1', 'Developer': 'fl-1', 'Designer': 'fl-2', 'Video Editor': 'fl-3' }
+    let updatedProject = null;
+    const newTeam = {
+      members: teamMembers,
+      milestones: [
+        { id: 'm-1', title: 'Concept Alignment & Briefing', status: 'Completed', deadline: '2026-06-25' },
+        { id: 'm-2', title: 'UI Layout Drafts & Scripting', status: 'In Progress', deadline: '2026-07-05' },
+        { id: 'm-3', title: 'Design Handoff & Video Editing Draft', status: 'Pending', deadline: '2026-07-20' },
+        { id: 'm-4', title: 'Website Launch & Campaign Rollout', status: 'Pending', deadline: '2026-08-10' }
+      ],
+      payments: [
+        { id: 'p-1', title: 'Initial Deposit (Escrowed)', amount: '₹1,000', status: 'Paid' },
+        { id: 'p-2', title: 'Milestone 2 Release', amount: '₹1,200', status: 'Pending' },
+        { id: 'p-3', title: 'Final Deliverable Settlement', amount: '₹1,300', status: 'Pending' }
+      ],
+      deliverables: [
+        { id: 'd-1', title: 'Summer Campaign Branding Book', type: 'Figma File', status: 'Uploaded', url: 'https://figma.com/design-book' },
+        { id: 'd-2', title: 'Commercial Video Hook (15s)', type: 'Video', status: 'Pending', url: '' }
+      ]
+    };
+
     setProjects(prev => prev.map(p => {
       if (p.id === projectId) {
-        return {
+        updatedProject = {
           ...p,
           status: 'Active Workspace',
-          team: {
-            members: teamMembers,
-            milestones: [
-              { id: 'm-1', title: 'Concept Alignment & Briefing', status: 'Completed', deadline: '2026-06-25' },
-              { id: 'm-2', title: 'UI Layout Drafts & Scripting', status: 'In Progress', deadline: '2026-07-05' },
-              { id: 'm-3', title: 'Design Handoff & Video Editing Draft', status: 'Pending', deadline: '2026-07-20' },
-              { id: 'm-4', title: 'Website Launch & Campaign Rollout', status: 'Pending', deadline: '2026-08-10' }
-            ],
-            payments: [
-              { id: 'p-1', title: 'Initial Deposit (Escrowed)', amount: '₹1,000', status: 'Paid' },
-              { id: 'p-2', title: 'Milestone 2 Release', amount: '₹1,200', status: 'Pending' },
-              { id: 'p-3', title: 'Final Deliverable Settlement', amount: '₹1,300', status: 'Pending' }
-            ],
-            deliverables: [
-              { id: 'd-1', title: 'Summer Campaign Branding Book', type: 'Figma File', status: 'Uploaded', url: 'https://figma.com/design-book' },
-              { id: 'd-2', title: 'Commercial Video Hook (15s)', type: 'Video', status: 'Pending', url: '' }
-            ]
-          }
+          team: newTeam
         };
+        return updatedProject;
       }
       return p;
     }));
 
-    // Initialize messages for workspace if empty
     if (!messages[projectId]) {
+      const initialMsg = {
+        senderId: 'system',
+        senderName: 'Creators Hub AI',
+        text: 'Workspace successfully activated! Creator Team fully assembled. You can now chat, share files, track milestones, and manage payments in one central place.',
+        timestamp: new Date().toISOString()
+      };
       setMessages(prev => ({
         ...prev,
-        [projectId]: [
-          { senderId: 'system', senderName: 'Creators Hub AI', text: 'Workspace successfully activated! Creator Team fully assembled. You can now chat, share files, track milestones, and manage payments in one central place.', timestamp: new Date().toISOString() }
-        ]
+        [projectId]: [initialMsg]
       }));
+
+      supabase.from('messages').insert([{
+        project_id: projectId,
+        sender_id: initialMsg.senderId,
+        sender_name: initialMsg.senderName,
+        text: initialMsg.text
+      }]);
     }
 
     const title = projects.find(p => p.id === projectId)?.title;
     addActivity(`Creator Team assembled for project: "${title}"! Workspace activated.`);
+
+    setTimeout(() => {
+      if (updatedProject) {
+        supabase.from('projects').update({
+          status: 'Active Workspace',
+          team: newTeam
+        }).eq('id', projectId).then(({ error }) => {
+          if (error) console.error('Error activating creator team in Supabase:', error);
+        });
+      }
+    }, 0);
   };
 
   // Messaging operations
@@ -577,33 +845,69 @@ export const AppProvider = ({ children }) => {
       ...prev,
       [projectId]: [...(prev[projectId] || []), newMsg]
     }));
+
+    // Supabase Insert
+    supabase.from('messages').insert([{
+      project_id: projectId,
+      sender_id: senderId,
+      sender_name: senderName,
+      text: text
+    }]).then(({ error }) => {
+      if (error) console.error('Error sending message to Supabase:', error);
+    });
   };
 
   // Social operations
   const toggleSaveUser = (userId) => {
+    if (!currentUser) return;
+    let added = false;
     setSavedProfiles(prev => {
       const exists = prev.includes(userId);
       if (exists) {
         return prev.filter(id => id !== userId);
       } else {
+        added = true;
         return [...prev, userId];
       }
     });
+
+    if (added) {
+      supabase.from('saved_profiles').insert([{ user_id: currentUser.id, saved_user_id: userId }]).then(({ error }) => {
+        if (error) console.error('Error saving user in Supabase:', error);
+      });
+    } else {
+      supabase.from('saved_profiles').delete().eq('user_id', currentUser.id).eq('saved_user_id', userId).then(({ error }) => {
+        if (error) console.error('Error unsaving user in Supabase:', error);
+      });
+    }
   };
 
   const toggleFollowUser = (userId) => {
+    if (!currentUser) return;
+    let added = false;
     setFollowedProfiles(prev => {
       const exists = prev.includes(userId);
       const targetUser = users.find(u => u.id === userId);
       if (exists) {
         return prev.filter(id => id !== userId);
       } else {
+        added = true;
         if (targetUser) {
           addActivity(`You started following ${targetUser.fullName}`);
         }
         return [...prev, userId];
       }
     });
+
+    if (added) {
+      supabase.from('followed_profiles').insert([{ user_id: currentUser.id, followed_user_id: userId }]).then(({ error }) => {
+        if (error) console.error('Error following user in Supabase:', error);
+      });
+    } else {
+      supabase.from('followed_profiles').delete().eq('user_id', currentUser.id).eq('followed_user_id', userId).then(({ error }) => {
+        if (error) console.error('Error unfollowing user in Supabase:', error);
+      });
+    }
   };
 
   // AI Match Engine logic
