@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
 import { 
   ArrowLeft, ArrowRight, Briefcase, Video, Code, Mail, Lock, 
@@ -34,6 +34,16 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
   // Step 4 Welcome Animation Stage
   const [successAnimationActive, setSuccessAnimationActive] = useState(false);
+
+  // Auto-redirect for post-registration success page (Step 4)
+  useEffect(() => {
+    if (signUpStep === 4) {
+      const timer = setTimeout(() => {
+        onNavigate('dashboard');
+      }, 2400); // 2.4s (2.0s visible progress line + 0.4s fade out completion)
+      return () => clearTimeout(timer);
+    }
+  }, [signUpStep, onNavigate]);
 
   // Submit Login
   const handleLoginSubmit = (e) => {
@@ -678,100 +688,73 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
               </div>
             )}
 
-            {/* STEP 4: SUCCESS BOARD & ENTER WORKSPACE */}
+            {/* STEP 4: PREMIUM SUCCESS TRANSITION SCREEN */}
             {signUpStep === 4 && (
-              <div style={{ textAlign: 'center', padding: '10px 0' }} className="animate-scale-up">
-                
-                {/* Glowing Nodes Network Visualizer */}
-                <div style={{ 
-                  height: '140px', 
-                  width: '100%', 
-                  position: 'relative', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  marginBottom: '24px'
-                }}>
-                  <svg width="240" height="130" viewBox="0 0 240 130" style={{ overflow: 'visible' }}>
-                    <defs>
-                      <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="6" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                      </filter>
-                      <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#00C2FF" />
-                        <stop offset="100%" stopColor="#67E8F9" />
-                      </linearGradient>
-                    </defs>
-
-                    {successAnimationActive && (
-                      <>
-                        <line x1="30" y1="65" x2="120" y2="65" stroke="url(#cyanGrad)" strokeWidth="2" strokeDasharray="100" strokeDashoffset="0" style={{ transition: 'stroke-dashoffset 1.5s ease', opacity: 0.8 }} />
-                        <line x1="210" y1="65" x2="120" y2="65" stroke="url(#cyanGrad)" strokeWidth="2" strokeDasharray="100" strokeDashoffset="0" style={{ transition: 'stroke-dashoffset 1.5s ease 0.2s', opacity: 0.8 }} />
-                        <line x1="120" y1="15" x2="120" y2="65" stroke="url(#cyanGrad)" strokeWidth="2" strokeDasharray="100" strokeDashoffset="0" style={{ transition: 'stroke-dashoffset 1.5s ease 0.4s', opacity: 0.8 }} />
-                      </>
-                    )}
-
-                    <g>
-                      <circle cx="30" cy="65" r="7" fill="#111827" stroke="#00C2FF" strokeWidth="2" />
-                      <circle cx="210" cy="65" r="7" fill="#111827" stroke="#67E8F9" strokeWidth="2" />
-                      <circle cx="120" cy="15" r="7" fill="#111827" stroke="#06B6D4" strokeWidth="2" />
-
-                      <circle cx="120" cy="65" r="14" fill="url(#cyanGrad)" filter="url(#glow-cyan)" />
-                      <path d="M115 65h10M120 60v10" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-                    </g>
-                  </svg>
-                </div>
-
-                <div style={{ minHeight: '140px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', color: 'var(--accent-cyan)', fontWeight: '800', fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '8px' }}>
-                    <Sparkles size={14} /> ACCOUNT VERIFIED <Sparkles size={14} />
+              <div className="success-overlay">
+                <div className="success-card">
+                  {/* Circular verification animation (0.2s) */}
+                  <div className="verification-circle-container">
+                    {/* Radial burst particles (0.6s) */}
+                    <div className="particle p1"></div>
+                    <div className="particle p2"></div>
+                    <div className="particle p3"></div>
+                    <div className="particle p4"></div>
+                    <div className="particle p5"></div>
+                    <div className="particle p6"></div>
+                    <div className="particle p7"></div>
+                    <div className="particle p8"></div>
+                    
+                    {/* Glowing outer & inner circle */}
+                    <div className="verification-circle">
+                      {/* Animated checkmark (0.4s) */}
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5BAE9B" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="checkmark-svg">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
                   </div>
 
-                  {/* Kinetic Typography */}
-                  <h2 style={{
-                    fontSize: '28px',
-                    fontWeight: '900',
-                    color: 'var(--text-white)',
-                    marginBottom: '12px',
-                    letterSpacing: '-0.02em',
-                    transform: successAnimationActive ? 'scale(1)' : 'scale(0.9)',
-                    opacity: successAnimationActive ? 1 : 0,
-                    transition: 'all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)'
-                  }}>
-                    {successContent.headline}
-                  </h2>
+                  {/* Category-specific Welcome Text (0.8s) */}
+                  <div className="success-content">
+                    <h2 style={{
+                      fontSize: '30px',
+                      fontWeight: '800',
+                      color: 'var(--text-white)',
+                      marginBottom: '16px',
+                      letterSpacing: '-0.02em',
+                      lineHeight: '1.2'
+                    }}>
+                      {role === 'Business Holder' ? 'Welcome, Business Owner.' : 
+                       role === 'Freelancer' ? 'Welcome, Freelancer.' : 
+                       'Welcome, Creator.'}
+                    </h2>
+                    
+                    <p style={{
+                      color: 'var(--text-gray)',
+                      fontSize: '15px',
+                      lineHeight: '1.6',
+                      maxWidth: '420px',
+                      margin: '0 auto 28px auto',
+                      fontWeight: '500'
+                    }}>
+                      {role === 'Business Holder' ? 'Your workspace is ready to hire exceptional talent.' :
+                       role === 'Freelancer' ? "Thousands of opportunities await. Let's build something amazing." :
+                       'Your next brand collaboration starts here.'}
+                    </p>
 
-                  <p style={{
-                    color: 'var(--text-gray)',
-                    fontSize: '14px',
-                    lineHeight: '1.5',
-                    maxWidth: '380px',
-                    margin: '0 auto',
-                    opacity: successAnimationActive ? 0.9 : 0,
-                    transform: successAnimationActive ? 'translateY(0)' : 'translateY(10px)',
-                    transition: 'all 0.6s ease 0.2s'
-                  }}>
-                    {successContent.subheadline}
-                  </p>
+                    {/* Premium Green Verification Badge */}
+                    <div className="badge-verified-green">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      Account Successfully Created
+                    </div>
+                  </div>
+
+                  {/* Thin Progress line at bottom (1.5s) */}
+                  <div className="progress-line-container">
+                    <div className="progress-line"></div>
+                  </div>
                 </div>
-
-                <button 
-                  onClick={() => onNavigate('dashboard')}
-                  className="btn-primary"
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    borderRadius: '12px',
-                    fontWeight: '700',
-                    fontSize: '15px',
-                    letterSpacing: '0.02em',
-                    boxShadow: '0 8px 25px rgba(0, 217, 255, 0.25)',
-                    marginTop: '28px'
-                  }}
-                >
-                  Enter Workspace
-                </button>
               </div>
             )}
           </div>
@@ -789,6 +772,185 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
           background: var(--bg-dark);
           border-color: var(--accent-cyan) !important;
           transform: translateY(-2px);
+        }
+
+        /* Success screen transition styling */
+        .success-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(245, 251, 249, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          animation: overlayFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards, overlayFadeOut 0.4s cubic-bezier(0.16, 1, 0.3, 1) 2.0s forwards;
+        }
+
+        @keyframes overlayFadeIn {
+          from { opacity: 0; backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); }
+          to { opacity: 1; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        }
+
+        @keyframes overlayFadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+
+        .success-card {
+          width: 520px;
+          max-width: 92%;
+          background: #FFFFFF;
+          border: 1px solid rgba(91, 174, 155, 0.15);
+          border-radius: 28px;
+          padding: 48px 36px;
+          box-shadow: var(--shadow-premium), 0 20px 50px rgba(21, 40, 38, 0.05);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          position: relative;
+          overflow: hidden;
+          transform: scale(0.96);
+          filter: blur(5px);
+          opacity: 0;
+          animation: cardEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes cardEnter {
+          to {
+            transform: scale(1);
+            filter: blur(0);
+            opacity: 1;
+          }
+        }
+
+        .verification-circle-container {
+          position: relative;
+          width: 80px;
+          height: 80px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 24px;
+          opacity: 0;
+          transform: scale(0.5);
+          animation: circleEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s forwards;
+        }
+
+        @keyframes circleEnter {
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .verification-circle {
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          background: rgba(91, 174, 155, 0.06);
+          border: 2px solid #5BAE9B;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 20px rgba(91, 174, 155, 0.15);
+          position: relative;
+          z-index: 2;
+        }
+
+        .checkmark-svg polyline {
+          stroke-dasharray: 22;
+          stroke-dashoffset: 22;
+          animation: drawCheckmark 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+        }
+
+        @keyframes drawCheckmark {
+          to {
+            stroke-dashoffset: 0;
+          }
+        }
+
+        .particle {
+          position: absolute;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #7EC5B4;
+          opacity: 0;
+          z-index: 1;
+        }
+
+        .p1 { animation: burst1 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p2 { animation: burst2 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p3 { animation: burst3 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p4 { animation: burst4 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p5 { animation: burst5 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p6 { animation: burst6 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p7 { animation: burst7 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+        .p8 { animation: burst8 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards; }
+
+        @keyframes burst1 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(0px, -45px) scale(0.3); opacity: 0; } }
+        @keyframes burst2 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(32px, -32px) scale(0.3); opacity: 0; } }
+        @keyframes burst3 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(45px, 0px) scale(0.3); opacity: 0; } }
+        @keyframes burst4 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(32px, 32px) scale(0.3); opacity: 0; } }
+        @keyframes burst5 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(0px, 45px) scale(0.3); opacity: 0; } }
+        @keyframes burst6 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(-32px, 32px) scale(0.3); opacity: 0; } }
+        @keyframes burst7 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(-45px, 0px) scale(0.3); opacity: 0; } }
+        @keyframes burst8 { 0% { transform: translate(0, 0) scale(1); opacity: 1; } 100% { transform: translate(-32px, -32px) scale(0.3); opacity: 0; } }
+
+        .success-content {
+          opacity: 0;
+          transform: translateY(15px);
+          animation: contentFadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s forwards;
+          text-align: center;
+          width: 100%;
+        }
+
+        @keyframes contentFadeUp {
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .badge-verified-green {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(91, 174, 155, 0.08);
+          color: #4b8f80;
+          border: 1px solid rgba(91, 174, 155, 0.2);
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 13px;
+          font-weight: 600;
+          margin: 0 auto;
+        }
+
+        .progress-line-container {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: rgba(91, 174, 155, 0.05);
+        }
+
+        .progress-line {
+          height: 100%;
+          width: 0;
+          background: linear-gradient(90deg, #5BAE9B 0%, #7EC5B4 100%);
+          animation: fillProgress 2.0s linear forwards;
+        }
+
+        @keyframes fillProgress {
+          to {
+            width: 100%;
+          }
         }
 
         /* Responsive */

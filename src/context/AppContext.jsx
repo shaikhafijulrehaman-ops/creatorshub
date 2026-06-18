@@ -421,13 +421,17 @@ export const AppProvider = ({ children }) => {
       try {
         // 1. Fetch Users
         const { data: dbUsers, error: usersErr } = await supabase.from('users').select('*');
-        let finalUsers = dbUsers || [];
-        if (!usersErr && finalUsers.length === 0) {
+        let finalUsers = [];
+        if (usersErr) {
+          console.warn('Error fetching users from Supabase, falling back to local mocks:', usersErr);
+          const saved = localStorage.getItem('ch_users');
+          finalUsers = saved ? JSON.parse(saved) : INITIAL_USERS;
+        } else if (!dbUsers || dbUsers.length === 0) {
           const mappedUsers = INITIAL_USERS.map(mapUserToDb);
           const { error: seedUsersErr } = await supabase.from('users').insert(mappedUsers);
           if (seedUsersErr) console.error('Error seeding users:', seedUsersErr);
           finalUsers = INITIAL_USERS;
-        } else if (!usersErr) {
+        } else {
           finalUsers = dbUsers.map(mapUserFromDb);
         }
         setUsers(finalUsers);
@@ -435,13 +439,17 @@ export const AppProvider = ({ children }) => {
 
         // 2. Fetch Projects
         const { data: dbProjects, error: projErr } = await supabase.from('projects').select('*');
-        let finalProjects = dbProjects || [];
-        if (!projErr && finalProjects.length === 0) {
+        let finalProjects = [];
+        if (projErr) {
+          console.warn('Error fetching projects from Supabase, falling back to local mocks:', projErr);
+          const saved = localStorage.getItem('ch_projects');
+          finalProjects = saved ? JSON.parse(saved) : INITIAL_PROJECTS;
+        } else if (!dbProjects || dbProjects.length === 0) {
           const mappedProj = INITIAL_PROJECTS.map(mapProjectToDb);
           const { error: seedProjErr } = await supabase.from('projects').insert(mappedProj);
           if (seedProjErr) console.error('Error seeding projects:', seedProjErr);
           finalProjects = INITIAL_PROJECTS;
-        } else if (!projErr) {
+        } else {
           finalProjects = dbProjects.map(mapProjectFromDb);
         }
         setProjects(finalProjects);
@@ -449,19 +457,38 @@ export const AppProvider = ({ children }) => {
 
         // 3. Fetch Activities
         const { data: dbActivities, error: actErr } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
-        let finalActivities = dbActivities || [];
-        if (!actErr && finalActivities.length === 0) {
+        let finalActivities = [];
+        if (actErr) {
+          console.warn('Error fetching activities from Supabase, falling back to local mocks:', actErr);
+          const saved = localStorage.getItem('ch_activity');
+          finalActivities = saved ? JSON.parse(saved) : INITIAL_ACTIVITIES;
+        } else if (!dbActivities || dbActivities.length === 0) {
           const mappedAct = INITIAL_ACTIVITIES.map(a => ({ id: a.id, text: a.text, time: a.time }));
           await supabase.from('activities').insert(mappedAct);
           finalActivities = INITIAL_ACTIVITIES;
+        } else {
+          finalActivities = dbActivities;
         }
         setActivityFeed(finalActivities);
         localStorage.setItem('ch_activity', JSON.stringify(finalActivities));
 
         // 4. Fetch Messages
-        const { data: dbMessages } = await supabase.from('messages').select('*');
+        const { data: dbMessages, error: msgErr } = await supabase.from('messages').select('*');
         const groupedMessages = {};
-        if (dbMessages && dbMessages.length > 0) {
+        if (msgErr) {
+          console.warn('Error fetching messages from Supabase, falling back to local mocks:', msgErr);
+          const saved = localStorage.getItem('ch_messages');
+          if (saved) {
+            Object.assign(groupedMessages, JSON.parse(saved));
+          } else {
+            groupedMessages['proj-1'] = [{
+              senderId: 'bh-1',
+              senderName: 'Robert Sterling',
+              text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!',
+              timestamp: new Date().toISOString()
+            }];
+          }
+        } else if (dbMessages && dbMessages.length > 0) {
           dbMessages.forEach(msg => {
             if (!groupedMessages[msg.project_id]) {
               groupedMessages[msg.project_id] = [];

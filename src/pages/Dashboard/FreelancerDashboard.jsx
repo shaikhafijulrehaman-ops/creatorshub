@@ -347,7 +347,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                 <h5 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-white)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                   {currentUser.fullName}
                 </h5>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Pro Freelancer</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Freelancer</span>
               </div>
             )}
           </div>
