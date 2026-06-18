@@ -492,24 +492,79 @@ export const AppProvider = ({ children }) => {
         localStorage.setItem('ch_messages', JSON.stringify(groupedMessages));
 
         // 5. Sync logged in user session & relationships
-        const cachedUser = localStorage.getItem('ch_current_user');
-        if (cachedUser) {
-          const parsedUser = JSON.parse(cachedUser);
-          const { data: refreshedUser } = await supabase.from('users').select('*').eq('id', parsedUser.id).maybeSingle();
-          if (refreshedUser) {
-            const mappedRefreshed = mapUserFromDb(refreshedUser);
-            setCurrentUser(mappedRefreshed);
-            localStorage.setItem('ch_current_user', JSON.stringify(mappedRefreshed));
-          } else {
-            setCurrentUser(parsedUser);
-          }
+        let activeUser = null;
 
-          const { data: dbSaved } = await supabase.from('saved_profiles').select('saved_user_id').eq('user_id', parsedUser.id);
+        // Check if there is an active Supabase Auth session (like Google OAuth redirect)
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        if (authSession?.user) {
+          const { data: dbUser } = await supabase.from('users').select('*').eq('id', authSession.user.id).maybeSingle();
+          if (dbUser) {
+            activeUser = mapUserFromDb(dbUser);
+          } else {
+            // New user signed in via Google OAuth
+            const googleName = authSession.user.user_metadata?.full_name || authSession.user.user_metadata?.name || 'Google User';
+            const googleEmail = authSession.user.email;
+            const newId = authSession.user.id;
+
+            const newUser = {
+              id: newId,
+              role: 'Influencer', // Default role
+              fullName: googleName,
+              email: googleEmail,
+              password: 'google-oauth-user',
+              verificationStatus: 'Basic Verified',
+              rating: 5.0,
+              reviews: [],
+              profileStrength: 35,
+              socialLinks: { instagram: '', twitter: '' },
+              platforms: {},
+              portfolio: [],
+              services: [],
+              skills: [],
+              verificationRequested: false,
+              mobileNumber: '',
+              location: '',
+              description: '',
+              businessName: '',
+              businessCategory: '',
+              logo: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150&auto=format&fit=crop&q=80',
+              profilePhoto: authSession.user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              bio: 'Influencer profile created via Google SSO.',
+              website: ''
+            };
+
+            await supabase.from('users').insert([mapUserToDb(newUser)]);
+            activeUser = newUser;
+
+            // Update local users list
+            setUsers(prev => {
+              if (prev.some(u => u.id === newId)) return prev;
+              return [...prev, newUser];
+            });
+          }
+        } else {
+          const cachedUser = localStorage.getItem('ch_current_user');
+          if (cachedUser) {
+            const parsedUser = JSON.parse(cachedUser);
+            const { data: refreshedUser } = await supabase.from('users').select('*').eq('id', parsedUser.id).maybeSingle();
+            if (refreshedUser) {
+              activeUser = mapUserFromDb(refreshedUser);
+            } else {
+              activeUser = parsedUser;
+            }
+          }
+        }
+
+        if (activeUser) {
+          setCurrentUser(activeUser);
+          localStorage.setItem('ch_current_user', JSON.stringify(activeUser));
+
+          const { data: dbSaved } = await supabase.from('saved_profiles').select('saved_user_id').eq('user_id', activeUser.id);
           const savedIds = dbSaved ? dbSaved.map(s => s.saved_user_id) : [];
           setSavedProfiles(savedIds);
           localStorage.setItem('ch_saved', JSON.stringify(savedIds));
 
-          const { data: dbFollowed } = await supabase.from('followed_profiles').select('followed_user_id').eq('user_id', parsedUser.id);
+          const { data: dbFollowed } = await supabase.from('followed_profiles').select('followed_user_id').eq('user_id', activeUser.id);
           const followedIds = dbFollowed ? dbFollowed.map(f => f.followed_user_id) : [];
           setFollowedProfiles(followedIds);
           localStorage.setItem('ch_followed', JSON.stringify(followedIds));
@@ -606,6 +661,18 @@ export const AppProvider = ({ children }) => {
 
   const logoutUser = () => {
     setCurrentUser(null);
+    supabase.auth.signOut().catch(err => console.error('Error signing out of Supabase:', err));
+  };
+
+  const loginWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) throw error;
+    return data;
   };
 
   const updateProfile = (userId, updatedDetails) => {
@@ -996,6 +1063,7 @@ export const AppProvider = ({ children }) => {
       registerUser,
       loginUser,
       logoutUser,
+      loginWithGoogle,
       updateProfile,
       createProject,
       applyToProject,
