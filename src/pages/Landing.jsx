@@ -14,15 +14,8 @@ export const Landing = ({ onNavigate }) => {
 
   const isLight = true;
 
-  // Check if logo should animate once per session
-  const [shouldAnimateLogo] = useState(() => {
-    try {
-      const hasAnimated = localStorage.getItem('creatorsHubLogoAnimated');
-      return !hasAnimated;
-    } catch {
-      return true;
-    }
-  });
+  // Check if logo should animate once per session (disabled)
+  const shouldAnimateLogo = false;
 
   const handleCloseDemoModal = () => {
     setShowDemoModal(false);
@@ -163,7 +156,7 @@ export const Landing = ({ onNavigate }) => {
 
         {/* centerpiece Logo */}
         <div style={{ marginBottom: '20px', zIndex: 2 }} className="hero-logo-container">
-          <AnimatedLogo fontSize="95px" animate={true} loop={false} />
+          <AnimatedLogo fontSize="95px" animate={false} loop={false} />
         </div>
 
         {/* Headline Redesign */}
