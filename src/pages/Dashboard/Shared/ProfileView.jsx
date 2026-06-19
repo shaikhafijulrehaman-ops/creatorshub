@@ -319,8 +319,23 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
     return score;
   };
 
-  if (loading || !initialized) {
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
+  useEffect(() => {
+    if (loading || !initialized) {
+      const timer = setTimeout(() => {
+        setShowSkeleton(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSkeleton(false);
+    }
+  }, [loading, initialized]);
+
+  if ((loading || !initialized) && showSkeleton) {
     return <ProfileSkeleton />;
+  } else if (loading || !initialized) {
+    return null;
   }
 
   const user = users.find(u => u.id === targetUserId);

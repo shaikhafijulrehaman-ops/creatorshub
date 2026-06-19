@@ -29,6 +29,81 @@ const RedirectToLogin = () => {
   return null;
 };
 
+const DashboardSkeleton = () => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px' }}>
+        <div>
+          <div style={{ width: '180px', height: '24px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ width: '280px', height: '14px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px', marginTop: '8px', animation: 'pulse 1.5s infinite' }} />
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="glass-panel" style={{ padding: '20px', height: '90px', background: 'rgba(255,255,255,0.02)', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ width: '40px', height: '14px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px' }} />
+            <div style={{ width: '80px', height: '22px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px' }} />
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px', marginTop: '12px' }}>
+        <div style={{ height: '300px', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.04)' }} />
+        <div style={{ height: '300px', background: 'rgba(255,255,255,0.01)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.04)' }} />
+      </div>
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 0.3; }
+          100% { opacity: 0.6; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const MessagesSkeleton = () => {
+  return (
+    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', background: 'rgba(10,11,18,0.2)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '24px', overflow: 'hidden' }}>
+      <div style={{ width: '320px', borderRight: '1px solid rgba(255,255,255,0.06)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ width: '100%', height: '40px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+          {[...Array(5)].map((_, i) => (
+            <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ width: '100px', height: '14px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px' }} />
+                <div style={{ width: '150px', height: '10px', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', gap: '20px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+          <div style={{ width: '120px', height: '16px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px' }} />
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ width: '100%', height: '48px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }} />
+      </div>
+    </div>
+  );
+};
+
+const ProfileSkeleton = () => {
+  return (
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '20px' }}>
+        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite' }} />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ width: '150px', height: '20px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ width: '100px', height: '12px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s infinite' }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, currentUser, onNavigate }) => {
   return (
     <header style={{
@@ -371,6 +446,18 @@ const AppContent = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [showSkeletons, setShowSkeletons] = useState(false);
+
+  useEffect(() => {
+    if (!initialized) {
+      const timer = setTimeout(() => {
+        setShowSkeletons(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSkeletons(false);
+    }
+  }, [initialized]);
 
   // Determine the active page based on the path
   const { pathname } = location;
@@ -474,13 +561,7 @@ const AppContent = () => {
       {/* Global Particle Background */}
       <Particles />
 
-      {/* Global loading state spinner */}
-      {(loading || !initialized) && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-deep)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-          <div className="loader-spinner" style={{ width: '48px', height: '48px', border: '3px solid var(--accent-cyan-glow)', borderTopColor: 'var(--accent-cyan)' }} />
-          <span style={{ fontSize: '13.5px', color: 'var(--text-gray)', fontWeight: '600', letterSpacing: '0.05em' }}>Loading Creators Hub...</span>
-        </div>
-      )}
+      {/* Global loading state spinner completely removed for instant layout rendering */}
 
 
 
@@ -757,51 +838,59 @@ const AppContent = () => {
             })()
           } />
           <Route path="/messages" element={
-            !currentUser ? <RedirectToLogin /> : (
-              <MessagingCenter />
+            !initialized ? (
+              showSkeletons ? <MessagesSkeleton /> : null
+            ) : (
+              !currentUser ? <RedirectToLogin /> : <MessagingCenter />
             )
           } />
           <Route path="/profile" element={
-            !currentUser ? <RedirectToLogin /> : (
-              <ProfileView userId={currentUser.id} />
+            !initialized ? (
+              showSkeletons ? <ProfileSkeleton /> : null
+            ) : (
+              !currentUser ? <RedirectToLogin /> : <ProfileView userId={currentUser.id} />
             )
           } />
           <Route path="/dashboard" element={
-            (() => {
-              if (!currentUser) {
-                return <RedirectToLogin />;
-              }
+            !initialized ? (
+              showSkeletons ? <DashboardSkeleton /> : null
+            ) : (
+              (() => {
+                if (!currentUser) {
+                  return <RedirectToLogin />;
+                }
 
-              // Render Role-specific Dashboard
-              if (currentUser.role === 'Business Holder') {
-                return (
-                  <BusinessDashboard 
-                    onNavigate={handleNavigate} 
-                    onOpenWorkspace={handleOpenWorkspace} 
-                    onOpenProfile={handleOpenProfile} 
-                  />
-                );
-              }
-              if (currentUser.role === 'Influencer') {
-                return (
-                  <InfluencerDashboard 
-                    onNavigate={handleNavigate} 
-                    onOpenWorkspace={handleOpenWorkspace} 
-                    onOpenProfile={handleOpenProfile}
-                  />
-                );
-              }
-              if (currentUser.role === 'Freelancer') {
-                return (
-                  <FreelancerDashboard 
-                    onNavigate={handleNavigate} 
-                    onOpenWorkspace={handleOpenWorkspace} 
-                    onOpenProfile={handleOpenProfile}
-                  />
-                );
-              }
-              return null;
-            })()
+                // Render Role-specific Dashboard
+                if (currentUser.role === 'Business Holder') {
+                  return (
+                    <BusinessDashboard 
+                      onNavigate={handleNavigate} 
+                      onOpenWorkspace={handleOpenWorkspace} 
+                      onOpenProfile={handleOpenProfile} 
+                    />
+                  );
+                }
+                if (currentUser.role === 'Influencer') {
+                  return (
+                    <InfluencerDashboard 
+                      onNavigate={handleNavigate} 
+                      onOpenWorkspace={handleOpenWorkspace} 
+                      onOpenProfile={handleOpenProfile}
+                    />
+                  );
+                }
+                if (currentUser.role === 'Freelancer') {
+                  return (
+                    <FreelancerDashboard 
+                      onNavigate={handleNavigate} 
+                      onOpenWorkspace={handleOpenWorkspace} 
+                      onOpenProfile={handleOpenProfile}
+                    />
+                  );
+                }
+                return null;
+              })()
+            )
           } />
         </Routes>
       </main>
