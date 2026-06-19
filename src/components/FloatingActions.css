@@ -6,10 +6,6 @@
   bottom: 24px !important;
   right: 24px !important;
   z-index: 9999 !important;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-end;
-  gap: 10px;
 }
 
 /* =============================================
@@ -106,6 +102,9 @@
    Desktop — Speed-Dial Menu
    ============================================= */
 .fab-menu {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
   display: flex;
   flex-direction: column-reverse;
   gap: 8px;
