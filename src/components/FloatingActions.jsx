@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  Plus,
+  X, Briefcase, Code,
   FolderKanban, Megaphone, Search, Users, ClipboardList, FileText, Share2,
   Upload, FilePlus, Send, Compass, Clock,
   Sparkles, Image, TrendingUp, UserCheck, Settings
 } from 'lucide-react';
+
+const ROLE_ICON = {
+  'Business Holder': Briefcase,
+  'Freelancer': Code,
+  'Influencer': Sparkles,
+};
 import './FloatingActions.css';
 
 const ROLE_ACTIONS = {
@@ -54,7 +60,8 @@ export const FloatingActions = ({ role, onAction }) => {
   }, [open]);
 
   const actions = ROLE_ACTIONS[role];
-  if (!actions) return null;
+  const TriggerIcon = ROLE_ICON[role];
+  if (!actions || !TriggerIcon) return null;
 
   const handleAction = (id) => {
     setOpen(false);
@@ -92,7 +99,7 @@ export const FloatingActions = ({ role, onAction }) => {
           ))}
         </div>
 
-        {/* Main trigger — Plus rotates 45° to become X */}
+        {/* Main trigger — role icon, swaps to X when open */}
         <button
           className={`fab-trigger${open ? ' fab-trigger--open' : ''}`}
           onClick={() => setOpen(v => !v)}
@@ -100,7 +107,7 @@ export const FloatingActions = ({ role, onAction }) => {
           aria-label="Quick actions"
           id="fab-trigger-btn"
         >
-          <Plus size={24} />
+          {open ? <X size={24} /> : <TriggerIcon size={24} />}
         </button>
       </div>
     </>,

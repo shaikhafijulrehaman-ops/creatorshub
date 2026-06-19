@@ -39,15 +39,14 @@
   background: #222222;
 }
 
-/* + rotates 45° → × */
+/* Icon swaps to X when open */
 .fab-trigger--open {
-  transform: rotate(45deg);
-  background: #111111;
+  background: #222222;
   box-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);
 }
 
 .fab-trigger--open:hover {
-  transform: rotate(45deg) scale(1.08);
+  transform: scale(1.08);
 }
 
 /* Ripple on press */
