@@ -335,7 +335,7 @@
    ============================================= */
 @media (max-width: 1024px) {
   .fab-root {
-    bottom: 28px !important;
+    bottom: 24px !important;
     right: 24px !important;
   }
 }
@@ -345,7 +345,7 @@
    ============================================= */
 @media (max-width: 768px) {
   .fab-root {
-    bottom: 80px !important;
+    bottom: 88px !important;
     right: 16px !important;
   }
 
