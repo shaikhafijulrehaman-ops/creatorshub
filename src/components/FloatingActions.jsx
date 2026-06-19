@@ -107,7 +107,22 @@ export const FloatingActions = ({ role, onAction }) => {
           aria-label="Quick actions"
           id="fab-trigger-btn"
         >
-          {open ? <X size={24} /> : <TriggerIcon size={24} />}
+          {open ? (
+            <X size={24} />
+          ) : role === 'Influencer' ? (
+            <img 
+              src="/creators-hub-logo.png" 
+              alt="CH Logo" 
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '6px',
+                objectFit: 'cover'
+              }}
+            />
+          ) : (
+            <TriggerIcon size={24} />
+          )}
         </button>
       </div>
     </>,
