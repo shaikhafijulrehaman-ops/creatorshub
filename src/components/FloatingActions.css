@@ -1,6 +1,8 @@
-/* =============================================
-   FAB Root Container
-   ============================================= */
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap');
+
+/* ─────────────────────────────────────────────
+   FAB Root — fixed bottom-right anchor
+   ───────────────────────────────────────────── */
 .fab-root {
   position: fixed !important;
   bottom: 24px !important;
@@ -8,9 +10,9 @@
   z-index: 9999 !important;
 }
 
-/* =============================================
-   Main Trigger Button (unchanged design)
-   ============================================= */
+/* ─────────────────────────────────────────────
+   Trigger Button — unchanged design
+   ───────────────────────────────────────────── */
 .fab-trigger {
   width: 64px;
   height: 64px;
@@ -37,16 +39,18 @@
   background: #222222;
 }
 
+/* + rotates 45° → × */
 .fab-trigger--open {
-  background: #222222;
+  transform: rotate(45deg);
+  background: #111111;
   box-shadow: 0 6px 28px rgba(0, 0, 0, 0.28);
 }
 
 .fab-trigger--open:hover {
-  transform: scale(1.08);
+  transform: rotate(45deg) scale(1.08);
 }
 
-/* Ripple Animation */
+/* Ripple on press */
 .fab-trigger::after {
   content: '';
   position: absolute;
@@ -66,48 +70,40 @@
 }
 
 @keyframes fab-ripple {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.6);
-    opacity: 0;
-  }
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
 }
 
-/* =============================================
-   Desktop — Subtle Backdrop
-   ============================================= */
-.fab-backdrop {
+/* ─────────────────────────────────────────────
+   Blurred Overlay
+   ───────────────────────────────────────────── */
+.fab-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.12);
-  backdrop-filter: blur(2px);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 9998;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.3s ease;
 }
 
-.fab-backdrop--visible {
+.fab-overlay--visible {
   opacity: 1;
   pointer-events: all;
 }
 
-/* =============================================
-   Desktop — Speed-Dial Menu
-   ============================================= */
+/* ─────────────────────────────────────────────
+   Speed-Dial Menu — floating labels, no cards
+   ───────────────────────────────────────────── */
 .fab-menu {
   position: absolute;
-  bottom: calc(100% + 12px);
+  bottom: calc(100% + 20px);
   right: 0;
   display: flex;
   flex-direction: column-reverse;
-  gap: 8px;
+  gap: 4px;
   align-items: flex-end;
   pointer-events: none;
 }
@@ -116,222 +112,71 @@
   pointer-events: all;
 }
 
-/* Individual speed-dial item row */
-.fab-item {
+/* ─────────────────────────────────────────────
+   Individual Action Row
+   ───────────────────────────────────────────── */
+.fab-action {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   background: none;
   border: none;
   cursor: pointer;
+  padding: 7px 0;
   opacity: 0;
-  transform: translateY(12px) scale(0.92);
-  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(20px) scale(0.96);
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.fab-menu--open .fab-item {
+.fab-menu--open .fab-action {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateX(0) scale(1);
 }
 
-.fab-item:hover .fab-item-icon {
-  transform: scale(1.1);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
-}
-
-.fab-item:hover .fab-item-label {
-  transform: translateX(-2px);
-  background: #111111;
-  color: #ffffff;
-}
-
-.fab-item-icon {
-  width: 40px;
-  height: 40px;
+/* ── Small circular icon ── */
+.fab-dot {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   background: #111111;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+  color: #ffffff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
               box-shadow 0.2s ease;
   flex-shrink: 0;
   order: 2;
 }
 
-.fab-item-label {
-  background: #ffffff;
-  color: #111111;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-  transition: transform 0.2s ease,
-              background 0.2s ease,
-              color 0.2s ease;
-  order: 1;
+.fab-action:hover .fab-dot {
+  transform: scale(1.12);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* =============================================
-   Mobile — Bottom Sheet Overlay
-   ============================================= */
-.fab-sheet-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 10000;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
-.fab-sheet-overlay--visible {
-  opacity: 1;
-  pointer-events: all;
-}
-
-/* =============================================
-   Mobile — Bottom Sheet Panel
-   ============================================= */
-.fab-sheet {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #ffffff;
-  border-radius: 20px 20px 0 0;
-  z-index: 10001;
-  transform: translateY(100%);
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-  max-height: 75vh;
-  overflow-y: auto;
-  padding-bottom: env(safe-area-inset-bottom);
-  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
-}
-
-.fab-sheet--open {
-  transform: translateY(0);
-}
-
-/* Drag-handle bar */
-.fab-sheet-handle {
-  width: 36px;
-  height: 4px;
-  background: #d1d5db;
-  border-radius: 2px;
-  margin: 10px auto 0;
-}
-
-/* Header row */
-.fab-sheet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.fab-sheet-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111111;
-  letter-spacing: -0.01em;
-}
-
-.fab-sheet-close {
-  width: 32px;
-  height: 32px;
-  background: rgba(0, 0, 0, 0.04);
-  border: none;
-  cursor: pointer;
-  color: #666;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s ease;
-}
-
-.fab-sheet-close:active {
-  background: rgba(0, 0, 0, 0.1);
-}
-
-/* Action items list */
-.fab-sheet-actions {
-  padding: 8px 12px 24px;
-}
-
-.fab-sheet-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 14px 12px;
-  background: none;
-  border: none;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  /* Stagger entrance */
-  opacity: 0;
-  animation: fab-sheet-item-in 0.3s ease forwards;
-}
-
-.fab-sheet--open .fab-sheet-item {
-  opacity: 0;
-  animation: fab-sheet-item-in 0.3s ease forwards;
-}
-
-@keyframes fab-sheet-item-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.fab-sheet-item:active {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.fab-sheet-item-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: #f3f4f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: #111111;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.fab-sheet-item:active .fab-sheet-item-icon {
-  background: #111111;
+/* ── Floating text label (no card, no box) ── */
+.fab-label {
   color: #ffffff;
-}
-
-.fab-sheet-item-label {
+  font-family: 'Rubik', sans-serif;
   font-size: 15px;
-  font-weight: 600;
-  color: #111111;
+  font-weight: 500;
+  white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  order: 1;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
 }
 
-/* =============================================
-   Tablet adjustments
-   ============================================= */
+.fab-action:hover .fab-label {
+  opacity: 0.8;
+}
+
+/* ─────────────────────────────────────────────
+   Tablet
+   ───────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .fab-root {
     bottom: 24px !important;
@@ -339,9 +184,9 @@
   }
 }
 
-/* =============================================
-   Mobile adjustments — 60px nav + 20px margin
-   ============================================= */
+/* ─────────────────────────────────────────────
+   Mobile — above bottom nav, larger touch targets
+   ───────────────────────────────────────────── */
 @media (max-width: 768px) {
   .fab-root {
     bottom: 88px !important;
@@ -353,17 +198,21 @@
     height: 58px;
   }
 
-  /* Hide desktop speed-dial on mobile */
-  .fab-menu,
-  .fab-backdrop {
-    display: none !important;
+  .fab-dot {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
   }
-}
 
-/* Hide mobile bottom sheet on desktop */
-@media (min-width: 769px) {
-  .fab-sheet,
-  .fab-sheet-overlay {
-    display: none !important;
+  .fab-label {
+    font-size: 14px;
+  }
+
+  .fab-action {
+    gap: 10px;
+  }
+
+  .fab-menu {
+    bottom: calc(100% + 16px);
   }
 }
