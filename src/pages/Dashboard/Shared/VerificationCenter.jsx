@@ -30,7 +30,7 @@ export const VerificationCenter = () => {
       setLevelStatus(prev => ({ ...prev, level2: true }));
       setProVerifying(false);
       alert('Professional credentials audited! Status badge upgraded.');
-    }, 1500);
+    }, 500);
   };
 
   const handleLevel3Verify = (e) => {
@@ -45,7 +45,7 @@ export const VerificationCenter = () => {
       setLevelStatus(prev => ({ ...prev, level2: true, level3: true }));
       setPremVerifying(false);
       alert('Government ID approved! Status badge upgraded to Premium.');
-    }, 1800);
+    }, 600);
   };
 
   const getBadgeStyle = () => {

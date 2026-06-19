@@ -3,7 +3,7 @@ import { AppContext } from '../../../context/AppContext';
 import { 
   Star, Heart, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
   MapPin, Phone, Plus, X, Code, CheckCircle, FileText,
-  Briefcase, ChevronDown, ChevronUp
+  Briefcase, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
 
 const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) => {
@@ -51,10 +51,11 @@ const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) =
   );
 };
 
-export const ProfileView = ({ userId, onClose }) => {
+export const ProfileView = ({ userId, onClose, onNavigate }) => {
   const { 
     users, currentUser, toggleSaveUser, savedProfiles, 
-    toggleFollowUser, followedProfiles, updateProfile 
+    toggleFollowUser, followedProfiles, updateProfile, startConversation,
+    conversations, projects
   } = useContext(AppContext);
 
   // Review states
@@ -114,6 +115,18 @@ export const ProfileView = ({ userId, onClose }) => {
 
   const isSaved = savedProfiles.includes(user.id);
   const isFollowing = followedProfiles.includes(user.id);
+
+  const isConnected = (() => {
+    if (!currentUser || !user) return false;
+    const myFollows = followedProfiles || [];
+    const mutualFollow = myFollows.includes(user.id);
+    const hasConversation = (conversations || []).some(c => c.members.includes(user.id));
+    return mutualFollow || hasConversation;
+  })();
+
+  const isOwner = currentUser && currentUser.id === user.id;
+  const showBusinessContact = isOwner || (user.role === 'Business Holder' && user.contactVisibility === 'Public');
+  const showSocialLinks = isOwner || (user.role === 'Influencer' && user.socialLinksVisibility === 'Public');
 
   const handlePostReview = (e) => {
     e.preventDefault();
@@ -197,10 +210,12 @@ export const ProfileView = ({ userId, onClose }) => {
             <span>
               <MapPin size={14} /> {user.location}
             </span>
-            <span>
-              <Mail size={14} /> {user.email}
-            </span>
-            {user.mobileNumber && (
+            {showBusinessContact && user.email && (
+              <span>
+                <Mail size={14} /> {user.email}
+              </span>
+            )}
+            {showBusinessContact && user.mobileNumber && (
               <span>
                 <Phone size={14} /> {user.mobileNumber}
               </span>
@@ -212,31 +227,49 @@ export const ProfileView = ({ userId, onClose }) => {
         {currentUser && currentUser.id !== user.id && (
           <div className="profile-actions-wrapper">
             <button 
-              onClick={() => toggleFollowUser(user.id)}
-              className={isFollowing ? 'btn-secondary' : 'btn-outline-cyan'}
-              style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              onClick={async () => {
+                await startConversation(user.id);
+                if (onNavigate) {
+                  onNavigate('dashboard');
+                }
+                onClose();
+              }}
+              className="btn-primary"
+              style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
             >
-              <Heart size={14} fill={isFollowing ? 'var(--text-white)' : 'none'} style={{ marginRight: '6px' }} /> 
-              {isFollowing ? 'Following' : 'Follow'}
+              <MessageSquare size={14} /> Message
             </button>
 
-            <button 
-              onClick={() => toggleSaveUser(user.id)}
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '10px',
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid var(--glass-border)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
-                cursor: 'pointer'
-              }}
-            >
-              <Bookmark size={16} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
-            </button>
+            {!(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
+              <button 
+                onClick={() => toggleFollowUser(user.id)}
+                className={isFollowing ? 'btn-secondary' : 'btn-outline-cyan'}
+                style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Heart size={14} fill={isFollowing ? 'var(--text-white)' : 'none'} style={{ marginRight: '6px' }} /> 
+                {isFollowing ? 'Following' : 'Follow'}
+              </button>
+            )}
+
+            {user.role !== 'Freelancer' && !(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
+              <button 
+                onClick={() => toggleSaveUser(user.id)}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid var(--glass-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Bookmark size={16} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -276,7 +309,7 @@ export const ProfileView = ({ userId, onClose }) => {
                   <span className="info-label">Business Category</span>
                   <p className="info-val">{user.businessCategory || 'N/A'}</p>
                 </div>
-                {user.website && (
+                {user.website && showBusinessContact && (
                   <div className="info-item">
                     <span className="info-label">Website</span>
                     <p className="info-val">
@@ -303,7 +336,7 @@ export const ProfileView = ({ userId, onClose }) => {
           )}
 
           {/* Platform Channels (Influencer specific) */}
-          {user.role === 'Influencer' && user.platforms && (
+          {user.role === 'Influencer' && user.platforms && showSocialLinks && (
             <CollapsibleSection 
               title="Platform Channels & Reach" 
               icon={Globe} 
@@ -529,50 +562,80 @@ export const ProfileView = ({ userId, onClose }) => {
           )}
 
           {/* Contact Details Card */}
-          <CollapsibleSection 
-            title="Contact & Connections" 
-            icon={Mail} 
-            isOpen={openSections.contactInfo} 
-            onToggle={() => toggleSection('contactInfo')}
-          >
-            <div className="info-grid-2-col">
-              <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                <span className="info-label">Email Address</span>
-                <p className="info-val">{user.email}</p>
-              </div>
-              {user.mobileNumber && (
-                <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                  <span className="info-label">Mobile Number</span>
-                  <p className="info-val">{user.mobileNumber}</p>
+          {(() => {
+            const hasSocialLinks = user.socialLinks && Object.values(user.socialLinks).some(val => val && val.trim() !== '');
+            const showContactSection = showBusinessContact || (user.role === 'Influencer' && showSocialLinks && hasSocialLinks);
+            if (!showContactSection) return null;
+            return (
+              <CollapsibleSection 
+                title="Contact & Connections" 
+                icon={Mail} 
+                isOpen={openSections.contactInfo} 
+                onToggle={() => toggleSection('contactInfo')}
+              >
+                <div className="info-grid-2-col">
+                  {showBusinessContact && (
+                    <>
+                      <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                        <span className="info-label">Email Address</span>
+                        <p className="info-val">{user.email || 'N/A'}</p>
+                      </div>
+                      {user.mobileNumber && (
+                        <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                          <span className="info-label">Mobile Number</span>
+                          <p className="info-val">{user.mobileNumber}</p>
+                        </div>
+                      )}
+                      {user.address && (
+                        <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                          <span className="info-label">Business Address</span>
+                          <p className="info-val" style={{ fontSize: '13px' }}>{user.address}</p>
+                        </div>
+                      )}
+                      {user.role === 'Business Holder' && user.mobileNumber && (
+                        <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '4px' }}>
+                          <span className="info-label">WhatsApp Contact</span>
+                          <p className="info-val">
+                            <a 
+                              href={`https://wa.me/${user.mobileNumber.replace(/\D/g, '')}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              style={{ color: '#25D366', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '700' }}
+                            >
+                              Chat on WhatsApp
+                            </a>
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {user.role === 'Influencer' && showSocialLinks && hasSocialLinks && (
+                    <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
+                      <span className="info-label">Social Connections</span>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                        {Object.entries(user.socialLinks).map(([platform, url]) => {
+                          if (!url || url.trim() === '') return null;
+                          return (
+                            <a 
+                              key={platform} 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="btn-secondary" 
+                              style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
+                            >
+                              {platform}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              {user.address && (
-                <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                  <span className="info-label">Business Address</span>
-                  <p className="info-val" style={{ fontSize: '13px' }}>{user.address}</p>
-                </div>
-              )}
-              {user.socialLinks && Object.keys(user.socialLinks).length > 0 && (
-                <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
-                  <span className="info-label">Social Connections</span>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                    {Object.entries(user.socialLinks).map(([platform, url]) => (
-                      <a 
-                        key={platform} 
-                        href={url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="btn-secondary" 
-                        style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
-                      >
-                        {platform}
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CollapsibleSection>
+              </CollapsibleSection>
+            );
+          })()}
 
         </div>
 

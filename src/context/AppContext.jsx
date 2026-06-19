@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase, setSupabaseUserHeader } from '../supabaseClient';
 
 export const AppContext = createContext();
 
@@ -10,241 +10,11 @@ const generateUserId = (role) => {
 };
 
 // Pre-seeded high quality profiles for immersive experience
-const INITIAL_USERS = [
-  // Business Holders
-  {
-    id: 'bh-1',
-    role: 'Business Holder',
-    fullName: 'Robert Sterling',
-    email: 'robert@sterlingcafe.com',
-    mobileNumber: '+1 (555) 123-4567',
-    location: 'San Francisco, CA',
-    businessName: 'Sterling Cafe & Co.',
-    businessCategory: 'Cafe',
-    password: 'password123',
-    logo: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=150&auto=format&fit=crop&q=80',
-    description: 'An artisan bakery and cafe franchise known for micro-batch roasted coffee and organic sourdough pastries.',
-    website: 'https://sterlingcafe.co',
-    socialLinks: { instagram: 'https://instagram.com/sterlingcafe', twitter: 'https://twitter.com/sterlingcafe' },
-    address: '456 Market St, San Francisco, CA',
-    teamSize: '15-50',
-    monthlyMarketingBudget: '₹5,000 - ₹10,000',
-    verificationStatus: 'Premium Verified',
-    profileStrength: 95,
-  },
-  {
-    id: 'bh-2',
-    role: 'Business Holder',
-    fullName: 'Amanda Vance',
-    email: 'amanda@aurorahotels.com',
-    mobileNumber: '+1 (555) 987-6543',
-    location: 'Miami, FL',
-    businessName: 'Aurora Boutique Hotels',
-    businessCategory: 'Hotel',
-    password: 'password123',
-    logo: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=150&auto=format&fit=crop&q=80',
-    description: 'Luxury eco-friendly beach hotels providing immersive wellness retreats and high-end gastronomy.',
-    website: 'https://aurorahotels.com',
-    socialLinks: { instagram: 'https://instagram.com/aurorahotels' },
-    address: '100 Ocean Dr, Miami, FL',
-    teamSize: '50-100',
-    monthlyMarketingBudget: '₹20,000+',
-    verificationStatus: 'Professional Verified',
-    profileStrength: 90,
-  },
+const INITIAL_USERS = [];
 
-  // Influencers
-  {
-    id: 'inf-1',
-    role: 'Influencer',
-    fullName: 'Emma Watson (Emma Vlogs)',
-    email: 'emma@emmavlogs.com',
-    mobileNumber: '+1 (555) 246-8101',
-    location: 'Los Angeles, CA',
-    password: 'password123',
-    profilePhoto: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    contentCategories: ['Travel', 'Lifestyle', 'Fashion'],
-    platforms: {
-      Instagram: { url: 'https://instagram.com/emmavlogs', followers: '450K', reach: '1.2M', engagement: '4.8%' },
-      YouTube: { url: 'https://youtube.com/emmavlogs', followers: '820K', reach: '3M', engagement: '6.2%' }
-    },
-    followersCount: '1.27M Total',
-    averageReach: '4.2M Monthly',
-    engagementRate: '5.5%',
-    languages: ['English', 'Spanish'],
-    collaborationPricing: '₹1,500/Post',
-    bio: 'Visual storyteller exploring luxury eco-destinations and highlighting sustainable fashion brands worldwide.',
-    verificationStatus: 'Premium Verified',
-    profileStrength: 100,
-    rating: 4.9,
-    reviews: [
-      { id: 'r-1', businessName: 'Aurora Boutique Hotels', rating: 5, comment: 'Phenomenal reach! Our room bookings grew by 24% during Emma\'s stay campaign.' }
-    ],
-    fraudAudit: {
-      fakeFollowers: '3.1%', // low
-      engagementAuthenticity: 'Excellent',
-      suspiciousGrowth: 'None',
-      badge: 'Verified Audience'
-    }
-  },
-  {
-    id: 'inf-2',
-    role: 'Influencer',
-    fullName: 'Alex Carter (Alex Tech)',
-    email: 'alex@techreview.com',
-    mobileNumber: '+1 (555) 369-1215',
-    location: 'Austin, TX',
-    password: 'password123',
-    profilePhoto: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    contentCategories: ['Technology', 'Education'],
-    platforms: {
-      YouTube: { url: 'https://youtube.com/alextech', followers: '1.2M', reach: '5M', engagement: '8.5%' },
-      LinkedIn: { url: 'https://linkedin.com/in/alextech', followers: '95K', reach: '200K', engagement: '4.1%' }
-    },
-    followersCount: '1.295M Total',
-    averageReach: '5.2M Monthly',
-    engagementRate: '8.2%',
-    languages: ['English'],
-    collaborationPricing: '₹3,000/Video',
-    bio: 'No-nonsense review of consumer hardware, developer tools, and cutting-edge software products.',
-    verificationStatus: 'Professional Verified',
-    profileStrength: 92,
-    rating: 4.8,
-    reviews: [],
-    fraudAudit: {
-      fakeFollowers: '12.4%', // medium
-      engagementAuthenticity: 'Normal',
-      suspiciousGrowth: 'Spike in Jan 2026',
-      badge: 'Suspicious Activity Warning'
-    }
-  },
-  {
-    id: 'inf-3',
-    role: 'Influencer',
-    fullName: 'Chloe Jean',
-    email: 'chloe@eatwithchloe.com',
-    mobileNumber: '+1 (555) 482-9018',
-    location: 'Chicago, IL',
-    password: 'password123',
-    profilePhoto: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&auto=format&fit=crop&q=80',
-    contentCategories: ['Food', 'Lifestyle'],
-    platforms: {
-      Instagram: { url: 'https://instagram.com/eatwithchloe', followers: '180K', reach: '500K', engagement: '5.9%' }
-    },
-    followersCount: '180K',
-    averageReach: '500K Monthly',
-    engagementRate: '5.9%',
-    languages: ['English', 'French'],
-    collaborationPricing: '₹750/Post',
-    bio: 'Finding the finest street food, hidden bistros, and high-end culinary concepts across North America.',
-    verificationStatus: 'Basic Verified',
-    profileStrength: 85,
-    rating: 4.7,
-    reviews: [
-      { id: 'r-2', businessName: 'Sterling Cafe & Co.', rating: 4.5, comment: 'Chloe did a lovely Instagram Reels highlight of our sourdough croissants.' }
-    ],
-    fraudAudit: {
-      fakeFollowers: '1.8%',
-      engagementAuthenticity: 'Excellent',
-      suspiciousGrowth: 'None',
-      badge: 'Verified Audience'
-    }
-  },
+const INITIAL_PROJECTS = [];
 
-  // Freelancers
-  {
-    id: 'fl-1',
-    role: 'Freelancer',
-    fullName: 'Liam Dev (Liam O\'Connor)',
-    email: 'liam@devstudio.com',
-    mobileNumber: '+1 (555) 753-1598',
-    location: 'New York, NY',
-    password: 'password123',
-    profilePhoto: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    services: ['Website Development', 'App Development'],
-    portfolio: [
-      { service: 'Website Development', type: 'Link', url: 'https://hyperloopcommerce.com', description: 'Next.js e-commerce app with custom WebGL animations.' },
-      { service: 'App Development', type: 'Link', url: 'https://fitnesstracker.app', description: 'React Native workout companion with offline sync.' }
-    ],
-    skills: ['React', 'Next.js', 'Node.js', 'React Native', 'GraphQL', 'WebGL'],
-    experience: '6 Years (Ex-Stripe Developer)',
-    verificationStatus: 'Premium Verified',
-    profileStrength: 98,
-    rating: 5.0,
-    reviews: [
-      { id: 'r-3', businessName: 'Sterling Cafe & Co.', rating: 5.0, comment: 'Liam built our custom ordering website. It is insanely fast and beautiful!' }
-    ]
-  },
-  {
-    id: 'fl-2',
-    role: 'Freelancer',
-    fullName: 'Sophia Miller',
-    email: 'sophia@millersigns.com',
-    mobileNumber: '+1 (555) 864-2017',
-    location: 'Seattle, WA',
-    password: 'password123',
-    profilePhoto: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    services: ['UI/UX Design', 'Graphic Design', 'Logo Design'],
-    portfolio: [
-      { service: 'UI/UX Design', type: 'Link', url: 'https://dribbble.com/shots/sophia-saas', description: 'Glassmorphic Web Dashboard mockup.' }
-    ],
-    skills: ['Figma', 'Adobe Creative Suite', 'Prototyping', 'Design Systems', 'Brand Identity'],
-    experience: '4 Years',
-    verificationStatus: 'Professional Verified',
-    profileStrength: 90,
-    rating: 4.8,
-    reviews: []
-  },
-  {
-    id: 'fl-3',
-    role: 'Freelancer',
-    fullName: 'Noah Wilder',
-    email: 'noah@wildercut.com',
-    mobileNumber: '+1 (555) 951-7382',
-    location: 'Portland, OR',
-    password: 'password123',
-    profilePhoto: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-    services: ['Video Editing', 'AI Video Creation'],
-    portfolio: [
-      { service: 'Video Editing', type: 'Link', url: 'https://vimeo.com/7123984', description: 'Cinematic brand commercial edit for outdoor products.' }
-    ],
-    skills: ['Adobe Premiere Pro', 'After Effects', 'DaVinci Resolve', 'Runway ML', 'Midjourney'],
-    experience: '5 Years',
-    verificationStatus: 'Professional Verified',
-    profileStrength: 88,
-    rating: 4.6,
-    reviews: []
-  }
-];
-
-const INITIAL_PROJECTS = [
-  {
-    id: 'proj-1',
-    businessId: 'bh-1',
-    businessName: 'Sterling Cafe & Co.',
-    title: 'Modern Summer Campaign Launch',
-    category: 'Cafe',
-    description: 'We are looking to promote our new organic cold brew series and ice pastries. We need a combination of video editing, influencer posts, and a landing page refresh.',
-    budget: '₹3,500',
-    deadline: '2026-08-15',
-    attachments: ['summer_concept.pdf'],
-    proposals: [
-      { creatorId: 'inf-3', creatorName: 'Chloe Jean', coverLetter: 'I would love to highlight your drinks at Sterling Cafe. My Chicago food audience absolutely loves coffee reels!', pricing: '₹750', daysToComplete: 10, status: 'Pending' },
-      { creatorId: 'fl-3', creatorName: 'Noah Wilder', coverLetter: 'I can create premium high-energy kinetic text video commercials using your footage.', pricing: '₹1,200', daysToComplete: 7, status: 'Pending' }
-    ],
-    invitedCreators: ['inf-1', 'fl-1'],
-    status: 'Open',
-    createdAt: '2026-06-12',
-    team: null // when created, turns into { members: { 'Influencer': 'inf-x', 'Developer': 'fl-y' }, chat: [] }
-  }
-];
-
-const INITIAL_ACTIVITIES = [
-  { id: 'act-1', text: 'Emma Watson verified her Audience Authenticity with score of 96.9%.', time: '2 hours ago' },
-  { id: 'act-2', text: 'Sterling Cafe & Co. posted a new project: Modern Summer Campaign Launch.', time: '1 day ago' },
-  { id: 'act-3', text: 'Liam Dev was premium verified after manual review.', time: '2 days ago' },
-  { id: 'act-4', text: 'Alex Tech reached 1.2M subscribers on YouTube.', time: '3 days ago' }
-];
+const INITIAL_ACTIVITIES = [];
 
 const mapUserToDb = (user) => {
   if (!user) return null;
@@ -281,7 +51,12 @@ const mapUserToDb = (user) => {
     portfolio: user.portfolio || [],
     skills: user.skills || [],
     experience: user.experience || null,
-    verification_requested: user.verificationRequested || false
+    verification_requested: user.verificationRequested || false,
+    phone_visibility: user.phoneVisibility || 'Private',
+    email_visibility: user.emailVisibility || 'Private',
+    website_visibility: user.websiteVisibility || 'Private',
+    social_links_visibility: user.socialLinksVisibility || 'Private',
+    contact_visibility: user.contactVisibility || 'Private'
   };
 };
 
@@ -320,7 +95,12 @@ const mapUserFromDb = (dbUser) => {
     portfolio: typeof dbUser.portfolio === 'string' ? JSON.parse(dbUser.portfolio) : (dbUser.portfolio || []),
     skills: typeof dbUser.skills === 'string' ? JSON.parse(dbUser.skills) : (dbUser.skills || []),
     experience: dbUser.experience,
-    verificationRequested: dbUser.verification_requested
+    verificationRequested: dbUser.verification_requested,
+    phoneVisibility: dbUser.phone_visibility || 'Private',
+    emailVisibility: dbUser.email_visibility || 'Private',
+    websiteVisibility: dbUser.website_visibility || 'Private',
+    socialLinksVisibility: dbUser.social_links_visibility || 'Private',
+    contactVisibility: dbUser.contact_visibility || 'Private'
   };
 };
 
@@ -367,12 +147,12 @@ const mapProjectFromDb = (dbProj) => {
 export const AppProvider = ({ children }) => {
   const [users, setUsers] = useState(() => {
     const saved = localStorage.getItem('ch_users');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [projects, setProjects] = useState(() => {
     const saved = localStorage.getItem('ch_projects');
-    return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [currentUser, setCurrentUser] = useState(() => {
@@ -382,7 +162,7 @@ export const AppProvider = ({ children }) => {
 
   const [activityFeed, setActivityFeed] = useState(() => {
     const saved = localStorage.getItem('ch_activity');
-    return saved ? JSON.parse(saved) : INITIAL_ACTIVITIES;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [savedProfiles, setSavedProfiles] = useState(() => {
@@ -397,11 +177,14 @@ export const AppProvider = ({ children }) => {
 
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem('ch_messages');
-    return saved ? JSON.parse(saved) : {
-      'proj-1': [
-        { senderId: 'bh-1', senderName: 'Robert Sterling', text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!', timestamp: '2026-06-13T10:00:00Z' }
-      ]
-    };
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const [loading, setLoading] = useState(() => {
+    // Start with loading=false if we have cached data — render instantly from cache
+    const hasCachedUser = localStorage.getItem('ch_current_user');
+    const hasCachedUsers = localStorage.getItem('ch_users');
+    return !(hasCachedUser || hasCachedUsers);
   });
 
   const [theme] = useState('light');
@@ -419,20 +202,16 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const initData = async () => {
       try {
+        // Don't set loading=true here — if we have cached data, we're already showing it
         // 1. Fetch Users
-        const { data: dbUsers, error: usersErr } = await supabase.from('users').select('*');
+        const { data: dbUsers, error: usersErr } = await supabase.from('profiles').select('*');
         let finalUsers = [];
         if (usersErr) {
-          console.warn('Error fetching users from Supabase, falling back to local mocks:', usersErr);
+          console.warn('Error fetching users from Supabase:', usersErr);
           const saved = localStorage.getItem('ch_users');
-          finalUsers = saved ? JSON.parse(saved) : INITIAL_USERS;
-        } else if (!dbUsers || dbUsers.length === 0) {
-          const mappedUsers = INITIAL_USERS.map(mapUserToDb);
-          const { error: seedUsersErr } = await supabase.from('users').insert(mappedUsers);
-          if (seedUsersErr) console.error('Error seeding users:', seedUsersErr);
-          finalUsers = INITIAL_USERS;
+          finalUsers = saved ? JSON.parse(saved) : [];
         } else {
-          finalUsers = dbUsers.map(mapUserFromDb);
+          finalUsers = dbUsers ? dbUsers.map(mapUserFromDb) : [];
         }
         setUsers(finalUsers);
         localStorage.setItem('ch_users', JSON.stringify(finalUsers));
@@ -441,16 +220,11 @@ export const AppProvider = ({ children }) => {
         const { data: dbProjects, error: projErr } = await supabase.from('projects').select('*');
         let finalProjects = [];
         if (projErr) {
-          console.warn('Error fetching projects from Supabase, falling back to local mocks:', projErr);
+          console.warn('Error fetching projects from Supabase:', projErr);
           const saved = localStorage.getItem('ch_projects');
-          finalProjects = saved ? JSON.parse(saved) : INITIAL_PROJECTS;
-        } else if (!dbProjects || dbProjects.length === 0) {
-          const mappedProj = INITIAL_PROJECTS.map(mapProjectToDb);
-          const { error: seedProjErr } = await supabase.from('projects').insert(mappedProj);
-          if (seedProjErr) console.error('Error seeding projects:', seedProjErr);
-          finalProjects = INITIAL_PROJECTS;
+          finalProjects = saved ? JSON.parse(saved) : [];
         } else {
-          finalProjects = dbProjects.map(mapProjectFromDb);
+          finalProjects = dbProjects ? dbProjects.map(mapProjectFromDb) : [];
         }
         setProjects(finalProjects);
         localStorage.setItem('ch_projects', JSON.stringify(finalProjects));
@@ -459,15 +233,11 @@ export const AppProvider = ({ children }) => {
         const { data: dbActivities, error: actErr } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
         let finalActivities = [];
         if (actErr) {
-          console.warn('Error fetching activities from Supabase, falling back to local mocks:', actErr);
+          console.warn('Error fetching activities from Supabase:', actErr);
           const saved = localStorage.getItem('ch_activity');
-          finalActivities = saved ? JSON.parse(saved) : INITIAL_ACTIVITIES;
-        } else if (!dbActivities || dbActivities.length === 0) {
-          const mappedAct = INITIAL_ACTIVITIES.map(a => ({ id: a.id, text: a.text, time: a.time }));
-          await supabase.from('activities').insert(mappedAct);
-          finalActivities = INITIAL_ACTIVITIES;
+          finalActivities = saved ? JSON.parse(saved) : [];
         } else {
-          finalActivities = dbActivities;
+          finalActivities = dbActivities || [];
         }
         setActivityFeed(finalActivities);
         localStorage.setItem('ch_activity', JSON.stringify(finalActivities));
@@ -476,18 +246,9 @@ export const AppProvider = ({ children }) => {
         const { data: dbMessages, error: msgErr } = await supabase.from('messages').select('*');
         const groupedMessages = {};
         if (msgErr) {
-          console.warn('Error fetching messages from Supabase, falling back to local mocks:', msgErr);
+          console.warn('Error fetching messages from Supabase:', msgErr);
           const saved = localStorage.getItem('ch_messages');
-          if (saved) {
-            Object.assign(groupedMessages, JSON.parse(saved));
-          } else {
-            groupedMessages['proj-1'] = [{
-              senderId: 'bh-1',
-              senderName: 'Robert Sterling',
-              text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!',
-              timestamp: new Date().toISOString()
-            }];
-          }
+          if (saved) Object.assign(groupedMessages, JSON.parse(saved));
         } else if (dbMessages && dbMessages.length > 0) {
           dbMessages.forEach(msg => {
             if (!groupedMessages[msg.project_id]) {
@@ -500,20 +261,6 @@ export const AppProvider = ({ children }) => {
               timestamp: msg.timestamp
             });
           });
-        } else {
-          const initialMsg = {
-            project_id: 'proj-1',
-            sender_id: 'bh-1',
-            sender_name: 'Robert Sterling',
-            text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!'
-          };
-          await supabase.from('messages').insert([initialMsg]);
-          groupedMessages['proj-1'] = [{
-            senderId: 'bh-1',
-            senderName: 'Robert Sterling',
-            text: 'Hi everyone! Welcome to our workspace. Super excited to collaborate!',
-            timestamp: new Date().toISOString()
-          }];
         }
         setMessages(groupedMessages);
         localStorage.setItem('ch_messages', JSON.stringify(groupedMessages));
@@ -598,6 +345,8 @@ export const AppProvider = ({ children }) => {
         }
       } catch (err) {
         console.error('Error loading Supabase data:', err);
+      } finally {
+        setLoading(false);
       }
     };
     initData();
@@ -615,8 +364,10 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('ch_current_user', JSON.stringify(currentUser));
+      setSupabaseUserHeader(currentUser.id);
     } else {
       localStorage.removeItem('ch_current_user');
+      setSupabaseUserHeader(null);
     }
   }, [currentUser]);
 
@@ -677,13 +428,33 @@ export const AppProvider = ({ children }) => {
     return newUser;
   };
 
-  const loginUser = (email, password) => {
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-      setCurrentUser(user);
-      return { success: true, user };
+  const loginUser = async (email, password) => {
+    try {
+      const { data, error } = await supabase.rpc('login_user', { p_email: email, p_password: password });
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const user = mapUserFromDb(data[0]);
+        setCurrentUser(user);
+        localStorage.setItem('ch_current_user', JSON.stringify(user));
+        setSupabaseUserHeader(user.id);
+        
+        // Refresh users list from profiles view now that we are logged in and session header is set
+        supabase.from('profiles').select('*').then(({ data: refreshedUsers }) => {
+          if (refreshedUsers) {
+            const finalUsers = refreshedUsers.map(mapUserFromDb);
+            setUsers(finalUsers);
+            localStorage.setItem('ch_users', JSON.stringify(finalUsers));
+          }
+        });
+
+        return { success: true, user };
+      }
+      return { success: false, message: 'Invalid email or password.' };
+    } catch (err) {
+      console.error('Login error:', err.message);
+      return { success: false, message: 'Login failed: ' + err.message };
     }
-    return { success: false, message: 'Invalid email or password.' };
   };
 
   const logoutUser = () => {
@@ -1078,6 +849,347 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // P2P Messaging States
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [activeTabToRedirect, setActiveTabToRedirect] = useState(null);
+  const [p2pMessages, setP2pMessages] = useState({});
+  const [presenceList, setPresenceList] = useState({});
+
+  // Sync P2P conversations and messages on load/currentUser change
+  useEffect(() => {
+    if (!currentUser) {
+      setConversations([]);
+      return;
+    }
+
+    const fetchConversations = async () => {
+      // 1. Fetch memberships where user_id is current user
+      const { data: myMemberships, error: memErr } = await supabase
+        .from('conversation_members')
+        .select('conversation_id')
+        .eq('user_id', currentUser.id);
+
+      if (memErr) {
+        console.warn('Error fetching conversation memberships:', memErr.message);
+        // Fallback to localStorage
+        const savedConv = localStorage.getItem('ch_p2p_conversations');
+        const savedMsgs = localStorage.getItem('ch_p2p_messages');
+        if (savedConv) setConversations(JSON.parse(savedConv));
+        if (savedMsgs) setP2pMessages(JSON.parse(savedMsgs));
+        return;
+      }
+
+      if (!myMemberships || myMemberships.length === 0) return;
+
+      const conversationIds = myMemberships.map(m => m.conversation_id);
+
+      // 2. Fetch all members for these conversations to find the other user's info
+      const { data: allMembers, error: allMemErr } = await supabase
+        .from('conversation_members')
+        .select('conversation_id, user_id')
+        .in('conversation_id', conversationIds);
+
+      if (allMemErr) {
+        console.warn('Error fetching all conversation members:', allMemErr.message);
+        return;
+      }
+
+      // 3. Fetch all messages for these conversations
+      const { data: allMsgs, error: msgsErr } = await supabase
+        .from('messages')
+        .select('*')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: true });
+
+      if (msgsErr) {
+        console.warn('Error fetching P2P messages:', msgsErr.message);
+      }
+
+      // Group messages by conversation ID
+      const msgsGrouped = {};
+      if (allMsgs) {
+        allMsgs.forEach(m => {
+          if (!msgsGrouped[m.conversation_id]) {
+            msgsGrouped[m.conversation_id] = [];
+          }
+          msgsGrouped[m.conversation_id].push({
+            id: m.id,
+            conversationId: m.conversation_id,
+            senderId: m.sender_id,
+            text: m.message,
+            attachmentUrl: m.attachment_url,
+            messageType: m.message_type,
+            seen: m.seen,
+            timestamp: m.created_at
+          });
+        });
+      }
+      setP2pMessages(msgsGrouped);
+
+      // Map conversation details
+      const convList = conversationIds.map(cId => {
+        const members = allMembers.filter(m => m.conversation_id === cId).map(m => m.user_id);
+        const otherUserId = members.find(mId => mId !== currentUser.id);
+        return {
+          id: cId,
+          members,
+          otherUserId
+        };
+      });
+
+      setConversations(convList);
+    };
+
+    fetchConversations();
+  }, [currentUser, users]);
+
+  // Sync P2P LocalStorage
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem('ch_p2p_conversations', JSON.stringify(conversations));
+    }
+  }, [conversations]);
+
+  useEffect(() => {
+    if (Object.keys(p2pMessages).length > 0) {
+      localStorage.setItem('ch_p2p_messages', JSON.stringify(p2pMessages));
+    }
+  }, [p2pMessages]);
+
+  // Realtime Messages Subscription
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const messagesSubscription = supabase
+      .channel('public:messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, payload => {
+        const msg = payload.new;
+        if (!msg) return;
+
+        const conv = conversations.find(c => c.id === msg.conversation_id);
+        if (!conv) return;
+
+        if (payload.eventType === 'INSERT') {
+          const formattedMsg = {
+            id: msg.id,
+            conversationId: msg.conversation_id,
+            senderId: msg.sender_id,
+            text: msg.message,
+            attachmentUrl: msg.attachment_url,
+            messageType: msg.message_type,
+            seen: msg.seen,
+            timestamp: msg.created_at
+          };
+
+          setP2pMessages(prev => {
+            const list = prev[msg.conversation_id] || [];
+            if (list.some(m => m.id === formattedMsg.id)) return prev;
+            return {
+              ...prev,
+              [msg.conversation_id]: [...list, formattedMsg]
+            };
+          });
+
+          if (activeConversationId === msg.conversation_id && msg.sender_id !== currentUser.id) {
+            supabase
+              .from('messages')
+              .update({ seen: true })
+              .eq('id', msg.id)
+              .then(() => {});
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          setP2pMessages(prev => {
+            const list = prev[msg.conversation_id] || [];
+            const updated = list.map(m => m.id === msg.id ? { ...m, seen: msg.seen } : m);
+            return {
+              ...prev,
+              [msg.conversation_id]: updated
+            };
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesSubscription);
+    };
+  }, [currentUser, conversations, activeConversationId]);
+
+  // Presence Synchronization
+  useEffect(() => {
+    const fetchPresence = async () => {
+      const { data, error } = await supabase.from('user_presence').select('*');
+      if (error) {
+        console.warn('Error fetching presence:', error.message);
+        return;
+      }
+      if (data) {
+        const presences = {};
+        data.forEach(p => {
+          presences[p.user_id] = {
+            isOnline: p.is_online,
+            lastSeen: p.last_seen
+          };
+        });
+        setPresenceList(presences);
+      }
+    };
+
+    fetchPresence();
+
+    const presenceSubscription = supabase
+      .channel('public:user_presence')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_presence' }, payload => {
+        const pres = payload.new;
+        if (pres) {
+          setPresenceList(prev => ({
+            ...prev,
+            [pres.user_id]: {
+              isOnline: pres.is_online,
+              lastSeen: pres.last_seen
+            }
+          }));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(presenceSubscription);
+    };
+  }, []);
+
+  // Update Presence for Online Statuses
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const setOnline = async () => {
+      await supabase
+        .from('user_presence')
+        .upsert({
+          user_id: currentUser.id,
+          is_online: true,
+          last_seen: new Date().toISOString()
+        });
+    };
+
+    setOnline();
+
+    const setOffline = () => {
+      navigator.sendBeacon(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/user_presence?user_id=eq.${currentUser.id}`,
+        JSON.stringify({ is_online: false, last_seen: new Date().toISOString() })
+      );
+    };
+
+    window.addEventListener('beforeunload', setOffline);
+    return () => {
+      window.removeEventListener('beforeunload', setOffline);
+      supabase
+        .from('user_presence')
+        .update({ is_online: false, last_seen: new Date().toISOString() })
+        .eq('user_id', currentUser.id)
+        .then(() => {});
+    };
+  }, [currentUser]);
+
+  // startConversation handler (creates P2P chat)
+  const startConversation = async (targetUserId) => {
+    if (!currentUser) return null;
+
+    const existing = conversations.find(c => c.members.includes(targetUserId));
+    if (existing) {
+      setActiveConversationId(existing.id);
+      setActiveTabToRedirect('messages');
+      return existing.id;
+    }
+
+    const newConvId = `conv-${Date.now()}`;
+    const newConv = {
+      id: newConvId,
+      members: [currentUser.id, targetUserId],
+      otherUserId: targetUserId
+    };
+
+    setConversations(prev => [...prev, newConv]);
+    setActiveConversationId(newConvId);
+    setActiveTabToRedirect('messages');
+
+    try {
+      await supabase.from('conversations').insert([{ id: newConvId }]);
+      await supabase.from('conversation_members').insert([
+        { id: `mem-1-${Date.now()}`, conversation_id: newConvId, user_id: currentUser.id },
+        { id: `mem-2-${Date.now()}`, conversation_id: newConvId, user_id: targetUserId }
+      ]);
+    } catch (err) {
+      console.error('Error creating conversation in Supabase:', err.message);
+    }
+
+    return newConvId;
+  };
+
+  // sendP2PMessage handler
+  const sendP2PMessage = async (conversationId, text, attachmentUrl = null, messageType = 'text') => {
+    if (!currentUser) return;
+
+    const newMsgId = `msg-${Date.now()}`;
+    const newMsg = {
+      id: newMsgId,
+      conversationId,
+      senderId: currentUser.id,
+      text,
+      attachmentUrl,
+      messageType,
+      seen: false,
+      timestamp: new Date().toISOString()
+    };
+
+    setP2pMessages(prev => {
+      const list = prev[conversationId] || [];
+      return {
+        ...prev,
+        [conversationId]: [...list, newMsg]
+      };
+    });
+
+    const { error } = await supabase
+      .from('messages')
+      .insert([{
+        id: newMsgId,
+        conversation_id: conversationId,
+        sender_id: currentUser.id,
+        message: text,
+        attachment_url: attachmentUrl,
+        message_type: messageType,
+        seen: false
+      }]);
+
+    if (error) {
+      console.error('Error sending P2P message to Supabase:', error.message);
+    }
+  };
+
+  // markMessagesAsSeen handler
+  const markMessagesAsSeen = async (conversationId) => {
+    if (!currentUser) return;
+
+    setP2pMessages(prev => {
+      const list = prev[conversationId] || [];
+      const updated = list.map(m => m.senderId !== currentUser.id ? { ...m, seen: true } : m);
+      return {
+        ...prev,
+        [conversationId]: updated
+      };
+    });
+
+    await supabase
+      .from('messages')
+      .update({ seen: true })
+      .eq('conversation_id', conversationId)
+      .not('sender_id', 'eq', currentUser.id)
+      .eq('seen', false);
+  };
+
   return (
     <AppContext.Provider value={{
       users,
@@ -1101,8 +1213,19 @@ export const AppProvider = ({ children }) => {
       toggleFollowUser,
       calculateMatchPercentage,
       generateAiProfileContent,
+      loading,
       theme,
-      toggleTheme
+      toggleTheme,
+      conversations,
+      activeConversationId,
+      setActiveConversationId,
+      activeTabToRedirect,
+      setActiveTabToRedirect,
+      p2pMessages,
+      sendP2PMessage,
+      startConversation,
+      markMessagesAsSeen,
+      presenceList
     }}>
       {children}
     </AppContext.Provider>

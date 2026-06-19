@@ -1,5 +1,6 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
+import { MessagingCenter } from './Shared/MessagingCenter';
 import { 
   LayoutDashboard, FolderKanban, Users, UserCheck, MessageSquare, 
   Calendar, Bell, BarChart3, Building, CreditCard, Settings, LogOut,
@@ -13,7 +14,8 @@ const generateTaskId = () => `t-${Date.now()}`;
 export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const { 
     currentUser, logoutUser, projects, createProject, users, 
-    activityFeed, messages, sendMessage, activateCreatorTeam, updateProfile
+    activityFeed, messages, sendMessage, activateCreatorTeam, updateProfile, loading,
+    activeTabToRedirect, setActiveTabToRedirect
   } = useContext(AppContext);
 
   // Tab State
@@ -22,6 +24,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTabToRedirect === 'messages') {
+      setActiveTab('messages');
+      setActiveTabToRedirect(null);
+    }
+  }, [activeTabToRedirect]);
 
   // Requirement Modal / Form States
   const [showReqModal, setShowReqModal] = useState(false);
@@ -50,6 +59,12 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const businessProjects = projects.filter(p => p.businessId === currentUser.id);
   const openRequirements = businessProjects.filter(p => p.status === 'Open');
   const activeCollaborations = businessProjects.filter(p => p.status === 'Active Workspace');
+
+  // Calculate dynamic escrow budget from active collaborations
+  const totalEscrowedBudget = activeCollaborations.reduce((sum, p) => {
+    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
+    return sum + numericBudget;
+  }, 0);
 
   // Collect All Received proposals across all campaigns
   const receivedApplications = [];
@@ -199,19 +214,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   // Sidebar Tabs Config
   const sidebarTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { id: 'requirements', label: 'Requirements', icon: <FolderKanban size={18} /> },
+    { id: 'freelancers', label: 'Find Freelancers', icon: <Users size={18} /> },
+    { id: 'influencers', label: 'Find Influencers', icon: <Users size={18} /> },
+    { id: 'requirements', label: 'Post Project', icon: <FolderKanban size={18} /> },
     { id: 'applications', label: 'Applications', icon: <UserCheck size={18} /> },
-    { id: 'freelancers', label: 'Freelancers', icon: <Users size={18} /> },
-    { id: 'influencers', label: 'Influencers', icon: <Users size={18} /> },
-    { id: 'projects', label: 'Campaigns list', icon: <Briefcase size={18} /> },
-    { id: 'workspace', label: 'Workspace', icon: <CheckSquare size={18} /> },
-    { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-    { id: 'calendar', label: 'Calendar', icon: <Calendar size={18} /> },
-    { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} /> },
-    { id: 'profile', label: 'Company Profile', icon: <Building size={18} /> },
-    { id: 'billing', label: 'Billing', icon: <CreditCard size={18} /> },
-    { id: 'settings', label: 'Settings', icon: <Settings size={18} /> }
+    { id: 'billing', label: 'Payments', icon: <CreditCard size={18} /> },
+    { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> }
   ];
 
   return (
@@ -468,7 +477,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                   </div>
                   <div>
                     <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Escrowed Budget</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹7,400</h3>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹{totalEscrowedBudget.toLocaleString()}</h3>
                   </div>
                 </div>
               </section>
@@ -860,7 +869,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
               {activeCollaborations.length === 0 ? (
                 <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
                   <CheckSquare size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-                  <h4 style={{ color: 'var(--text-white)', fontSize: '18px', fontWeight: '800' }}>No active workspaces</h4>
+                  <h4 style={{ color: 'var(--text-white)', fontSize: '17px', fontWeight: '800' }}>No active projects.</h4>
                   <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px', maxWidth: '400px', margin: '6px auto' }}>
                     Hire an applicant or build a team from the home screen to activate a secure collaboration workspace.
                   </p>
@@ -1055,32 +1064,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
           {/* ==================== 6. MESSAGES CENTER ==================== */}
           {activeTab === 'messages' && (
-            <div className="glass-panel" style={{ padding: '24px', minHeight: '400px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '16px' }}>Direct Messaging</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '13.5px' }}>Direct collaboration workspace streams will automatically spawn chat locks.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-                {activeCollaborations.map(c => (
-                  <div 
-                    key={c.id} 
-                    onClick={() => { setSelectedWorkspaceId(c.id); setActiveTab('workspace'); }}
-                    style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                    className="glass-panel-hover"
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
-                        <MessageSquare size={18} />
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-white)' }}>{c.title} Secure Chat</h4>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Real-time team collaboration cell</span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>Open Chat →</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <MessagingCenter />
           )}
 
           {/* ==================== 7. CALENDAR ==================== */}
@@ -1126,17 +1110,24 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
           {activeTab === 'notifications' && (
             <div className="glass-panel" style={{ padding: '24px' }}>
               <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Ecosystem Alerts</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {activityFeed.map(act => (
-                  <div key={act.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', borderBottom: '1px solid var(--glass-border)' }}>
-                    <div>
-                      <p style={{ fontSize: '13.5px', color: 'var(--text-white)' }}>{act.text}</p>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{act.time}</span>
+              {activityFeed.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+                  <Bell size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <p>You're all caught up.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {activityFeed.map(act => (
+                    <div key={act.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', borderBottom: '1px solid var(--glass-border)' }}>
+                      <div>
+                        <p style={{ fontSize: '13.5px', color: 'var(--text-white)' }}>{act.text}</p>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{act.time}</span>
+                      </div>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)' }} />
                     </div>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-cyan)' }} />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1145,29 +1136,11 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Marketing Analytics</h3>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Impressions</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>2.4M</h3>
-                  <p style={{ fontSize: '11px', color: '#22c55e', marginTop: '6px' }}>+12% vs last month</p>
-                </div>
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Avg. Audience Authenticity</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>96.4%</h3>
-                  <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>Audited by Creators Hub engine</p>
-                </div>
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Return On Ad Spend (ROAS)</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>4.8x</h3>
-                  <p style={{ fontSize: '11px', color: '#22c55e', marginTop: '6px' }}>Excellent conversion index</p>
-                </div>
-              </div>
-
-              <div className="glass-panel" style={{ padding: '24px', minHeight: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <BarChart3 size={32} style={{ marginBottom: '10px' }} />
-                  <p style={{ fontSize: '13.5px' }}>Engagement Graphs Loading...</p>
-                </div>
+              <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
+                <BarChart3 size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+                <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>
+                  Analytics will appear after your profile starts receiving visitors.
+                </p>
               </div>
             </div>
           )}
@@ -1252,29 +1225,52 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
           {/* ==================== 11. BILLING PLACEHOLDER ==================== */}
           {activeTab === 'billing' && (
-            <div className="glass-panel" style={{ padding: '24px', textAlign: 'center' }}>
-              <CreditCard size={40} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-              <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>Billing & Subscriptions</h3>
-              <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>Manage secure escrow credit lines and deposit accounts.</p>
+            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
+              <CreditCard size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+              <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>No Payments Yet</h3>
+              <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>Fund your first campaign milestone to start secure escrow.</p>
             </div>
           )}
 
           {/* ==================== 12. SETTINGS PLACEHOLDER ==================== */}
           {activeTab === 'settings' && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Workspace Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                  <span>Escrow Auto-Release Milestones</span>
-                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Workspace Settings</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                    <span>Escrow Auto-Release Milestones</span>
+                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                    <span>Ecosystem Directory Public Listing</span>
+                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+                    <span>Email Slack/Discord Channel Alerts</span>
+                    <input type="checkbox" style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                  <span>Ecosystem Directory Public Listing</span>
-                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
-                  <span>Email Slack/Discord Channel Alerts</span>
-                  <input type="checkbox" style={{ accentColor: 'var(--accent-cyan)' }} />
+              </div>
+
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Privacy Settings</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: '600' }}>Contact Visibility</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Control the visibility of your business email, phone, address, and website on your profile.</span>
+                    </div>
+                    <select 
+                      value={currentUser.contactVisibility || 'Private'} 
+                      onChange={(e) => updateProfile(currentUser.id, { contactVisibility: e.target.value })}
+                      className="form-input"
+                      style={{ width: '180px', height: '38px', minHeight: '38px', background: 'var(--bg-deep)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-white)', padding: '0 8px' }}
+                    >
+                      <option value="Public">Public</option>
+                      <option value="Private">Private</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>

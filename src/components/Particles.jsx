@@ -120,12 +120,12 @@ export const Particles = () => {
         let color;
         if (isLight) {
           color = Math.random() > 0.5 
-            ? 'rgba(2, 132, 199, 0.15)'  // Light Sky Blue
-            : 'rgba(6, 182, 212, 0.15)'; // Light Cyan
+            ? 'rgba(0, 0, 0, 0.08)'  // Monochrome Black
+            : 'rgba(100, 100, 100, 0.08)'; // Monochrome Grey
         } else {
           color = Math.random() > 0.5
-            ? 'rgba(0, 194, 255, 0.25)'  // Electric Cyan/Blue
-            : 'rgba(6, 182, 212, 0.25)';  // Medium Cyan
+            ? 'rgba(0, 0, 0, 0.15)'  
+            : 'rgba(100, 100, 100, 0.15)';  
         }
         
         particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
@@ -143,9 +143,9 @@ export const Particles = () => {
           if (distance < 110) {
             opacityValue = 1 - (distance / 110);
             if (isLight) {
-              ctx.strokeStyle = `rgba(2, 132, 199, ${opacityValue * 0.08})`;
+              ctx.strokeStyle = `rgba(0, 0, 0, ${opacityValue * 0.05})`;
             } else {
-              ctx.strokeStyle = `rgba(6, 182, 212, ${opacityValue * 0.12})`;
+              ctx.strokeStyle = `rgba(0, 0, 0, ${opacityValue * 0.08})`;
             }
             ctx.lineWidth = 1;
             ctx.beginPath();

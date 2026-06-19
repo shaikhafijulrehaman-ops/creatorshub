@@ -2,59 +2,71 @@
 
 :root {
   /* Colors */
-  --bg-deep: #F5FBF9;       /* Primary Background */
-  --bg-darker: #F5FBF9;     /* Same as Primary Background */
-  --bg-dark: #EEF8F5;       /* Secondary Background */
-  --bg-surface: #FFFFFF;    /* Cards / Surface */
+  --bg-deep: #F5F5F5;       /* Background */
+  --bg-darker: #F5F5F5;     /* Same as Background */
+  --bg-dark: #FFFFFF;       /* Cards / Navbar / Sidebar */
+  --bg-surface: #FFFFFF;    /* Cards */
   
-  --accent-cyan-bright: #5BAE9B; /* Primary Accent */
-  --accent-cyan: #5BAE9B;
-  --accent-cyan-light: #7EC5B4;  /* Secondary Accent */
-  --accent-cyan-glow: rgba(91, 174, 155, 0.15); /* Light Accent */
+  --accent-cyan-bright: #000000; /* Primary Accent */
+  --accent-cyan: #000000;
+  --accent-cyan-light: #222222;  /* Hover */
+  --accent-cyan-glow: rgba(0, 0, 0, 0.04); /* Inactive light hover */
   
-  --text-white: #152826;     /* Text Primary */
-  --text-gray-light: #667A78; /* Text Secondary */
-  --text-gray: #667A78;      /* Text Secondary */
-  --text-muted: #8DA4A0;     /* Muted Text */
+  --text-white: #000000;     /* Primary Text */
+  --text-gray-light: #666666; /* Secondary Text */
+  --text-gray: #666666;      /* Secondary Text */
+  --text-muted: #9CA3AF;     /* Muted Text */
   
+  /* Status Colors */
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
+
   /* Buttons */
-  --btn-primary-bg: #5BAE9B;
+  --btn-primary-bg: #000000;
   --btn-primary-text: #FFFFFF;
   --btn-secondary-bg: #FFFFFF;
-  --btn-secondary-border: #5BAE9B;
-  --btn-secondary-text: #5BAE9B;
-  --btn-secondary-hover-bg: #D9F2EB; /* Light Mint */
+  --btn-secondary-border: #D1D5DB;
+  --btn-secondary-text: #111111;
+  --btn-secondary-hover-bg: #F3F4F6;
   
   /* Gradients */
-  --grad-primary: linear-gradient(135deg, #5BAE9B 0%, #7EC5B4 100%);
-  --grad-cyan-white: linear-gradient(135deg, #152826 0%, #5BAE9B 100%);
-  --grad-text-primary: linear-gradient(135deg, #152826 30%, #5BAE9B 100%);
-  --grad-text-secondary: linear-gradient(135deg, #152826 0%, #7EC5B4 50%, #5BAE9B 100%);
-  --grad-dark-mesh: radial-gradient(circle at 50% 50%, rgba(91, 174, 155, 0.04) 0%, rgba(126, 197, 180, 0.02) 60%, #F5FBF9 100%);
-  --grad-glow: radial-gradient(circle, rgba(91, 174, 155, 0.06) 0%, rgba(126, 197, 180, 0.02) 50%, transparent 100%);
+  --grad-primary: linear-gradient(135deg, #000000 0%, #222222 100%);
+  --grad-cyan-white: linear-gradient(135deg, #000000 0%, #222222 100%);
+  --grad-text-primary: linear-gradient(135deg, #000000 30%, #222222 100%);
+  --grad-text-secondary: linear-gradient(135deg, #000000 0%, #222222 50%, #111111 100%);
+  --grad-dark-mesh: none;
+  --grad-glow: radial-gradient(circle, rgba(0, 0, 0, 0.01) 0%, transparent 100%);
   
   /* Shadows & Glows */
-  --shadow-premium: 0 10px 30px -10px rgba(21, 40, 38, 0.06);
-  --shadow-glass: 0 8px 32px 0 rgba(21, 40, 38, 0.04);
-  --glow-cyan-soft: none; /* No heavy glow */
-  --glow-cyan: none;      /* No neon glow */
-  --glow-white: 0 0 15px rgba(21, 40, 38, 0.02);
+  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.03);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.01);
+  --glow-cyan-soft: none;
+  --glow-cyan: none;
+  --glow-white: 0 0 15px rgba(0, 0, 0, 0.01);
   
   /* Glassmorphism */
-  --glass-bg: #FFFFFF;
+  --glass-bg: #FFFFFF; /* White */
   --glass-bg-hover: #FFFFFF;
-  --glass-border: #D8E9E3;
-  --glass-border-hover: #7EC5B4;
+  --glass-border: #E5E7EB; /* Border */
+  --glass-border-hover: #000000;
   --glass-filter: none;
   
+  /* Chat bubbles styling variables */
+  --chat-outgoing-bg: #000000;
+  --chat-outgoing-text: #FFFFFF;
+  --chat-incoming-bg: #F3F4F6;
+  --chat-incoming-text: #111111;
+
   /* Moving Grid */
-  --grid-color: rgba(91, 174, 155, 0.02);
+  --grid-color: rgba(0, 0, 0, 0.01);
   
   /* Transitions */
-  --transition-fast: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-normal: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-slow: all 0.85s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-spring: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-fast: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
   
   /* Fonts */
   --font-logo: 'Outfit', sans-serif;

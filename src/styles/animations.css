@@ -26,13 +26,13 @@
 
 @keyframes pulse-glow {
   0% {
-    box-shadow: 0 0 15px rgba(0, 194, 255, 0.2), 0 0 5px rgba(6, 182, 212, 0.1);
+    box-shadow: 0 0 15px rgba(47, 175, 144, 0.1), 0 0 5px rgba(47, 175, 144, 0.05);
   }
   50% {
-    box-shadow: 0 0 30px rgba(0, 194, 255, 0.4), 0 0 15px rgba(6, 182, 212, 0.2);
+    box-shadow: 0 0 25px rgba(47, 175, 144, 0.2), 0 0 10px rgba(47, 175, 144, 0.1);
   }
   100% {
-    box-shadow: 0 0 15px rgba(0, 194, 255, 0.2), 0 0 5px rgba(6, 182, 212, 0.1);
+    box-shadow: 0 0 15px rgba(47, 175, 144, 0.1), 0 0 5px rgba(47, 175, 144, 0.05);
   }
 }
 

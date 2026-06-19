@@ -20,7 +20,7 @@ export const Header = ({ onNavigate, currentPage }) => {
     if (anchor) {
       setTimeout(() => {
         document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth' });
-      }, 500);
+      }, 100);
     }
   };
 

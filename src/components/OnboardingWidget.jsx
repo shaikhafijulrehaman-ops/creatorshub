@@ -52,7 +52,7 @@ export const OnboardingWidget = () => {
       });
       setVerifying(false);
       setActiveModal(null);
-    }, 1500);
+    }, 500);
   };
 
   // Check Card Statuses

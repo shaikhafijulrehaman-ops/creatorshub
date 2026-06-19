@@ -32,7 +32,7 @@ export const Landing = ({ onNavigate }) => {
 
     setTimeout(() => {
       onNavigate('onboarding');
-    }, 700);
+    }, 150);
   };
 
   // Scroll Reveal Observer for premium entrance animations
@@ -99,7 +99,7 @@ export const Landing = ({ onNavigate }) => {
         textAlign: 'center',
         padding: '60px 16px 50px 16px',
         position: 'relative',
-        background: isLight ? 'radial-gradient(ellipse at top, rgba(2, 132, 199, 0.08), transparent 75%)' : 'transparent',
+        background: isLight ? 'radial-gradient(ellipse at top, rgba(0, 0, 0, 0.02), transparent 75%)' : 'transparent',
         zIndex: 1
       }}>
         {/* Subtle Moving Grid Background Overlay */}
@@ -126,8 +126,8 @@ export const Landing = ({ onNavigate }) => {
           width: '450px',
           height: '450px',
           background: isLight 
-            ? 'radial-gradient(circle, rgba(2, 132, 199, 0.08) 0%, transparent 70%)' 
-            : 'radial-gradient(circle, rgba(0, 217, 255, 0.08) 0%, transparent 70%)',
+            ? 'radial-gradient(circle, rgba(0, 0, 0, 0.02) 0%, transparent 70%)' 
+            : 'radial-gradient(circle, rgba(0, 0, 0, 0.02) 0%, transparent 70%)',
           borderRadius: '50%',
           filter: 'blur(100px)',
           pointerEvents: 'none',
@@ -140,14 +140,14 @@ export const Landing = ({ onNavigate }) => {
             display: 'inline-flex', 
             alignItems: 'center', 
             gap: '8px',
-            background: 'rgba(0, 217, 255, 0.06)',
-            border: '1px solid rgba(0, 217, 255, 0.18)',
+            background: 'rgba(0, 0, 0, 0.03)',
+            border: '1px solid rgba(0, 0, 0, 0.1)',
             borderRadius: '30px',
             padding: '8px 18px',
             fontSize: '13px',
             fontWeight: '600',
             color: 'var(--accent-cyan-bright)',
-            boxShadow: 'var(--glow-cyan) 0px 0px 15px -8px',
+            boxShadow: 'none',
             marginBottom: '24px'
           }}>
             <Sparkles size={14} /> The Premium Creator Technology Platform
@@ -384,13 +384,13 @@ export const Landing = ({ onNavigate }) => {
                 width: '44px',
                 height: '44px',
                 borderRadius: '10px',
-                background: 'rgba(0, 217, 255, 0.08)',
-                border: '1px solid rgba(0, 217, 255, 0.2)',
+                background: 'rgba(0, 0, 0, 0.03)',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
                 color: 'var(--accent-cyan-bright)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 10px rgba(0, 217, 255, 0.1)'
+                boxShadow: 'none'
               }}>
                 {valProp.icon}
               </div>
@@ -503,46 +503,6 @@ export const Landing = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* FEATURES SECTION */}
-      <section id="features" style={{ maxWidth: '1100px', margin: '0 auto', width: '100%', padding: '40px 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <h2 style={{ fontSize: '36px', fontWeight: '800' }}>Ecosystem Features</h2>
-          <p style={{ color: 'var(--text-gray)', fontSize: '14px', marginTop: '6px' }}>Advanced tools built for enterprise campaigns and creator careers.</p>
-        </div>
-
-        <div className="responsive-grid-3-2-1">
-          {[
-            { title: 'Trusted Profiles', desc: 'Verified identity and audited portfolio credentials secure safety metrics.', icon: <Shield size={20} /> },
-            { title: 'AI Matching', desc: 'AI Match Engine calculates compatibility scores based on category alignment.', icon: <Cpu size={20} /> },
-            { title: 'Creator Teams', desc: 'Assembles composite teams (influencers + devs + editors) into one active workspace.', icon: <Users size={20} /> },
-            { title: 'Project Workspace', desc: 'Features milestones checks, chats, voice notes, and reference files vault.', icon: <Layers size={20} /> },
-            { title: 'Portfolio System', desc: 'Audited visual layout showcase representing authentic campaign deliverables.', icon: <Eye size={20} /> },
-            { title: 'Verification Center', desc: 'Identity validation and audience growth metrics authentic reviews.', icon: <ShieldCheck size={20} /> },
-            { title: 'Secure Collaboration', desc: 'Escrows protect transactional settlements until deliverables check out.', icon: <CreditCard size={20} /> },
-            { title: 'Analytics Dashboard', desc: 'Demographics statistics, reach growth metrics, and audit authenticity audits.', icon: <BarChart2 size={20} /> }
-          ].map((f, idx) => (
-            <div 
-              key={f.title} 
-              className="scroll-reveal glass-panel glass-panel-hover" 
-              style={{ 
-                padding: '28px', 
-                display: 'flex', 
-                gap: '16px',
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--glass-border)',
-                transitionDelay: `${idx * 80}ms`
-              }}
-            >
-              <div style={{ color: 'var(--accent-cyan)', marginTop: '2px' }}>{f.icon}</div>
-              <div>
-                <h4 style={{ fontSize: '16px', fontWeight: '700', marginBottom: '6px' }}>{f.title}</h4>
-                <p style={{ fontSize: '13px', color: 'var(--text-gray)', lineHeight: '1.4' }}>{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* FOOTER & POWERED BY UXITECH */}
       <footer className="scroll-reveal" style={{ 
         borderTop: '1px solid rgba(255,255,255,0.06)', 
@@ -565,10 +525,6 @@ export const Landing = ({ onNavigate }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13.5px' }} className="footer-links-col">
             <strong style={{ color: 'var(--text-white)' }}>Navigation</strong>
             <a href="#explore" onClick={(e) => { e.preventDefault(); onNavigate('explore'); }} style={{ color: 'var(--text-gray)' }}>Explore</a>
-            <a href="#features" onClick={(e) => { 
-              e.preventDefault();
-              document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-            }} style={{ color: 'var(--text-gray)' }}>Features</a>
             <a href="#join" onClick={(e) => { e.preventDefault(); onNavigate('onboarding'); }} style={{ color: 'var(--text-gray)' }}>Join Hub</a>
           </div>
         </div>
@@ -596,7 +552,7 @@ export const Landing = ({ onNavigate }) => {
               padding: '10px 22px',
               borderRadius: '30px',
               background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(0, 217, 255, 0.15)',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
               backdropFilter: 'blur(12px)',
               boxShadow: 'var(--shadow-glass)',
               color: 'var(--text-white)',
@@ -607,7 +563,7 @@ export const Landing = ({ onNavigate }) => {
               cursor: 'pointer'
             }}
           >
-            Powered by <span style={{ color: 'var(--accent-cyan-bright)', fontWeight: '800', textShadow: '0 0 10px rgba(0, 217, 255, 0.3)' }}>UXITECH</span>
+            Powered by <span style={{ color: 'var(--accent-cyan-bright)', fontWeight: '800', textShadow: 'none' }}>UXITECH</span>
             <ExternalLink size={13} style={{ color: 'var(--accent-cyan-bright)' }} />
           </a>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '500', margin: 0, textAlign: 'center' }}>
@@ -805,14 +761,14 @@ export const Landing = ({ onNavigate }) => {
         .uxitech-glass-badge:hover {
           transform: scale(1.05);
           background: rgba(255, 255, 255, 0.08) !important;
-          border-color: rgba(0, 217, 255, 0.4) !important;
-          box-shadow: 0 0 20px rgba(0, 217, 255, 0.25), var(--shadow-glass) !important;
+          border-color: rgba(0, 0, 0, 0.15) !important;
+          box-shadow: 0 0 20px rgba(0, 0, 0, 0.03), var(--shadow-glass) !important;
         }
 
         /* Feature Strip Hover styles */
         .feature-strip-item:hover {
-          background: rgba(0, 217, 255, 0.03) !important;
-          border-color: rgba(0, 217, 255, 0.15) !important;
+          background: rgba(0, 0, 0, 0.015) !important;
+          border-color: rgba(0, 0, 0, 0.06) !important;
           transform: translateY(-2px);
         }
 

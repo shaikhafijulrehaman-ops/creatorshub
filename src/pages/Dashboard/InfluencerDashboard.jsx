@@ -1,10 +1,11 @@
 import { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
+import { MessagingCenter } from './Shared/MessagingCenter';
 import { 
   LayoutDashboard, Search, Briefcase, FileText, CheckSquare, 
   Award, MessageSquare, BarChart3, User, Settings, LogOut,
   IndianRupee, Bookmark, X, Plus, Mail, MapPin, Clock, Calendar,
-  Send, ArrowRight, ShieldCheck
+  Send, ArrowRight, ShieldCheck, CreditCard, Star
 } from 'lucide-react';
 import { VerificationCenter } from './Shared/VerificationCenter';
 
@@ -54,7 +55,8 @@ const generateTaskId = () => `t-${Date.now()}`;
 export const InfluencerDashboard = ({ onNavigate }) => {
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
-    activityFeed, messages, sendMessage
+    activityFeed, messages, sendMessage, loading,
+    activeTabToRedirect, setActiveTabToRedirect
   } = useContext(AppContext);
 
   // Tab State
@@ -63,6 +65,13 @@ export const InfluencerDashboard = ({ onNavigate }) => {
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTabToRedirect === 'messages') {
+      setActiveTab('messages');
+      setActiveTabToRedirect(null);
+    }
+  }, [activeTabToRedirect]);
 
   // Brand Deals state
   const [savedCampaigns, setSavedCampaigns] = useState(() => {
@@ -82,12 +91,19 @@ export const InfluencerDashboard = ({ onNavigate }) => {
   const [daysToComplete, setDaysToComplete] = useState(5);
 
   // Media Kit Form States
-  const [instaFollowers, setInstaFollowers] = useState(currentUser.platforms?.Instagram?.followers || '450K');
-  const [instaReach, setInstaReach] = useState(currentUser.platforms?.Instagram?.reach || '1.2M');
-  const [instaEngage, setInstaEngage] = useState(currentUser.platforms?.Instagram?.engagement || '4.8%');
-  const [youtubeSubscribers, setYoutubeSubscribers] = useState(currentUser.platforms?.YouTube?.followers || '820K');
-  const [youtubeReach, setYoutubeReach] = useState(currentUser.platforms?.YouTube?.reach || '3.0M');
-  const [youtubeEngage, setYoutubeEngage] = useState(currentUser.platforms?.YouTube?.engagement || '6.2%');
+  const [instaFollowers, setInstaFollowers] = useState(currentUser?.platforms?.Instagram?.followers || '');
+  const [instaReach, setInstaReach] = useState(currentUser?.platforms?.Instagram?.reach || '');
+  const [instaEngage, setInstaEngage] = useState(currentUser?.platforms?.Instagram?.engagement || '');
+  const [youtubeSubscribers, setYoutubeSubscribers] = useState(currentUser?.platforms?.YouTube?.followers || '');
+  const [youtubeReach, setYoutubeReach] = useState(currentUser?.platforms?.YouTube?.reach || '');
+  const [youtubeEngage, setYoutubeEngage] = useState(currentUser?.platforms?.YouTube?.engagement || '');
+
+  // Portfolio Modal States
+  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
+  const [portTitle, setPortTitle] = useState('');
+  const [portType, setPortType] = useState('Campaign');
+  const [portUrl, setPortUrl] = useState('');
+  const [portDesc, setPortDesc] = useState('');
 
   // Active Workspace / Projects View State
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(null);
@@ -191,19 +207,119 @@ export const InfluencerDashboard = ({ onNavigate }) => {
     }
   });
 
+  // Dynamic Earnings Calculations
+  const completedProjects = projects.filter(p => {
+    if (p.status !== 'Completed') return false;
+    return p.team && p.team.members && Object.values(p.team.members).includes(currentUser?.id);
+  });
+  
+  const totalEarningsAmount = completedProjects.reduce((sum, p) => {
+    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
+    return sum + numericBudget;
+  }, 0);
+
+  const activeCampaignValue = activeWorkspaces.reduce((sum, p) => {
+    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
+    return sum + numericBudget;
+  }, 0);
+
+  const pendingEscrowAmount = activeWorkspaces.reduce((sum, p) => {
+    if (p.team && p.team.payments) {
+      const pendingForProj = p.team.payments
+        .filter(pm => pm.status !== 'Paid')
+        .reduce((s, pm) => s + (parseFloat(pm.amount?.replace(/[^0-9.]/g, '')) || 0), 0);
+      return sum + pendingForProj;
+    }
+    return sum;
+  }, 0);
+
+  // Dynamic Invitations Calculations
+  const invitations = projects.filter(p => p.invitedCreators && p.invitedCreators.includes(currentUser?.id));
+
+  // Add Portfolio Item
+  const handlePortfolioSubmit = (e) => {
+    e.preventDefault();
+    if (!portTitle || !portDesc) {
+      alert('Please fill out required fields.');
+      return;
+    }
+
+    const newItem = {
+      title: portTitle,
+      type: portType,
+      url: portUrl,
+      description: portDesc
+    };
+
+    const currentPortfolio = currentUser.portfolio || [];
+    updateProfile(currentUser.id, { portfolio: [...currentPortfolio, newItem] });
+
+    setPortTitle('');
+    setPortUrl('');
+    setPortDesc('');
+    setShowPortfolioModal(false);
+    alert('Portfolio item published!');
+  };
+
+  const getPlatformMetrics = () => {
+    const platforms = currentUser?.platforms || {};
+    let totalReach = 0;
+    let totalEngagement = 0;
+    let engagementCount = 0;
+
+    // Instagram
+    if (platforms.Instagram) {
+      const reachStr = String(platforms.Instagram.reach || '');
+      const reach = parseFloat(reachStr.replace(/[^0-9.]/g, '')) || 0;
+      const reachMultiplier = reachStr.toLowerCase().includes('m') ? 1000000 : (reachStr.toLowerCase().includes('k') ? 1000 : 1);
+      totalReach += reach * reachMultiplier;
+
+      const eng = parseFloat(String(platforms.Instagram.engagement || '').replace(/[^0-9.]/g, '')) || 0;
+      if (eng > 0) {
+        totalEngagement += eng;
+        engagementCount++;
+      }
+    }
+
+    // YouTube
+    if (platforms.YouTube) {
+      const reachStr = String(platforms.YouTube.reach || '');
+      const reach = parseFloat(reachStr.replace(/[^0-9.]/g, '')) || 0;
+      const reachMultiplier = reachStr.toLowerCase().includes('m') ? 1000000 : (reachStr.toLowerCase().includes('k') ? 1000 : 1);
+      totalReach += reach * reachMultiplier;
+
+      const eng = parseFloat(String(platforms.YouTube.engagement || '').replace(/[^0-9.]/g, '')) || 0;
+      if (eng > 0) {
+        totalEngagement += eng;
+        engagementCount++;
+      }
+    }
+
+    const avgEngage = engagementCount > 0 ? (totalEngagement / engagementCount) : 0;
+    return {
+      avgEngagement: avgEngage,
+      totalReach: totalReach
+    };
+  };
+
+  const { avgEngagement, totalReach } = getPlatformMetrics();
+
   // Sidebar Links Configuration
   const sidebarTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { id: 'campaigns', label: 'Campaigns Feed', icon: <Search size={18} /> },
-    { id: 'deals', label: 'Brand Deals', icon: <CheckSquare size={18} /> },
+    { id: 'campaigns', label: 'Discover Campaigns', icon: <Search size={18} /> },
     { id: 'invitations', label: 'Invitations', icon: <FileText size={18} /> },
-    { id: 'mediakit', label: 'Media Kit', icon: <Award size={18} /> },
-    { id: 'calendar', label: 'Content Calendar', icon: <Calendar size={18} /> },
+    { id: 'mediakit', label: 'Portfolio', icon: <Award size={18} /> },
+    { id: 'analytics', label: 'Social Analytics', icon: <BarChart3 size={18} /> },
+    { id: 'earnings', label: 'Earnings', icon: <CreditCard size={18} /> },
+    { id: 'calendar', label: 'Calendar', icon: <Calendar size={18} /> },
     { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-    { id: 'analytics', label: 'Insights', icon: <BarChart3 size={18} /> },
-    { id: 'profile', label: 'Creator Profile', icon: <User size={18} /> },
-    { id: 'settings', label: 'Settings', icon: <Settings size={18} /> }
+    { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
   ];
+
+
+
+  if (!currentUser) return null;
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', position: 'relative' }}>
@@ -450,7 +566,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                   </div>
                   <div>
                     <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Invitations</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{currentUser.invitedCampaigns ? currentUser.invitedCampaigns.length : 1}</h3>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{invitations.length}</h3>
                   </div>
                 </div>
                 <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -459,7 +575,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                   </div>
                   <div>
                     <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Earnings</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹45,000</h3>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹{totalEarningsAmount.toLocaleString()}</h3>
                   </div>
                 </div>
               </section>
@@ -480,20 +596,24 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {openCampaigns.slice(0, 3).map(proj => (
-                        <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                          <div>
-                            <strong style={{ color: 'var(--text-white)', fontSize: '13.5px' }}>{proj.title}</strong>
-                            <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                              <span>Budget: {proj.budget}</span>
-                              <span>Category: {proj.category}</span>
+                      {openCampaigns.length === 0 ? (
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>No campaigns available right now.</p>
+                      ) : (
+                        openCampaigns.slice(0, 3).map(proj => (
+                          <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                            <div>
+                              <strong style={{ color: 'var(--text-white)', fontSize: '13.5px' }}>{proj.title}</strong>
+                              <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                <span>Budget: {proj.budget}</span>
+                                <span>Category: {proj.category}</span>
+                              </div>
                             </div>
+                            <button onClick={() => handleApplyClick(proj.id)} className="btn-primary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11.5px' }}>
+                              Pitch
+                            </button>
                           </div>
-                          <button onClick={() => handleApplyClick(proj.id)} className="btn-primary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11.5px' }}>
-                            Pitch
-                          </button>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
 
@@ -553,15 +673,19 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                   <div className="glass-panel" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '16.5px', fontWeight: '800', marginBottom: '20px' }}>Ecosystem Feed</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {activityFeed.slice(0, 4).map(act => (
-                        <div key={act.id} style={{ fontSize: '12.5px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)', marginTop: '6px' }} />
-                          <div>
-                            <p style={{ color: 'var(--text-gray-light)', lineHeight: '1.4' }}>{act.text}</p>
-                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{act.time}</span>
+                      {activityFeed.length === 0 ? (
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>No recent activities.</p>
+                      ) : (
+                        activityFeed.slice(0, 4).map(act => (
+                          <div key={act.id} style={{ fontSize: '12.5px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)', marginTop: '6px' }} />
+                            <div>
+                              <p style={{ color: 'var(--text-gray-light)', lineHeight: '1.4' }}>{act.text}</p>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{act.time}</span>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
 
@@ -579,67 +703,74 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                 <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Discover campaign packages and collaboration budgets funded in escrow.</p>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {openCampaigns.map(proj => {
-                  const isSaved = savedCampaigns.includes(proj.id);
-                  const hasApplied = proj.proposals?.some(p => p.creatorId === currentUser.id);
+              {openCampaigns.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Briefcase size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <p style={{ fontSize: '14px' }}>No campaigns available.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {openCampaigns.map(proj => {
+                    const isSaved = savedCampaigns.includes(proj.id);
+                    const hasApplied = proj.proposals?.some(p => p.creatorId === currentUser.id);
 
-                  return (
-                    <div key={proj.id} className="glass-panel glass-panel-hover" style={{ padding: '24px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
-                        <div>
-                          <span className="badge-pro" style={{ fontSize: '9px', textTransform: 'uppercase' }}>{proj.category}</span>
-                          <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)', marginTop: '8px' }}>{proj.title}</h4>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Brand: {proj.businessName}</span>
+                    return (
+                      <div key={proj.id} className="glass-panel glass-panel-hover" style={{ padding: '24px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <span className="badge-pro" style={{ fontSize: '9px', textTransform: 'uppercase' }}>{proj.category}</span>
+                            <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)', marginTop: '8px' }}>{proj.title}</h4>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Brand: {proj.businessName}</span>
+                          </div>
+                          
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>Due: {proj.deadline}</span>
+                          </div>
                         </div>
-                        
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>Due: {proj.deadline}</span>
-                        </div>
-                      </div>
 
-                      <p style={{ fontSize: '13.5px', color: 'var(--text-gray-light)', margin: '14px 0', lineHeight: '1.5' }}>
-                        {proj.description}
-                      </p>
+                        <p style={{ fontSize: '13.5px', color: 'var(--text-gray-light)', margin: '14px 0', lineHeight: '1.5' }}>
+                          {proj.description}
+                        </p>
 
-                      <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Work Style: <strong>{proj.remoteType || 'Remote'}</strong></span>
-                        
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <button 
-                            onClick={() => toggleSaveCampaign(proj.id)}
-                            style={{
-                              background: 'var(--bg-dark)',
-                              border: '1px solid var(--glass-border)',
-                              width: '36px', height: '36px', borderRadius: '10px',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
-                              cursor: 'pointer', transition: 'all 0.2s ease'
-                            }}
-                          >
-                            <Bookmark size={15} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
-                          </button>
-                          {hasApplied ? (
-                            <button className="btn-secondary" style={{ padding: '6px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12px', color: '#22c55e', cursor: 'default' }}>
-                              Pitch Submitted
-                            </button>
-                          ) : (
+                        <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Work Style: <strong>{proj.remoteType || 'Remote'}</strong></span>
+                          
+                          <div style={{ display: 'flex', gap: '10px' }}>
                             <button 
-                              onClick={() => handleApplyClick(proj.id)} 
-                              className="btn-primary" 
-                              style={{ padding: '6px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12px' }}
+                              onClick={() => toggleSaveCampaign(proj.id)}
+                              style={{
+                                background: 'var(--bg-dark)',
+                                border: '1px solid var(--glass-border)',
+                                width: '36px', height: '36px', borderRadius: '10px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                                cursor: 'pointer', transition: 'all 0.2s ease'
+                              }}
                             >
-                              Pitch Brand
+                              <Bookmark size={15} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
                             </button>
-                          )}
+                            {hasApplied ? (
+                              <button className="btn-secondary" style={{ padding: '6px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12px', color: '#22c55e', cursor: 'default' }}>
+                                Pitch Submitted
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => handleApplyClick(proj.id)} 
+                                className="btn-primary" 
+                                style={{ padding: '6px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12px' }}
+                              >
+                                Pitch Brand
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -843,21 +974,30 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                 <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Review collaboration requests sent directly to your channels.</p>
               </div>
 
-              <div className="glass-panel" style={{ padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '14px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <strong style={{ color: 'var(--text-white)', fontSize: '14px' }}>Sterling Cafe & Co.</strong>
-                      <span className="badge-premium" style={{ fontSize: '9px' }}>Invitation</span>
-                    </div>
-                    <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>Campaign: Modern Summer Coffee Launch</p>
-                    <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', marginTop: '8px' }}>"Hi Emma, we absolutely love your Chicago travel and food reels. We would love to sponsor a video highlight!"</p>
-                  </div>
-                  <button onClick={() => setActiveTab('campaigns')} className="btn-primary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11px' }}>
-                    View campaign
-                  </button>
+              {invitations.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <Mail size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                  <p>No active campaign invitations.</p>
                 </div>
-              </div>
+              ) : (
+                <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {invitations.map(proj => (
+                    <div key={proj.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '14px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <strong style={{ color: 'var(--text-white)', fontSize: '14px' }}>{proj.businessName}</strong>
+                          <span className="badge-premium" style={{ fontSize: '9px' }}>Invitation</span>
+                        </div>
+                        <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>Campaign: {proj.title}</p>
+                        <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', marginTop: '8px' }}>You have been invited to collaborate on this campaign brief.</p>
+                      </div>
+                      <button onClick={() => setActiveTab('campaigns')} className="btn-primary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11px' }}>
+                        View campaign
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -867,12 +1007,17 @@ export const InfluencerDashboard = ({ onNavigate }) => {
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Creator Media Kit</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Showcase verified audience metrics directly synchronized with platform APIs.</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Creator Media Kit & Portfolio</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Showcase verified audience metrics and public collaboration highlights.</p>
                 </div>
-                <button onClick={() => alert('PDF Media Kit Download generated!')} className="btn-primary" style={{ minHeight: '40px', borderRadius: '10px', fontSize: '12.5px' }}>
-                  Download PDF Media Kit
-                </button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button onClick={() => alert('PDF Media Kit Download generated!')} className="btn-secondary" style={{ minHeight: '40px', borderRadius: '10px', fontSize: '12.5px' }}>
+                    Download PDF
+                  </button>
+                  <button onClick={() => setShowPortfolioModal(true)} className="btn-primary" style={{ minHeight: '40px', borderRadius: '10px' }}>
+                    <Plus size={16} /> Add Project
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '24px' }} className="mediakit-main-grid">
@@ -922,19 +1067,19 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="mediakit-preview-grid">
                       <div className="glass-panel" style={{ padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)' }}>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><BrandIcon type="Instagram" size={12} /> Instagram</span>
-                        <h3 style={{ fontSize: '20px', color: 'var(--text-white)', marginTop: '6px' }}>{instaFollowers}</h3>
+                        <h3 style={{ fontSize: '20px', color: 'var(--text-white)', marginTop: '6px' }}>{instaFollowers || '0'}</h3>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--text-gray)', marginTop: '8px' }}>
-                          <span>Reach: {instaReach}</span>
-                          <span>Engage: {instaEngage}</span>
+                          <span>Reach: {instaReach || '0'}</span>
+                          <span>Engage: {instaEngage || '0%'}</span>
                         </div>
                       </div>
 
                       <div className="glass-panel" style={{ padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)' }}>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><BrandIcon type="Youtube" size={12} /> YouTube</span>
-                        <h3 style={{ fontSize: '20px', color: 'var(--text-white)', marginTop: '6px' }}>{youtubeSubscribers}</h3>
+                        <h3 style={{ fontSize: '20px', color: 'var(--text-white)', marginTop: '6px' }}>{youtubeSubscribers || '0'}</h3>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: 'var(--text-gray)', marginTop: '8px' }}>
-                          <span>Reach: {youtubeReach}</span>
-                          <span>Engage: {youtubeEngage}</span>
+                          <span>Reach: {youtubeReach || '0'}</span>
+                          <span>Engage: {youtubeEngage || '0%'}</span>
                         </div>
                       </div>
                     </div>
@@ -952,6 +1097,55 @@ export const InfluencerDashboard = ({ onNavigate }) => {
 
                 </div>
 
+              </div>
+
+              {/* Portfolio Showcase Section */}
+              <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '28px', marginTop: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-white)' }}>Portfolio</h4>
+                  {currentUser.portfolio && currentUser.portfolio.length > 0 && (
+                    <button onClick={() => setShowPortfolioModal(true)} className="btn-outline-cyan" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '12px' }}>
+                      <Plus size={14} /> Add Project
+                    </button>
+                  )}
+                </div>
+
+                {(!currentUser.portfolio || currentUser.portfolio.length === 0) ? (
+                  <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
+                    <Award size={36} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '12px' }} />
+                    <p style={{ fontSize: '14px', color: 'var(--text-gray)', marginTop: '4px' }}>No portfolio uploaded yet.</p>
+                    <button onClick={() => setShowPortfolioModal(true)} className="btn-primary" style={{ padding: '8px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12.5px', marginTop: '16px' }}>
+                      Upload Portfolio
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }} className="portfolio-projects-grid">
+                    {currentUser.portfolio.map((item, idx) => (
+                      <div key={idx} className="glass-panel" style={{ padding: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <span className="badge-pro" style={{ fontSize: '9px', textTransform: 'uppercase' }}>{item.type || 'Campaign'}</span>
+                          <button 
+                            onClick={() => {
+                              const updated = currentUser.portfolio.filter((_, i) => i !== idx);
+                              updateProfile(currentUser.id, { portfolio: updated });
+                              alert('Project removed.');
+                            }} 
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <h5 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginTop: '8px' }}>{item.title}</h5>
+                        <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '4px', lineHeight: '1.4' }}>{item.description}</p>
+                        {item.url && (
+                          <a href={item.url} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--accent-cyan)', fontSize: '11.5px', marginTop: '10px', fontWeight: '600' }}>
+                            Launch Project <ArrowRight size={12} />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
             </div>
@@ -998,52 +1192,103 @@ export const InfluencerDashboard = ({ onNavigate }) => {
 
           {/* ==================== 7. MESSAGES VIEW ==================== */}
           {activeTab === 'messages' && (
-            <div className="glass-panel" style={{ padding: '24px', minHeight: '400px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '16px' }}>Direct Messaging</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '13.5px' }}>Active deal collaboration locks will show up here for live discussions.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-                {activeWorkspaces.map(c => (
-                  <div 
-                    key={c.id} 
-                    onClick={() => { setSelectedWorkspaceId(c.id); setActiveTab('deals'); }}
-                    style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                    className="glass-panel-hover"
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
-                        <MessageSquare size={18} />
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-white)' }}>{c.title} Secure Chat</h4>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Real-time brand negotiation</span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>Open Chat →</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <MessagingCenter />
           )}
 
           {/* ==================== 8. INSIGHTS ANALYTICS VIEW ==================== */}
           {activeTab === 'analytics' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Audience Performance Insights</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Average Engagement</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>6.8%</h3>
+              {avgEngagement === 0 && totalReach === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: '14px' }}>Analytics will appear after your profile starts receiving visitors.</p>
                 </div>
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Monthly Reach</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>1.4M</h3>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Average Engagement</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>
+                      {avgEngagement.toFixed(1)}%
+                    </h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Monthly Reach</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>
+                      {totalReach >= 1000000 ? (totalReach / 1000000).toFixed(1) + 'M' : (totalReach >= 1000 ? (totalReach / 1000).toFixed(1) + 'K' : totalReach)}
+                    </h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Revenue Completed</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>
+                      ₹{totalEarningsAmount.toLocaleString()}
+                    </h3>
+                  </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Revenue Completed</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>₹45,000</h3>
+              )}
+            </div>
+          )}
+
+          {/* ==================== EARNINGS VIEW ==================== */}
+          {activeTab === 'earnings' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Earnings Dashboard</h3>
+              {totalEarningsAmount === 0 ? (
+                <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
+                  <IndianRupee size={40} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+                  <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>No Earnings Yet</h4>
+                  <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', marginTop: '4px' }}>Complete your first campaign to start earning.</p>
+                  <button onClick={() => setActiveTab('campaigns')} className="btn-primary" style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '10px', fontSize: '13px', marginTop: '20px' }}>
+                    Browse Opportunities
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Escrow Payments Pending</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>
+                      ₹{pendingEscrowAmount.toLocaleString()}
+                    </h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Active Campaign Value</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>
+                      ₹{activeCampaignValue.toLocaleString()}
+                    </h3>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Net Earned</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>
+                      ₹{totalEarningsAmount.toLocaleString()}
+                    </h3>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ==================== CLIENT REVIEWS VIEW ==================== */}
+          {activeTab === 'reviews' && (
+            <div className="glass-panel" style={{ padding: '24px' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Brand Collaboration Reviews</h3>
+              {(!currentUser.reviews || currentUser.reviews.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: '14px' }}>No reviews yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {currentUser.reviews.map((rev, idx) => (
+                    <div key={idx} style={{ padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ color: 'var(--text-white)', fontSize: '14px' }}>{rev.businessName}</strong>
+                        <div style={{ display: 'flex', gap: '2px', color: '#eab308' }}>
+                          {Array.from({ length: Math.round(rev.rating) }).map((_, i) => <Star key={i} size={12} fill="#eab308" stroke="#eab308" />)}
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '8px', lineHeight: '1.4' }}>"{rev.comment}"</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -1129,16 +1374,39 @@ export const InfluencerDashboard = ({ onNavigate }) => {
 
           {/* ==================== 10. SETTINGS VIEW ==================== */}
           {activeTab === 'settings' && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Creator Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                  <span>Synchronize Social Media Feed Posts Automatically</span>
-                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Creator Settings</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                    <span>Synchronize Social Media Feed Posts Automatically</span>
+                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+                    <span>Visible to Certified Businesses</span>
+                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
-                  <span>Visible to Certified Businesses</span>
-                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+              </div>
+
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Privacy Settings</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '14px', fontWeight: '600' }}>Platform Links Visibility</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Control who can see your platform and social media links (Instagram, YouTube, etc.) on your profile.</span>
+                    </div>
+                    <select 
+                      value={currentUser.socialLinksVisibility || 'Private'} 
+                      onChange={(e) => updateProfile(currentUser.id, { socialLinksVisibility: e.target.value })}
+                      className="form-input"
+                      style={{ width: '180px', height: '38px', minHeight: '38px', background: 'var(--bg-deep)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-white)', padding: '0 8px' }}
+                    >
+                      <option value="Public">Public</option>
+                      <option value="Private">Private</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1202,6 +1470,82 @@ export const InfluencerDashboard = ({ onNavigate }) => {
               </div>
 
               <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Submit Brand Pitch</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== PORTFOLIO MODAL ==================== */}
+      {showPortfolioModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <div className="glass-panel animate-scale-up" style={{ width: '92%', maxWidth: '500px', padding: '32px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '14px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Add Portfolio Item</h3>
+              <button onClick={() => setShowPortfolioModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePortfolioSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label className="form-label">Project Title*</label>
+                <input 
+                  type="text" 
+                  value={portTitle} 
+                  onChange={(e) => setPortTitle(e.target.value)} 
+                  className="form-input" 
+                  placeholder="E.g. Summer Skincare Campaign Reel" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Project Type*</label>
+                <select 
+                  value={portType} 
+                  onChange={(e) => setPortType(e.target.value)} 
+                  className="form-input"
+                  style={{ height: '40px', minHeight: '40px', padding: '0 12px' }}
+                >
+                  <option value="Campaign">Campaign</option>
+                  <option value="YouTube Video">YouTube Video</option>
+                  <option value="Instagram Reel">Instagram Reel</option>
+                  <option value="TikTok Showcase">TikTok Showcase</option>
+                  <option value="Brand Deal">Brand Deal</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Project URL (Optional)</label>
+                <input 
+                  type="url" 
+                  value={portUrl} 
+                  onChange={(e) => setPortUrl(e.target.value)} 
+                  className="form-input" 
+                  placeholder="https://instagram.com/p/..." 
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Description / Results*</label>
+                <textarea 
+                  value={portDesc} 
+                  onChange={(e) => setPortDesc(e.target.value)} 
+                  className="form-input" 
+                  rows={4} 
+                  placeholder="Describe your role, organic reach, views generated, engagement rate, or brand satisfaction..." 
+                  required 
+                />
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Upload Portfolio</button>
             </form>
           </div>
         </div>

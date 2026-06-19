@@ -44,3 +44,23 @@ if (!supabaseInstance) {
 }
 
 export const supabase = supabaseInstance;
+
+export const setSupabaseUserHeader = (userId) => {
+  if (supabaseInstance && supabaseInstance.rest && supabaseInstance.rest.headers) {
+    const headers = supabaseInstance.rest.headers;
+    if (userId) {
+      if (typeof headers.set === 'function') {
+        headers.set('x-user-id', userId);
+      } else {
+        headers['x-user-id'] = userId;
+      }
+    } else {
+      if (typeof headers.delete === 'function') {
+        headers.delete('x-user-id');
+      } else {
+        delete headers['x-user-id'];
+      }
+    }
+  }
+};
+

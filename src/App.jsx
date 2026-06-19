@@ -14,14 +14,13 @@ import { Search, Briefcase, Sparkles } from 'lucide-react';
 
 
 const AppContent = () => {
-  const { currentUser, users, projects } = useContext(AppContext);
+  const { currentUser, users, projects, loading } = useContext(AppContext);
   
 
 
   // Routing States
   const [currentPage, setCurrentPage] = useState('landing');
   const [navigationParams, setNavigationParams] = useState({});
-  const [pageTransitioning, setPageTransitioning] = useState(false);
 
   // Overlay states (inside dashboard or explore)
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(null);
@@ -31,15 +30,11 @@ const AppContent = () => {
   const [exploreQuery, setExploreQuery] = useState('');
 
   const handleNavigate = (page, params = {}) => {
-    setPageTransitioning(true);
-    setTimeout(() => {
-      setCurrentPage(page);
-      setNavigationParams(params);
-      setActiveWorkspaceId(null);
-      setActiveProfileId(null);
-      setPageTransitioning(false);
-      window.scrollTo(0, 0);
-    }, 400); // match fade transition
+    setCurrentPage(page);
+    setNavigationParams(params);
+    setActiveWorkspaceId(null);
+    setActiveProfileId(null);
+    window.scrollTo(0, 0);
   };
 
   const handleOpenWorkspace = (projId) => {
@@ -66,12 +61,15 @@ const AppContent = () => {
       {/* Global Particle Background */}
       <Particles />
 
-      {/* Global Transitions Page Overlay */}
-      {pageTransitioning && (
-        <div className="fullscreen-loader">
-          <div className="loader-spinner" />
+      {/* Global loading state spinner */}
+      {loading && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-deep)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+          <div className="loader-spinner" style={{ width: '48px', height: '48px', border: '3px solid var(--accent-cyan-glow)', borderTopColor: 'var(--accent-cyan)' }} />
+          <span style={{ fontSize: '13.5px', color: 'var(--text-gray)', fontWeight: '600', letterSpacing: '0.05em' }}>Loading Creators Hub...</span>
         </div>
       )}
+
+
 
       {/* Header bar */}
       <Header onNavigate={handleNavigate} currentPage={currentPage} />
@@ -98,14 +96,6 @@ const AppContent = () => {
               return null;
             }
 
-            // Overlay renders take precedence in the dashboard space
-            if (activeProfileId) {
-              return <ProfileView userId={activeProfileId} onClose={handleCloseOverlay} />;
-            }
-            if (activeWorkspaceId) {
-              return <Workspace projectId={activeWorkspaceId} onClose={handleCloseOverlay} />;
-            }
-
             // Render Role-specific Dashboard
             if (currentUser.role === 'Business Holder') {
               return (
@@ -121,6 +111,7 @@ const AppContent = () => {
                 <InfluencerDashboard 
                   onNavigate={handleNavigate} 
                   onOpenWorkspace={handleOpenWorkspace} 
+                  onOpenProfile={handleOpenProfile}
                 />
               );
             }
@@ -129,6 +120,7 @@ const AppContent = () => {
                 <FreelancerDashboard 
                   onNavigate={handleNavigate} 
                   onOpenWorkspace={handleOpenWorkspace} 
+                  onOpenProfile={handleOpenProfile}
                 />
               );
             }
@@ -138,10 +130,6 @@ const AppContent = () => {
         {/* EXPLORE DIRECTORY PAGE (REAL-TIME ECOSYSTEM FEED) */}
         {currentPage === 'explore' && (
           (() => {
-            if (activeProfileId) {
-              return <ProfileView userId={activeProfileId} onClose={handleCloseOverlay} />;
-            }
-
             // Get campaigns and users from context
             const openProjects = projects.filter(p => p.status === 'Open');
             
@@ -260,33 +248,28 @@ const AppContent = () => {
                       <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Trending Campaigns
                     </h3>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }} className="campaigns-grid-strip">
-                      <div className="glass-panel" style={{ padding: '20px', background: 'radial-gradient(ellipse at bottom right, rgba(0, 217, 255, 0.05), transparent 70%)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '10px', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>Instagram Reel</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Nike</span>
-                        </div>
-                        <h4 style={{ fontSize: '14.5px', color: 'var(--text-white)', fontWeight: '800', marginTop: '12px' }}>Air Max Lifestyle Highlight</h4>
-                        <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '6px' }}>Visual aesthetics highlighting urban shoe designs.</p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-cyan)' }}>₹15,000</span>
-                          <button onClick={() => handleNavigate('onboarding')} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10.5px', minHeight: '24px', borderRadius: '4px' }}>Apply</button>
-                        </div>
+                    {openProjects.length === 0 ? (
+                      <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                        No campaigns available right now.
                       </div>
-
-                      <div className="glass-panel" style={{ padding: '20px', background: 'radial-gradient(ellipse at bottom right, rgba(6, 182, 212, 0.05), transparent 70%)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '10px', background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>YouTube Video</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Starbucks</span>
-                        </div>
-                        <h4 style={{ fontSize: '14.5px', color: 'var(--text-white)', fontWeight: '800', marginTop: '12px' }}>Morning Sourdough Croissants</h4>
-                        <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '6px' }}>Highlight organic coffee beans extraction guides.</p>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-cyan)' }}>₹25,000</span>
-                          <button onClick={() => handleNavigate('onboarding')} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10.5px', minHeight: '24px', borderRadius: '4px' }}>Apply</button>
-                        </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: openProjects.length === 1 ? '1fr' : '1fr 1fr', gap: '16px' }} className="campaigns-grid-strip">
+                        {openProjects.slice(0, 2).map(proj => (
+                          <div key={proj.id} className="glass-panel" style={{ padding: '20px', background: 'radial-gradient(ellipse at bottom right, rgba(0, 217, 255, 0.05), transparent 70%)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '10px', background: 'rgba(91, 174, 155, 0.15)', color: 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>{proj.category || 'Campaign'}</span>
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{proj.businessName}</span>
+                            </div>
+                            <h4 style={{ fontSize: '14.5px', color: 'var(--text-white)', fontWeight: '800', marginTop: '12px' }}>{proj.title}</h4>
+                            <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '6px' }}>{proj.description ? (proj.description.length > 70 ? proj.description.slice(0, 70) + '...' : proj.description) : ''}</p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
+                              <button onClick={() => handleNavigate(currentUser ? 'dashboard' : 'onboarding')} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10.5px', minHeight: '24px', borderRadius: '4px' }}>Apply</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
 
                 </div>
@@ -299,33 +282,39 @@ const AppContent = () => {
                     <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Featured Partners</h3>
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      {/* Influencer */}
-                      {influencers.slice(0, 2).map(inf => (
-                        <div key={inf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                            <img src={inf.profilePhoto} alt={inf.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                            <div>
-                              <strong style={{ color: 'var(--text-white)' }}>{inf.fullName.split(' ')[0]}</strong>
-                              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px' }}>{inf.followersCount || '450K followers'}</span>
+                      {influencers.length === 0 && freelancers.length === 0 ? (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>No partner profiles registered yet.</span>
+                      ) : (
+                        <>
+                          {/* Influencer */}
+                          {influencers.slice(0, 2).map(inf => (
+                            <div key={inf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
+                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <img src={inf.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={inf.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                <div>
+                                  <strong style={{ color: 'var(--text-white)' }}>{inf.fullName ? inf.fullName.split(' ')[0] : 'Partner'}</strong>
+                                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px' }}>{inf.followersCount || '0 followers'}</span>
+                                </div>
+                              </div>
+                              <button onClick={() => handleOpenProfile(inf.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
                             </div>
-                          </div>
-                          <button onClick={() => handleOpenProfile(inf.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
-                        </div>
-                      ))}
+                          ))}
 
-                      {/* Freelancer */}
-                      {freelancers.slice(0, 2).map(fl => (
-                        <div key={fl.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                            <img src={fl.profilePhoto} alt={fl.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                            <div>
-                              <strong style={{ color: 'var(--text-white)' }}>{fl.fullName.split(' ')[0]}</strong>
-                              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px' }}>{fl.experience || 'Senior Developer'}</span>
+                          {/* Freelancer */}
+                          {freelancers.slice(0, 2).map(fl => (
+                            <div key={fl.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
+                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <img src={fl.profilePhoto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'} alt={fl.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                                <div>
+                                  <strong style={{ color: 'var(--text-white)' }}>{fl.fullName ? fl.fullName.split(' ')[0] : 'Partner'}</strong>
+                                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px' }}>{fl.experience || 'Professional'}</span>
+                                </div>
+                              </div>
+                              <button onClick={() => handleOpenProfile(fl.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
                             </div>
-                          </div>
-                          <button onClick={() => handleOpenProfile(fl.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
-                        </div>
-                      ))}
+                          ))}
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -333,12 +322,16 @@ const AppContent = () => {
                   <div className="glass-panel" style={{ padding: '24px' }}>
                     <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Recently Verified</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {verifiedUsers.slice(0, 3).map(vu => (
-                        <div key={vu.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                          <span style={{ color: 'var(--text-gray-light)' }}>{vu.fullName}</span>
-                          <span className="badge-premium" style={{ fontSize: '9px', padding: '2px 6px' }}>{vu.verificationStatus}</span>
-                        </div>
-                      ))}
+                      {verifiedUsers.length === 0 ? (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>No verified members yet.</span>
+                      ) : (
+                        verifiedUsers.slice(0, 3).map(vu => (
+                          <div key={vu.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
+                            <span style={{ color: 'var(--text-gray-light)' }}>{vu.fullName}</span>
+                            <span className="badge-premium" style={{ fontSize: '9px', padding: '2px 6px' }}>{vu.verificationStatus}</span>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </div>
 
@@ -387,6 +380,22 @@ const AppContent = () => {
 
 
       </main>
+
+      {/* Global Modals / Overlays */}
+      {activeProfileId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(10,11,18,0.85)', backdropFilter: 'blur(8px)', overflowY: 'auto', padding: '40px 20px' }}>
+          <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
+            <ProfileView userId={activeProfileId} onClose={handleCloseOverlay} onNavigate={handleNavigate} />
+          </div>
+        </div>
+      )}
+      {activeWorkspaceId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(10,11,18,0.85)', backdropFilter: 'blur(8px)', overflowY: 'auto', padding: '40px 20px' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
+            <Workspace projectId={activeWorkspaceId} onClose={handleCloseOverlay} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

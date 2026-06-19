@@ -1,10 +1,11 @@
 import { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../context/AppContext';
+import { MessagingCenter } from './Shared/MessagingCenter';
 import { 
   LayoutDashboard, Search, Briefcase, FileText, CheckSquare, 
   Award, MessageSquare, Star, BarChart3, User, Settings, LogOut,
   SlidersHorizontal, IndianRupee, Bookmark, Upload, X, Plus, 
-  MapPin, Clock, ArrowRight, Send, ExternalLink
+  MapPin, Clock, ArrowRight, Send, ExternalLink, CreditCard
 } from 'lucide-react';
 import { VerificationCenter } from './Shared/VerificationCenter';
 
@@ -13,7 +14,8 @@ const generateTaskId = () => `t-${Date.now()}`;
 export const FreelancerDashboard = ({ onNavigate }) => {
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
-    users, activityFeed, messages, sendMessage
+    users, activityFeed, messages, sendMessage, loading,
+    activeTabToRedirect, setActiveTabToRedirect
   } = useContext(AppContext);
 
   // Tab State
@@ -22,6 +24,13 @@ export const FreelancerDashboard = ({ onNavigate }) => {
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTabToRedirect === 'messages') {
+      setActiveTab('messages');
+      setActiveTabToRedirect(null);
+    }
+  }, [activeTabToRedirect]);
 
   // Saved Projects (Bookmarks) State
   const [savedProjects, setSavedProjects] = useState(() => {
@@ -238,19 +247,26 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     }
   });
 
+  // Dynamic Earnings Calculations
+  const completedProjects = projects.filter(p => {
+    if (p.status !== 'Completed') return false;
+    return p.team && p.team.members && Object.values(p.team.members).includes(currentUser?.id);
+  });
+  
+  const totalEarningsAmount = completedProjects.reduce((sum, p) => {
+    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
+    return sum + numericBudget;
+  }, 0);
+
   // Sidebar Links Configuration
   const sidebarTabs = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-    { id: 'discover', label: 'Discover Work', icon: <Search size={18} /> },
-    { id: 'applications', label: 'Applications', icon: <FileText size={18} /> },
-    { id: 'projects', label: 'Active Contracts', icon: <CheckSquare size={18} /> },
-    { id: 'portfolio', label: 'Portfolio Projects', icon: <Upload size={18} /> },
-    { id: 'certificates', label: 'Certificates', icon: <Award size={18} /> },
+    { id: 'discover', label: 'Browse Jobs', icon: <Search size={18} /> },
+    { id: 'projects', label: 'My Projects', icon: <CheckSquare size={18} /> },
+    { id: 'portfolio', label: 'Portfolio', icon: <Upload size={18} /> },
+    { id: 'analytics', label: 'Earnings', icon: <CreditCard size={18} /> },
     { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-    { id: 'reviews', label: 'Client Reviews', icon: <Star size={18} /> },
-    { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} /> },
-    { id: 'profile', label: 'Public Profile', icon: <User size={18} /> },
-    { id: 'settings', label: 'Settings', icon: <Settings size={18} /> }
+    { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
   ];
 
   return (
@@ -507,7 +523,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                   </div>
                   <div>
                     <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Earnings</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹4,600</h3>
+                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹{totalEarningsAmount.toLocaleString()}</h3>
                   </div>
                 </div>
               </section>
@@ -838,7 +854,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
               {activeWorkspaces.length === 0 ? (
                 <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
                   <CheckSquare size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-                  <h4 style={{ color: 'var(--text-main)', fontSize: '18px', fontWeight: '800' }}>No active contracts</h4>
+                  <h4 style={{ color: 'var(--text-white)', fontSize: '17px', fontWeight: '800' }}>No active projects.</h4>
                   <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>Submit proposals to campaign briefs to spawn active contract workspaces.</p>
                 </div>
               ) : (
@@ -1034,9 +1050,12 @@ export const FreelancerDashboard = ({ onNavigate }) => {
 
               {/* Portfolio Grid */}
               {(!currentUser.portfolio || currentUser.portfolio.length === 0) ? (
-                <div className="glass-panel" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <Upload size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
-                  <p>Your portfolio space is currently empty. Upload portfolio projects to stand out.</p>
+                <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
+                  <Upload size={40} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+                  <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>No portfolio uploaded yet.</h3>
+                  <button onClick={() => setShowPortfolioModal(true)} className="btn-primary" style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '10px', fontSize: '13px', marginTop: '20px' }}>
+                    Upload Portfolio
+                  </button>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }} className="portfolio-projects-grid">
@@ -1131,32 +1150,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
 
           {/* ==================== 7. MESSAGES VIEW ==================== */}
           {activeTab === 'messages' && (
-            <div className="glass-panel" style={{ padding: '24px', minHeight: '400px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '16px' }}>Direct Messaging</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '13.5px' }}>Active contract secure channels will show up here for live discussions.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '24px' }}>
-                {activeWorkspaces.map(c => (
-                  <div 
-                    key={c.id} 
-                    onClick={() => { setSelectedWorkspaceId(c.id); setActiveTab('projects'); }}
-                    style={{ padding: '16px', background: 'var(--bg-surface)', borderRadius: '12px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                    className="glass-panel-hover"
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent-cyan-glow)', color: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
-                        <MessageSquare size={18} />
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-white)' }}>{c.title} Secure Chat</h4>
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Real-time team collaboration cell</span>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>Open Chat →</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <MessagingCenter />
           )}
 
           {/* ==================== 8. CLIENT REVIEWS VIEW ==================== */}
@@ -1164,7 +1158,10 @@ export const FreelancerDashboard = ({ onNavigate }) => {
             <div className="glass-panel" style={{ padding: '24px' }}>
               <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Client Collaboration Reviews</h3>
               {(!currentUser.reviews || currentUser.reviews.length === 0) ? (
-                <p style={{ color: 'var(--text-muted)', fontSize: '13.5px' }}>No review postings. Ratings will populate when active contracts close.</p>
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '13.5px' }}>
+                  <Star size={40} style={{ opacity: 0.3, marginBottom: '12px', color: '#eab308' }} />
+                  <p>No reviews yet.</p>
+                </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {currentUser.reviews.map((rev, idx) => (
@@ -1183,24 +1180,27 @@ export const FreelancerDashboard = ({ onNavigate }) => {
             </div>
           )}
 
-          {/* ==================== 9. ANALYTICS VIEW ==================== */}
+          {/* ==================== 9. EARNINGS VIEW ==================== */}
           {activeTab === 'analytics' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Portfolio Impression Analytics</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Portfolio Clicks</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>432 Clicks</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Earnings Dashboard</h3>
+              {totalEarningsAmount === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
+                  <CreditCard size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
+                  <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>No Earnings Yet</h3>
+                  <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>Complete your first project to start earning.</p>
+                  <button onClick={() => setActiveTab('discover')} className="btn-primary" style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '10px', fontSize: '13px', marginTop: '20px' }}>
+                    Browse Opportunities
+                  </button>
                 </div>
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Pitches Accepted</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>82.5%</h3>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }} className="analytics-grid">
+                  <div className="glass-panel" style={{ padding: '20px' }}>
+                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Net Earned</span>
+                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>₹{totalEarningsAmount.toLocaleString()}</h3>
+                  </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '20px' }}>
-                  <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Net Earned</span>
-                  <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>₹4,600</h3>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1286,16 +1286,18 @@ export const FreelancerDashboard = ({ onNavigate }) => {
 
           {/* ==================== 11. SETTINGS VIEW ==================== */}
           {activeTab === 'settings' && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Freelancer Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                  <span>Visible in Business Search Directory</span>
-                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
-                  <span>Escrow Deposit Notification Alert</span>
-                  <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Freelancer Settings</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                    <span>Visible in Business Search Directory</span>
+                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+                    <span>Escrow Deposit Notification Alert</span>
+                    <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                  </div>
                 </div>
               </div>
             </div>

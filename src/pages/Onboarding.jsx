@@ -40,13 +40,13 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
     if (signUpStep === 4) {
       const timer = setTimeout(() => {
         onNavigate('dashboard');
-      }, 2400); // 2.4s (2.0s visible progress line + 0.4s fade out completion)
+      }, 1200); // Quick success → dashboard
       return () => clearTimeout(timer);
     }
   }, [signUpStep, onNavigate]);
 
   // Submit Login
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
@@ -55,7 +55,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
       return;
     }
 
-    const res = loginUser(loginEmail, loginPassword);
+    const res = await loginUser(loginEmail, loginPassword);
     if (res.success) {
       onNavigate('dashboard');
     } else {
@@ -70,7 +70,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
     } catch (err) {
       console.error('Google login failed, running demo fallback:', err);
       const mockGoogleEmail = 'google.user@creatorshub.com';
-      const res = loginUser(mockGoogleEmail, 'googlepassword123');
+      const res = await loginUser(mockGoogleEmail, 'googlepassword123');
       if (res.success) {
         onNavigate('dashboard');
       } else {
@@ -248,7 +248,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                     onChange={(e) => setLoginEmail(e.target.value)}
                     className="form-input" 
                     style={{ paddingLeft: '48px' }}
-                    placeholder="name@business.com"
+                    placeholder="Enter your email"
                     required
                   />
                 </div>
@@ -273,7 +273,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                     onChange={(e) => setLoginPassword(e.target.value)}
                     className="form-input" 
                     style={{ paddingLeft: '48px', paddingRight: '48px' }}
-                    placeholder="••••••••"
+                    placeholder="Enter your password"
                     required
                   />
                   <button 
@@ -523,7 +523,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                         onChange={(e) => setFullName(e.target.value)}
                         className="form-input" 
                         style={{ paddingLeft: '48px' }}
-                        placeholder="E.g. Hafij Rehman"
+                        placeholder="Enter your full name"
                         required
                       />
                     </div>
@@ -539,7 +539,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                         onChange={(e) => setEmail(e.target.value)}
                         className="form-input" 
                         style={{ paddingLeft: '48px' }}
-                        placeholder="you@domain.com"
+                        placeholder="Enter your email address"
                         required
                       />
                     </div>
@@ -555,7 +555,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                         onChange={(e) => setMobileNumber(e.target.value)}
                         className="form-input" 
                         style={{ paddingLeft: '48px' }}
-                        placeholder="+91 98765 43210"
+                        placeholder="Enter your phone number"
                         required
                       />
                     </div>
@@ -569,7 +569,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="form-input" 
-                        placeholder="••••••••"
+                        placeholder="Create a password"
                         required
                       />
                     </div>
@@ -580,7 +580,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="form-input" 
-                        placeholder="••••••••"
+                        placeholder="Confirm your password"
                         required
                       />
                     </div>
