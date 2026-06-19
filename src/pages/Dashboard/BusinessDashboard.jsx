@@ -12,7 +12,6 @@ import { BusinessProfile } from './Business/BusinessProfile';
 import { BusinessRequirements } from './Business/BusinessRequirements';
 import { BusinessApplications } from './Business/BusinessApplications';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
-import { FloatingActions } from '../../components/FloatingActions';
 import { useResponsive } from '../../hooks/useResponsive';
 import { BusinessPublicProfile } from './Business/BusinessPublicProfile';
 import { VerificationCenter } from './Shared/VerificationCenter';
@@ -449,7 +448,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
         </header>
 
         {/* Dashboard Main Scrollable Area */}
-        <main style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+        <main style={{ padding: 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
           
           {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
           {(isMobile || isTablet) && (activeTab === 'dashboard' || activeTab === 'profile') ? (
@@ -1310,7 +1309,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
               fontSize: '10.5px',
               fontWeight: '700',
               cursor: 'pointer',
-              minWidth: '60px',
+              flex: 1,
               height: '100%'
             }}
           >
@@ -1319,21 +1318,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
           </button>
         ))}
       </nav>
-
-      {/* Floating Actions Menu */}
-      <FloatingActions onAction={(action) => {
-        if (action === 'create-req') {
-          setActiveTab('requirements');
-        } else if (action === 'invite-inf') {
-          setActiveTab('influencers');
-        } else if (action === 'invite-free') {
-          setActiveTab('freelancers');
-        } else if (action === 'upload-port') {
-          setActiveTab('profile');
-        } else if (action === 'schedule') {
-          setActiveTab('dashboard');
-        }
-      }} />
 
       {/* Slide-in Notifications Center */}
       <NotificationCenter open={notifOpen} onClose={() => setNotifOpen(false)} />

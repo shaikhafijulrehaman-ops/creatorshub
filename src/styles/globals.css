@@ -57,7 +57,8 @@ body::before {
   backdrop-filter: var(--glass-filter);
   -webkit-backdrop-filter: var(--glass-filter);
   border: 1px solid var(--glass-border);
-  border-radius: 18px; /* 18px Radius */
+  border-radius: var(--border-radius-global);
+  padding: var(--card-padding);
   box-shadow: var(--shadow-glass);
   transition: var(--transition-normal);
 }
@@ -93,7 +94,7 @@ a {
   min-height: 48px;
   background: #FFFFFF;
   border: 1px solid #D1D5DB; /* Border #D1D5DB */
-  border-radius: 12px;
+  border-radius: var(--border-radius-global);
   color: var(--text-white);
   font-size: 15px;
   outline: none;
@@ -125,7 +126,7 @@ a {
   min-height: 48px;
   background: var(--btn-primary-bg); /* Background #000000 */
   border: none;
-  border-radius: 14px; /* Border Radius 14px */
+  border-radius: var(--border-radius-global); /* Border Radius 16px */
   color: var(--btn-primary-text); /* Text White */
   font-family: var(--font-heading);
   font-weight: 600;
@@ -172,7 +173,7 @@ a {
   min-height: 48px;
   background: #FFFFFF; /* White Background */
   border: 1px solid #D1D5DB; /* Border #D1D5DB */
-  border-radius: 14px; /* Border Radius 14px */
+  border-radius: var(--border-radius-global); /* Border Radius 16px */
   color: var(--btn-secondary-text); /* Text #111111 */
   font-family: var(--font-heading);
   font-weight: 600;
@@ -200,7 +201,7 @@ a {
   min-height: 48px;
   background: transparent;
   border: 1px solid var(--accent-cyan);
-  border-radius: 14px;
+  border-radius: var(--border-radius-global);
   color: var(--accent-cyan);
   font-family: var(--font-heading);
   font-weight: 600;
@@ -383,7 +384,7 @@ body, header, main, footer, .glass-panel, .form-input, select, option, button, a
 .responsive-grid-3-2-1 {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: var(--card-gap);
 }
 
 @media (min-width: 768px) {
@@ -410,9 +411,9 @@ html, body {
 
 /* Mobile responsive styles & overrides */
 @media (max-width: 767px) {
-  /* Enforce 18px card border radius on mobile */
+  /* Enforce 16px card border radius on mobile */
   .glass-panel {
-    border-radius: 18px !important;
+    border-radius: var(--border-radius-global) !important;
   }
   
   /* Touch target min-heights */
@@ -431,7 +432,7 @@ html, body {
   tr {
     margin-bottom: 16px !important;
     border: 1px solid var(--glass-border) !important;
-    border-radius: 18px !important;
+    border-radius: var(--border-radius-global) !important;
     padding: 16px !important;
     background: var(--glass-bg) !important;
   }
@@ -461,3 +462,38 @@ html, body {
     margin-top: 8px !important;
   }
 }
+
+/* Tablet Overrides */
+@media (max-width: 1024px) {
+  :root {
+    --section-spacing: 32px;
+    --card-padding: 20px;
+    --container-padding: 24px;
+    --card-gap: 20px;
+  }
+
+  .glass-panel[style*="padding: 24px"],
+  .glass-panel[style*="padding:24px"],
+  .glass-panel[style*="padding: 20px"],
+  .glass-panel[style*="padding:20px"] {
+    padding: var(--card-padding) !important;
+  }
+}
+
+/* Mobile Overrides */
+@media (max-width: 768px) {
+  :root {
+    --section-spacing: 24px;
+    --card-padding: 16px;
+    --container-padding: 16px;
+    --card-gap: 16px;
+  }
+
+  .glass-panel[style*="padding: 24px"],
+  .glass-panel[style*="padding:24px"],
+  .glass-panel[style*="padding: 20px"],
+  .glass-panel[style*="padding:20px"] {
+    padding: var(--card-padding) !important;
+  }
+}
+

@@ -538,7 +538,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
         </header>
 
         {/* Dashboard Main Scrollable Area */}
-        <main style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+        <main style={{ padding: 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
           
           {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
           {activeTab === 'dashboard' && (
@@ -1559,7 +1559,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
               fontSize: '10.5px',
               fontWeight: '700',
               cursor: 'pointer',
-              minWidth: '60px',
+              flex: 1,
               height: '100%'
             }}
           >

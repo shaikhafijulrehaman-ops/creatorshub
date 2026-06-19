@@ -72,4 +72,12 @@
   --font-logo: 'Outfit', sans-serif;
   --font-body: 'Outfit', sans-serif;
   --font-heading: 'Outfit', sans-serif;
+
+  /* Global Spacing Tokens (Consistent 8px spacing system) */
+  --section-spacing: 48px;
+  --card-padding: 24px;
+  --container-padding: 32px;
+  --card-gap: 24px;
+  --border-radius-global: 16px;
 }
+

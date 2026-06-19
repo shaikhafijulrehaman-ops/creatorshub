@@ -20,6 +20,7 @@ import { useToast } from './components/SuccessToast';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useResponsive } from './hooks/useResponsive';
 import { NotificationCenter } from './components/NotificationCenter';
+import { FloatingActions } from './components/FloatingActions';
 
 const RedirectToLogin = () => {
   const navigate = useNavigate();
@@ -578,7 +579,7 @@ const AppContent = () => {
       )}
 
       {/* Main Pages router */}
-      <main style={{ flex: 1, padding: isMobile ? '16px 12px 0 12px' : '24px 24px 0 24px', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
+      <main style={{ flex: 1, padding: 'var(--container-padding) var(--container-padding) 0 var(--container-padding)', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
         <Routes>
           <Route path="/" element={<Landing onNavigate={handleNavigate} />} />
           <Route path="/login" element={<Onboarding key="login" onNavigate={handleNavigate} initialParams={{ loginOnly: true }} />} />
@@ -916,6 +917,47 @@ const AppContent = () => {
           currentPage={currentPage} 
           onNavigate={handleNavigate} 
           currentUser={currentUser} 
+        />
+      )}
+
+      {/* Global Floating Action Button */}
+      {currentUser && 
+       currentPage !== 'messages' && 
+       !activeProfileId && 
+       !activeWorkspaceId && 
+       !mobileDrawerOpen && 
+       !mobileNotificationsOpen && 
+       !mobileSearchOpen && 
+       currentPage !== 'login' && 
+       currentPage !== 'register' && (
+        <FloatingActions 
+          role={currentUser.role}
+          onAction={(action) => {
+            if (action === 'create-req') {
+              setActiveDashboardTab('requirements');
+              navigate('/dashboard');
+            } else if (action === 'invite-inf') {
+              setActiveDashboardTab('influencers');
+              navigate('/dashboard');
+            } else if (action === 'invite-free') {
+              setActiveDashboardTab('freelancers');
+              navigate('/dashboard');
+            } else if (action === 'upload-port') {
+              if (currentUser.role === 'Freelancer') {
+                setActiveDashboardTab('portfolio');
+              } else if (currentUser.role === 'Influencer') {
+                setActiveDashboardTab('mediakit');
+              }
+              navigate('/dashboard');
+            } else if (action === 'schedule') {
+              if (currentUser.role === 'Influencer' || currentUser.role === 'Business Holder') {
+                setActiveDashboardTab('calendar');
+              } else {
+                setActiveDashboardTab('dashboard');
+              }
+              navigate('/dashboard');
+            }
+          }}
         />
       )}
 
