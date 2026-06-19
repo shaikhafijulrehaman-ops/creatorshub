@@ -1,0 +1,29 @@
+- [x] Database Schema Setup
+  - [x] Update public.profiles view and RLS policies
+  - [x] Add public.applications table and publication settings
+- [x] AppContext State & Real-Time Setup
+  - [x] Add applications table fetch logic & Supabase realtime subscription
+  - [x] Remove all mock/seeded fallbacks for users, projects, activities, and messages
+  - [x] Implement applyToProject, acceptApplication, and rejectApplication context methods
+- [x] Global User Search in New Chat
+  - [x] Refactor search query in MessagingCenter.jsx to search all profiles
+  - [x] Render profile photo, role, location, verified badge, and View Profile / Message buttons
+  - [x] Change empty state to "No users found."
+- [x] Applications Received & Workspace Activation (BusinessDashboard.jsx)
+  - [x] Query database-driven applications list
+  - [x] Add status filtering (Pending, Accepted, Rejected), search query, and sorting
+  - [x] Support Accept (create collaboration, status to "In Progress", open chat) and Reject actions
+  - [x] Remove direct hiring triggers
+- [x] My Applications Tracker (FreelancerDashboard.jsx & InfluencerDashboard.jsx)
+  - [x] Fetch pitches/applications from database dynamically
+  - [x] Render grouped views filtered by Pending, Accepted, Rejected, Completed
+- [x] Dashboard Integrations
+  - [x] Pass onOpenProfile to MessagingCenter in Business, Freelancer, and Influencer dashboards
+- [x] Contact Details Mobile Redesign
+  - [x] Stack inputs and visibility toggles vertically on mobile (globals.css)
+  - [x] Increase input heights to 50px, add padding, and spacing (globals.css)
+  - [x] Prevent overlaps (FAB/nav padding adjustments in globals.css)
+- [x] Focus Keyboard scrollIntoView
+  - [x] Add focusin listener in App.jsx to scroll active input/textarea to center on mobile
+- [x] Compilation & Testing
+  - [x] Build project and verify everything compiles successfully

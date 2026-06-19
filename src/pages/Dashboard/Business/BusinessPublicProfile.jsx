@@ -11,7 +11,7 @@ const Lock = () => (
 );
 
 export const BusinessPublicProfile = ({ businessId, viewerId }) => {
-  const { users, projects, isConnected } = useContext(AppContext);
+  const { users, projects, isConnected, applications } = useContext(AppContext);
 
   const business = users.find(u => u.id === businessId);
   if (!business) return null;
@@ -28,9 +28,10 @@ export const BusinessPublicProfile = ({ businessId, viewerId }) => {
 
   const openReqs = projects.filter(p => p.businessId === businessId && p.status === 'Open');
   const closedReqs = projects.filter(p => p.businessId === businessId && p.status !== 'Open');
-  const totalApplications = projects
-    .filter(p => p.businessId === businessId)
-    .reduce((acc, p) => acc + (p.proposals?.length || 0), 0);
+  const totalApplications = (applications || []).filter(app => {
+    const proj = projects.find(p => p.id === app.project_id);
+    return proj && proj.businessId === businessId;
+  }).length;
 
   const socialLinks = business.socialLinks || {};
 
@@ -213,7 +214,7 @@ export const BusinessPublicProfile = ({ businessId, viewerId }) => {
               {business.verificationStatus && <div><Shield size={13} style={{ display: 'inline', marginRight: '6px' }} />{business.verificationStatus}</div>}
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Star size={13} style={{ fill: '#f59e0b', color: '#f59e0b' }} />
-                <span>{business.rating?.toFixed(1) || '5.0'} rating</span>
+                <span>{Number(business.rating || 5.0).toFixed(1)} rating</span>
               </div>
             </div>
           </div>

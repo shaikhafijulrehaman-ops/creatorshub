@@ -5,9 +5,9 @@ import {
   LayoutDashboard, Search, Briefcase, FileText, CheckSquare, 
   Award, MessageSquare, Star, BarChart3, User, Settings, LogOut,
   SlidersHorizontal, IndianRupee, Bookmark, Upload, X, Plus, 
-  MapPin, Clock, ArrowRight, Send, ExternalLink, CreditCard
+  MapPin, Clock, ArrowRight, Send, ExternalLink, CreditCard, Users
 } from 'lucide-react';
-import { VerificationCenter } from './Shared/VerificationCenter';
+import { MyConnections } from './Shared/MyConnections';
 import { useToast } from '../../components/SuccessToast';
 import { ApplicationForm } from './Shared/ApplicationForm';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
@@ -15,13 +15,14 @@ import { useResponsive } from '../../hooks/useResponsive';
 
 const generateTaskId = () => `t-${Date.now()}`;
 
-export const FreelancerDashboard = ({ onNavigate }) => {
+export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
   const { isMobile, isTablet } = useResponsive();
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
     users, activityFeed, messages, sendMessage, loading,
     activeTabToRedirect, setActiveTabToRedirect, notifications,
-    activeDashboardTab, setActiveDashboardTab
+    activeDashboardTab, setActiveDashboardTab, startConversation,
+    applications
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -180,13 +181,11 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     setWorkspaceChatInput('');
   };
 
-  // Profile Strength Calculation
   const getProfileCompletion = () => {
-    let score = 15;
-    if (currentUser.profilePhoto) score += 20;
-    if (currentUser.skills && currentUser.skills.length > 0) score += 25;
-    if (currentUser.portfolio && currentUser.portfolio.length > 0) score += 20;
-    if (currentUser.verificationStatus && currentUser.verificationStatus !== 'Basic Verified') score += 20;
+    let score = 10;
+    if (currentUser.profilePhoto) score += 30;
+    if (currentUser.skills && currentUser.skills.length > 0) score += 30;
+    if (currentUser.portfolio && currentUser.portfolio.length > 0) score += 30;
     return score;
   };
   const profileCompletion = getProfileCompletion();
@@ -237,19 +236,24 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     currentUser.services && currentUser.services.includes(p.category)
   );
 
-  // Sent Applications list
+  // Sent Applications list from applications table
   const sentApplications = [];
-  projects.forEach(p => {
-    if (p.proposals) {
-      const myProp = p.proposals.find(prop => prop.creatorId === currentUser.id);
-      if (myProp) {
+  (applications || []).forEach(app => {
+    if (app.applicant_id === currentUser.id) {
+      const p = projects.find(proj => proj.id === app.project_id);
+      if (p) {
         sentApplications.push({
-          ...myProp,
+          id: app.id,
+          creatorId: app.applicant_id,
+          creatorName: currentUser.fullName,
+          pricing: app.rate,
+          daysToComplete: 7,
+          coverLetter: app.pitch,
           projectTitle: p.title,
           projectCategory: p.category,
           projectBudget: p.budget,
           projectDeadline: p.deadline,
-          status: myProp.status || 'Pending'
+          status: app.status || 'Pending'
         });
       }
     }
@@ -273,12 +277,13 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     { id: 'projects', label: 'My Projects', icon: <CheckSquare size={18} /> },
     { id: 'portfolio', label: 'Portfolio', icon: <Upload size={18} /> },
     { id: 'analytics', label: 'Earnings', icon: <CreditCard size={18} /> },
+    { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
     { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
     { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
   ];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', position: 'relative' }}>
+    <div className="dashboard-layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', position: 'relative' }}>
       
       {/* ==================== LEFT SIDEBAR ==================== */}
       <aside 
@@ -474,14 +479,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
             {/* Notification Bell */}
             <NotificationBell onClick={() => setNotifOpen(true)} />
 
-            {/* Mobile Hamburger menu */}
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-white)', cursor: 'pointer' }}
-              id="mobile-drawer-toggle"
-            >
-              <LayoutDashboard size={20} />
-            </button>
+
           </div>
         </header>
 
@@ -1166,9 +1164,19 @@ export const FreelancerDashboard = ({ onNavigate }) => {
             </div>
           )}
 
+          {/* ==================== 7. MY CONNECTIONS ==================== */}
+          {activeTab === 'connections' && (
+            <MyConnections 
+              onOpenProfile={onOpenProfile} 
+              onStartChat={(userId) => {
+                startConversation(userId);
+              }}
+            />
+          )}
+
           {/* ==================== 7. MESSAGES VIEW ==================== */}
           {activeTab === 'messages' && (
-            <MessagingCenter />
+            <MessagingCenter onOpenProfile={onOpenProfile} />
           )}
 
           {/* ==================== 8. CLIENT REVIEWS VIEW ==================== */}
@@ -1187,7 +1195,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <strong style={{ color: 'var(--text-white)', fontSize: '14px' }}>{rev.businessName}</strong>
                         <div style={{ display: 'flex', gap: '2px', color: '#eab308' }}>
-                          {Array.from({ length: rev.rating }).map((_, i) => <Star key={i} size={12} fill="#eab308" />)}
+                          {Array.from({ length: Math.round(Number(rev.rating || 5)) }).map((_, i) => <Star key={i} size={12} fill="#eab308" />)}
                         </div>
                       </div>
                       <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '8px', lineHeight: '1.4' }}>"{rev.comment}"</p>
@@ -1256,7 +1264,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
               </div>
 
               {/* Edit Form */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '24px' }} className="profile-edit-two-col">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
                 <div className="glass-panel" style={{ padding: '24px' }}>
                   <h4 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Update Bio & Skills</h4>
                   <form onSubmit={(e) => {
@@ -1272,7 +1280,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                   }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
                       <label className="form-label">Full Name</label>
-                      <input type="text" name="fullName" defaultValue={currentUser.fullName} className="form-input" />
+                      <input type="text" name="fullName" defaultValue={currentUser.fullName || ''} className="form-input" />
                     </div>
                     <div>
                       <label className="form-label">Location</label>
@@ -1292,10 +1300,6 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                     </div>
                     <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', minHeight: '38px', borderRadius: '10px' }}>Save Profile</button>
                   </form>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  <VerificationCenter />
                 </div>
               </div>
 

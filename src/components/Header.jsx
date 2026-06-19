@@ -88,19 +88,7 @@ export const Header = ({ onNavigate, currentPage }) => {
           >
             How It Works
           </a>
-          <a 
-            href="#features" 
-            onClick={(e) => { e.preventDefault(); handleLinkClick('landing', {}, 'features'); }}
-            style={{
-              fontSize: '15px',
-              fontWeight: '500',
-              color: 'var(--text-gray)',
-              borderBottom: '2px solid transparent',
-              paddingBottom: '4px'
-            }}
-          >
-            Features
-          </a>
+
 
           {currentUser && (
             <a 
@@ -363,12 +351,7 @@ export const Header = ({ onNavigate, currentPage }) => {
             How It Works
           </button>
 
-          <button 
-            onClick={() => handleLinkClick('landing', {}, 'features')}
-            className="drawer-nav-item"
-          >
-            Features
-          </button>
+
 
 
 

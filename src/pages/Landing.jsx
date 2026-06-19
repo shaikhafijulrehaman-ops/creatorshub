@@ -367,7 +367,7 @@ export const Landing = ({ onNavigate }) => {
           ].map((valProp, i) => (
             <div 
               key={i} 
-              className="glass-panel glass-panel-hover" 
+              className="glass-panel glass-panel-hover landing-value-card" 
               style={{ 
                 padding: '32px 24px', 
                 display: 'flex', 
@@ -380,7 +380,7 @@ export const Landing = ({ onNavigate }) => {
                 transition: 'all 0.3s ease'
               }}
             >
-              <div style={{
+              <div className="landing-value-card-icon-wrapper" style={{
                 width: '44px',
                 height: '44px',
                 borderRadius: '10px',
@@ -412,7 +412,7 @@ export const Landing = ({ onNavigate }) => {
           <h2 className="text-gradient-cyan-white" style={{ fontSize: '36px', fontWeight: '800' }}>Three Powerful Communities.</h2>
         </div>
 
-        <div className="responsive-grid-3-2-1">
+        <div className="landing-category-grid">
           {[
             { 
               title: 'Business Holders', 
@@ -435,7 +435,7 @@ export const Landing = ({ onNavigate }) => {
           ].map((box, idx) => (
             <div 
               key={box.title} 
-              className="scroll-reveal glass-panel glass-panel-hover" 
+              className="scroll-reveal glass-panel glass-panel-hover landing-category-card" 
               style={{ 
                 padding: '36px 28px', 
                 display: 'flex', 
@@ -447,7 +447,7 @@ export const Landing = ({ onNavigate }) => {
                 transitionDelay: `${idx * 100}ms`
               }}
             >
-              <div style={{
+              <div className="landing-category-card-icon-wrapper" style={{
                 width: '52px',
                 height: '52px',
                 borderRadius: '12px',
@@ -685,6 +685,12 @@ export const Landing = ({ onNavigate }) => {
           text-align: left;
         }
 
+        .landing-category-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+        }
+
         .landing-how-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -702,6 +708,9 @@ export const Landing = ({ onNavigate }) => {
         /* Responsive Breakpoints */
         @media (max-width: 900px) {
           .landing-feature-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .landing-category-grid {
             grid-template-columns: repeat(2, 1fr);
           }
           .landing-how-grid {
@@ -733,17 +742,70 @@ export const Landing = ({ onNavigate }) => {
           }
           .landing-value-grid {
             grid-template-columns: repeat(2, 1fr) !important;
-            gap: 16px !important;
+            gap: 12px !important;
+          }
+          .landing-category-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+
+          /* Compact Feature Cards on mobile (30-40% height reduction, reduced padding/spacing/icons) */
+          .landing-value-card {
+            padding: 16px 12px !important;
+            gap: 6px !important;
+            height: auto !important;
+            min-height: 140px !important;
+            border-radius: 12px !important;
+          }
+          .landing-value-card h4 {
+            font-size: 13.5px !important;
+            line-height: 1.2 !important;
+            margin: 0 !important;
+          }
+          .landing-value-card p {
+            font-size: 11px !important;
+            line-height: 1.3 !important;
+            margin: 0 !important;
+          }
+          .landing-value-card-icon-wrapper {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 8px !important;
+          }
+          .landing-value-card-icon-wrapper svg {
+            width: 16px !important;
+            height: 16px !important;
+          }
+
+          /* Compact Category Cards on mobile (reduced height, padding, icons, keep readable) */
+          .landing-category-card {
+            padding: 18px 14px !important;
+            gap: 10px !important;
+            height: auto !important;
+            min-height: 140px !important;
+            border-radius: 12px !important;
+          }
+          .landing-category-card h3 {
+            font-size: 14px !important;
+            margin: 0 !important;
+          }
+          .landing-category-card p {
+            font-size: 11.5px !important;
+            line-height: 1.3 !important;
+            margin: 0 !important;
+          }
+          .landing-category-card-icon-wrapper {
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 8px !important;
+          }
+          .landing-category-card-icon-wrapper svg {
+            width: 16px !important;
+            height: 16px !important;
           }
         }
 
         @media (max-width: 600px) {
-          .landing-feature-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .landing-value-grid {
-            grid-template-columns: 1fr !important;
-          }
           .landing-how-grid {
             grid-template-columns: 1fr !important;
           }

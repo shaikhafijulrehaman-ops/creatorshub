@@ -124,20 +124,16 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
         onClick={() => onNavigate('landing')}
         style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
       >
-        <div style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '8px',
-          background: 'var(--grad-primary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: '800',
-          color: '#fff',
-          fontSize: '14px'
-        }}>
-          CH
-        </div>
+        <img 
+          src="/creators-hub-logo.png" 
+          alt="CH Logo" 
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            objectFit: 'cover'
+          }}
+        />
         <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-white)' }}>Creators Hub</span>
       </div>
 
@@ -264,8 +260,8 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         { id: 'requirements', label: 'Post Project', icon: <FolderKanban size={18} /> },
         { id: 'applications', label: 'Applications', icon: <UserCheck size={18} /> },
         { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-        { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> },
-        { id: 'billing', label: 'Payments', icon: <CreditCard size={18} /> }
+        { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
+        { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
       ];
     }
     if (role === 'Freelancer') {
@@ -276,6 +272,7 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         { id: 'portfolio', label: 'Portfolio', icon: <Upload size={18} /> },
         { id: 'analytics', label: 'Earnings', icon: <CreditCard size={18} /> },
         { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+        { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
         { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
       ];
     }
@@ -289,6 +286,7 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         { id: 'earnings', label: 'Earnings', icon: <CreditCard size={18} /> },
         { id: 'calendar', label: 'Calendar', icon: <Calendar size={18} /> },
         { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+        { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
         { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
       ];
     }
@@ -460,6 +458,19 @@ const AppContent = () => {
     }
   }, [initialized]);
 
+  // Keyboard scroll-into-view helper on mobile screens
+  useEffect(() => {
+    const handleFocus = (e) => {
+      if (window.innerWidth < 768 && e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+        setTimeout(() => {
+          e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    };
+    document.addEventListener('focusin', handleFocus);
+    return () => document.removeEventListener('focusin', handleFocus);
+  }, []);
+
   // Determine the active page based on the path
   const { pathname } = location;
   let currentPage = 'landing';
@@ -486,6 +497,7 @@ const AppContent = () => {
 
   // Explore page states
   const [exploreQuery, setExploreQuery] = useState('');
+  const [exploreActiveTab, setExploreActiveTab] = useState('feed');
 
   const handleNavigate = (page, params = {}) => {
     setActiveWorkspaceId(null);
@@ -526,7 +538,6 @@ const AppContent = () => {
     if (section === 'applications') return 'applications';
     if (section === 'analytics') return 'analytics';
     if (section === 'payments') {
-      if (role === 'Business Holder') return 'billing';
       if (role === 'Influencer') return 'earnings';
       return 'dashboard';
     }
@@ -589,35 +600,88 @@ const AppContent = () => {
               // Get campaigns and users from context
               const openProjects = projects.filter(p => p.status === 'Open');
               
-              // Filter creators
+              // Filter creators/roles
               const freelancers = users.filter(u => u.role === 'Freelancer');
               const influencers = users.filter(u => u.role === 'Influencer');
               const businessOwners = users.filter(u => u.role === 'Business Holder');
-              const verifiedUsers = users.filter(u => u.verificationStatus && u.verificationStatus !== 'Basic Verified');
 
-              // Popular categories
-              const popularCategories = [
-                { name: 'Website Development', count: 12 },
-                { name: 'Video Editing', count: 9 },
-                { name: 'Travel Campaign', count: 8 },
-                { name: 'UI/UX Design', count: 14 },
-                { name: 'Brand Strategy', count: 6 }
-              ];
+              // Helper function to get profession or role display
+              const getRoleProfession = (u) => {
+                if (u.role === 'Business Holder') return u.businessCategory || 'Business Holder';
+                if (u.role === 'Freelancer') return u.experience || (u.services && u.services[0]) || 'Freelancer';
+                if (u.role === 'Influencer') return (u.contentCategories && u.contentCategories[0]) || 'Influencer';
+                return u.role;
+              };
+
+              // Filter recently joined (top 4 sorted by createdAt descending)
+              const recentlyJoined = [...users]
+                .sort((a, b) => {
+                  const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                  const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                  return timeB - timeA;
+                })
+                .slice(0, 4);
+
+              // Search query helper
+              const q = exploreQuery.toLowerCase().trim();
+              
+              const matchesQuery = (u) => {
+                if (!q) return true;
+                return (
+                  (u.fullName && u.fullName.toLowerCase().includes(q)) ||
+                  (u.username && u.username.toLowerCase().includes(q)) ||
+                  (u.businessName && u.businessName.toLowerCase().includes(q)) ||
+                  (u.businessCategory && u.businessCategory.toLowerCase().includes(q)) ||
+                  (u.location && u.location.toLowerCase().includes(q)) ||
+                  (u.experience && u.experience.toLowerCase().includes(q)) ||
+                  (u.role && u.role.toLowerCase().includes(q)) ||
+                  (u.bio && u.bio.toLowerCase().includes(q)) ||
+                  (u.description && u.description.toLowerCase().includes(q)) ||
+                  (u.skills && u.skills.some(s => s.toLowerCase().includes(q))) ||
+                  (u.services && u.services.some(s => s.toLowerCase().includes(q))) ||
+                  (u.contentCategories && u.contentCategories.some(c => c.toLowerCase().includes(q)))
+                );
+              };
+
+              // Projects matching query
+              const filteredProjects = openProjects.filter(p => {
+                if (!q) return true;
+                return (
+                  p.title.toLowerCase().includes(q) ||
+                  p.description.toLowerCase().includes(q) ||
+                  p.businessName.toLowerCase().includes(q) ||
+                  (p.skills && p.skills.some(s => s.toLowerCase().includes(q)))
+                );
+              });
+
+              // Filtered directories
+              const filteredFreelancers = freelancers.filter(matchesQuery);
+              const filteredBusinesses = businessOwners.filter(matchesQuery);
+              const filteredInfluencers = influencers.filter(matchesQuery);
 
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '28px', paddingBottom: '60px' }} className="explore-main-layout">
                   
-                  {/* Left Side: Real-Time Feed */}
+                  {/* Left Side: Real-Time Feed & Directories */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
                     {/* Feed Header */}
                     <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px' }}>
-                      <span className="badge-premium" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Live Stream</span>
-                      <h2 style={{ fontSize: '26px', fontWeight: '800', marginTop: '6px' }}>Ecosystem Feed</h2>
-                      <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '4px' }}>Discover active requirements, brand campaigns, and real-time community events.</p>
+                      <span className="badge-premium" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ecosystem Discovery</span>
+                      <h2 style={{ fontSize: '26px', fontWeight: '800', marginTop: '6px' }}>
+                        {exploreActiveTab === 'feed' ? 'Ecosystem Feed' : 
+                         exploreActiveTab === 'freelancer' ? 'Freelancers Directory' :
+                         exploreActiveTab === 'business' ? 'Business Directory' : 'Influencers Directory'}
+                      </h2>
+                      <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '4px' }}>
+                        {exploreActiveTab === 'feed' ? 'Discover active requirements, brand campaigns, and real-time community events.' :
+                         exploreActiveTab === 'freelancer' ? 'Find and collaborate with premium vetted developers, designers, and creators.' :
+                         exploreActiveTab === 'business' ? 'Explore companies and business entities seeking partnerships.' :
+                         'Connect with high-reach influencers to amplify your product and brand.'}
+                      </p>
                     </div>
 
-                    {/* Search and Category Pills */}
+                    {/* Search Input */}
                     <div style={{ display: 'flex', gap: '12px' }} className="feed-search-row">
                       <div style={{ flex: 1, position: 'relative' }}>
                         <Search size={16} style={{ position: 'absolute', left: '14px', top: '14px', color: 'var(--text-muted)' }} />
@@ -638,190 +702,402 @@ const AppContent = () => {
                       </div>
                     </div>
 
-                    {/* 1. LATEST REQUIREMENTS FEED */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ fontSize: '16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Briefcase size={16} style={{ color: 'var(--accent-cyan)' }} /> Latest Open Requirements
-                        </h3>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{openProjects.length} briefs open</span>
-                      </div>
+                    {/* Tabs Selector */}
+                    <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                      {[
+                        { id: 'feed', label: 'Ecosystem Feed' },
+                        { id: 'freelancer', label: 'Freelancers' },
+                        { id: 'business', label: 'Businesses' },
+                        { id: 'influencer', label: 'Influencers' }
+                      ].map(tab => {
+                        const active = exploreActiveTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setExploreActiveTab(tab.id)}
+                            style={{
+                              background: active ? 'rgba(0, 217, 255, 0.1)' : 'transparent',
+                              border: '1px solid ' + (active ? 'var(--accent-cyan)' : 'transparent'),
+                              color: active ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                              padding: '8px 16px',
+                              borderRadius: '20px',
+                              fontSize: '13px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              minHeight: '36px'
+                            }}
+                          >
+                            {tab.label}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                      {openProjects.length === 0 ? (
-                        <div className="glass-panel" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                          No open project briefs found.
-                        </div>
-                      ) : (
-                        openProjects.map(proj => {
-                          const biz = users.find(u => u.id === proj.businessId);
-                          return (
-                            <div key={proj.id} className="glass-panel glass-panel-hover" style={{ padding: '20px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Conditional content mapping */}
+                    {exploreActiveTab === 'feed' && (
+                      <>
+                        {q ? (
+                          /* Categorized Global Search Results */
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                            {/* Matching Projects */}
+                            <div>
+                              <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '12px', color: 'var(--text-white)' }}>
+                                Requirements & Campaigns ({filteredProjects.length})
+                              </h3>
+                              {filteredProjects.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>No matching requirements.</div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                  {filteredProjects.map(proj => (
+                                    <div key={proj.id} className="glass-panel" style={{ padding: '16px' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <h4 style={{ fontSize: '14.5px', fontWeight: '800', color: 'var(--text-white)' }}>{proj.title}</h4>
+                                        <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
+                                      </div>
+                                      <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '6px' }}>{proj.description}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Matching Freelancers */}
+                            <div>
+                              <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '12px', color: 'var(--text-white)' }}>
+                                Freelancers ({filteredFreelancers.length})
+                              </h3>
+                              {filteredFreelancers.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>No freelancers found.</div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="explore-search-grid">
+                                  {filteredFreelancers.slice(0, 4).map(fl => (
+                                    <div key={fl.id} className="glass-panel" style={{ padding: '14px', display: 'flex', gap: '10px' }}>
+                                      <img src={fl.profilePhoto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'} alt={fl.fullName} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                      <div style={{ flex: 1 }}>
+                                        <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)' }}>{fl.fullName}</h4>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{getRoleProfession(fl)} • {fl.location || 'Global'}</span>
+                                        <button onClick={() => handleOpenProfile(fl.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '22px', borderRadius: '4px', marginTop: '8px' }}>View Profile</button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Matching Businesses */}
+                            <div>
+                              <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '12px', color: 'var(--text-white)' }}>
+                                Businesses ({filteredBusinesses.length})
+                              </h3>
+                              {filteredBusinesses.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>No businesses found.</div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="explore-search-grid">
+                                  {filteredBusinesses.slice(0, 4).map(biz => (
+                                    <div key={biz.id} className="glass-panel" style={{ padding: '14px', display: 'flex', gap: '10px' }}>
+                                      <img src={biz.logo || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=100&auto=format&fit=crop&q=80'} alt={biz.businessName} style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} />
+                                      <div style={{ flex: 1 }}>
+                                        <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)' }}>{biz.businessName || biz.fullName}</h4>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{getRoleProfession(biz)} • {biz.location || 'Global'}</span>
+                                        <button onClick={() => handleOpenProfile(biz.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '22px', borderRadius: '4px', marginTop: '8px' }}>View Profile</button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Matching Influencers */}
+                            <div>
+                              <h3 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '12px', color: 'var(--text-white)' }}>
+                                Influencers ({filteredInfluencers.length})
+                              </h3>
+                              {filteredInfluencers.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '13px', padding: '12px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>No influencers found.</div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="explore-search-grid">
+                                  {filteredInfluencers.slice(0, 4).map(inf => (
+                                    <div key={inf.id} className="glass-panel" style={{ padding: '14px', display: 'flex', gap: '10px' }}>
+                                      <img src={inf.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={inf.fullName} style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover' }} />
+                                      <div style={{ flex: 1 }}>
+                                        <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)' }}>{inf.fullName}</h4>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{getRoleProfession(inf)} • {inf.followersCount || '0'} followers</span>
+                                        <button onClick={() => handleOpenProfile(inf.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '22px', borderRadius: '4px', marginTop: '8px' }}>View Profile</button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          /* Standard Feed */
+                          <>
+                            {/* Requirements Feed */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ fontSize: '16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Briefcase size={16} style={{ color: 'var(--accent-cyan)' }} /> Latest Open Requirements
+                                </h3>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{openProjects.length} briefs open</span>
+                              </div>
+
+                              {openProjects.length === 0 ? (
+                                <div className="glass-panel" style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                  No open project briefs found.
+                                </div>
+                              ) : (
+                                openProjects.map(proj => {
+                                  const biz = users.find(u => u.id === proj.businessId);
+                                  return (
+                                    <div key={proj.id} className="glass-panel glass-panel-hover" style={{ padding: '20px' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                          <img 
+                                            src={biz?.logo || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=100&auto=format&fit=crop&q=80'} 
+                                            alt={proj.businessName} 
+                                            style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }}
+                                          />
+                                          <div>
+                                            <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)' }}>{proj.title}</h4>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Posted by: {proj.businessName} • {proj.remoteType || 'Remote'}</span>
+                                          </div>
+                                        </div>
+                                        <span style={{ fontSize: '14.5px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
+                                      </div>
+
+                                      <p style={{ fontSize: '12.5px', color: 'var(--text-gray-light)', margin: '12px 0 16px 0', lineHeight: '1.4' }}>
+                                        {proj.description}
+                                      </p>
+
+                                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        {proj.skills && proj.skills.length > 0 ? (
+                                          <div style={{ display: 'flex', gap: '4px' }}>
+                                            {proj.skills.slice(0, 3).map(s => (
+                                              <span key={s} style={{ fontSize: '10px', background: 'rgba(255,255,255,0.02)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-gray)' }}>{s}</span>
+                                            ))}
+                                          </div>
+                                        ) : <span />}
+                                        
+                                        <button 
+                                          onClick={() => {
+                                            if (currentUser) {
+                                              handleNavigate('dashboard');
+                                            } else {
+                                              handleNavigate('onboarding');
+                                            }
+                                          }}
+                                          className="btn-primary" 
+                                          style={{ padding: '4px 12px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
+                                        >
+                                          View Details
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+
+                            {/* Campaign Feed */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                              <h3 style={{ fontSize: '16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Trending Campaigns
+                              </h3>
+                              
+                              {openProjects.length === 0 ? (
+                                <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                                  No campaigns available right now.
+                                </div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: openProjects.length === 1 ? '1fr' : '1fr 1fr', gap: '16px' }} className="campaigns-grid-strip">
+                                  {openProjects.slice(0, 2).map(proj => (
+                                    <div key={proj.id} className="glass-panel animate-scale-up" style={{ padding: '20px', background: 'radial-gradient(ellipse at bottom right, rgba(0, 217, 255, 0.05), transparent 70%)' }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '10px', background: 'rgba(91, 174, 155, 0.15)', color: 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>{proj.category || 'Campaign'}</span>
+                                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{proj.businessName}</span>
+                                      </div>
+                                      <h4 style={{ fontSize: '14.5px', color: 'var(--text-white)', fontWeight: '800', marginTop: '12px' }}>{proj.title}</h4>
+                                      <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '6px' }}>{proj.description ? (proj.description.length > 70 ? proj.description.slice(0, 70) + '...' : proj.description) : ''}</p>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
+                                        <button onClick={() => handleNavigate(currentUser ? 'dashboard' : 'onboarding')} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10.5px', minHeight: '24px', borderRadius: '4px' }}>Apply</button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                    {exploreActiveTab === 'freelancer' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {filteredFreelancers.length === 0 ? (
+                          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-gray)' }}>
+                            No freelancers found.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }} className="explore-directory-grid">
+                            {filteredFreelancers.map(fl => (
+                              <div key={fl.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
                                   <img 
-                                    src={biz?.logo || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=100&auto=format&fit=crop&q=80'} 
-                                    alt={proj.businessName} 
-                                    style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }}
+                                    src={fl.profilePhoto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80'} 
+                                    alt={fl.fullName} 
+                                    style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} 
                                   />
                                   <div>
-                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)' }}>{proj.title}</h4>
-                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Posted by: {proj.businessName} • {proj.remoteType || 'Remote'}</span>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)' }}>{fl.fullName}</h4>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>{fl.location || 'Global'}</span>
                                   </div>
                                 </div>
-                                <span style={{ fontSize: '14.5px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
-                              </div>
-
-                              <p style={{ fontSize: '12.5px', color: 'var(--text-gray-light)', margin: '12px 0 16px 0', lineHeight: '1.4' }}>
-                                {proj.description}
-                              </p>
-
-                              <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                {proj.skills && proj.skills.length > 0 ? (
-                                  <div style={{ display: 'flex', gap: '4px' }}>
-                                    {proj.skills.slice(0, 3).map(s => (
-                                      <span key={s} style={{ fontSize: '10px', background: 'rgba(255,255,255,0.02)', padding: '2px 6px', borderRadius: '4px', color: 'var(--text-gray)' }}>{s}</span>
+                                <span style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: '600', marginBottom: '10px', display: 'block' }}>
+                                  {fl.experience || 'Professional Freelancer'}
+                                </span>
+                                <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', lineHeight: '1.4', marginBottom: '16px', flex: 1 }}>
+                                  {fl.bio || 'Premium developer/creator eager to collaborate on high-growth ecosystem briefs.'}
+                                </p>
+                                {fl.skills && fl.skills.length > 0 && (
+                                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                                    {fl.skills.slice(0, 3).map(s => (
+                                      <span key={s} style={{ fontSize: '10px', background: 'rgba(255,255,255,0.02)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-gray-light)', border: '1px solid rgba(255,255,255,0.05)' }}>{s}</span>
                                     ))}
                                   </div>
-                                ) : <span />}
-                                
-                                <button 
-                                  onClick={() => {
-                                    if (currentUser) {
-                                      handleNavigate('dashboard');
-                                    } else {
-                                      handleNavigate('onboarding');
-                                    }
-                                  }}
-                                  className="btn-primary" 
-                                  style={{ padding: '4px 12px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
-                                >
-                                  View Details
-                                </button>
+                                )}
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-white)' }}>{fl.collaborationPricing || 'Contact for pricing'}</span>
+                                  <button onClick={() => handleOpenProfile(fl.id)} className="btn-primary" style={{ padding: '4px 12px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}>Profile</button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                    {/* 2. TRENDING BRAND CAMPAIGNS */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} /> Trending Campaigns
-                      </h3>
-                      
-                      {openProjects.length === 0 ? (
-                        <div className="glass-panel" style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-                          No campaigns available right now.
-                        </div>
-                      ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: openProjects.length === 1 ? '1fr' : '1fr 1fr', gap: '16px' }} className="campaigns-grid-strip">
-                          {openProjects.slice(0, 2).map(proj => (
-                            <div key={proj.id} className="glass-panel" style={{ padding: '20px', background: 'radial-gradient(ellipse at bottom right, rgba(0, 217, 255, 0.05), transparent 70%)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: '10px', background: 'rgba(91, 174, 155, 0.15)', color: 'var(--accent-cyan)', padding: '2px 6px', borderRadius: '4px', fontWeight: '700' }}>{proj.category || 'Campaign'}</span>
-                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{proj.businessName}</span>
+                    {exploreActiveTab === 'business' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {filteredBusinesses.length === 0 ? (
+                          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-gray)' }}>
+                            No businesses found.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }} className="explore-directory-grid">
+                            {filteredBusinesses.map(biz => (
+                              <div key={biz.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
+                                  <img 
+                                    src={biz.logo || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=100&auto=format&fit=crop&q=80'} 
+                                    alt={biz.businessName} 
+                                    style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} 
+                                  />
+                                  <div>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)' }}>{biz.businessName || biz.fullName}</h4>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>{biz.location || 'Global'}</span>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: '600', marginBottom: '10px', display: 'block' }}>
+                                  {biz.businessCategory || 'Ecosystem Partner'}
+                                </span>
+                                <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', lineHeight: '1.4', marginBottom: '16px', flex: 1 }}>
+                                  {biz.bio || biz.description || 'Verified Business entity hiring creators and developers for new product briefs.'}
+                                </p>
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Size: {biz.teamSize || '1-10'} employees</span>
+                                  <button onClick={() => handleOpenProfile(biz.id)} className="btn-primary" style={{ padding: '4px 12px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}>Profile</button>
+                                </div>
                               </div>
-                              <h4 style={{ fontSize: '14.5px', color: 'var(--text-white)', fontWeight: '800', marginTop: '12px' }}>{proj.title}</h4>
-                              <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '6px' }}>{proj.description ? (proj.description.length > 70 ? proj.description.slice(0, 70) + '...' : proj.description) : ''}</p>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '10px' }}>
-                                <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{proj.budget}</span>
-                                <button onClick={() => handleNavigate(currentUser ? 'dashboard' : 'onboarding')} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10.5px', minHeight: '24px', borderRadius: '4px' }}>Apply</button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {exploreActiveTab === 'influencer' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {filteredInfluencers.length === 0 ? (
+                          <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-gray)' }}>
+                            No influencers found.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }} className="explore-directory-grid">
+                            {filteredInfluencers.map(inf => (
+                              <div key={inf.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
+                                  <img 
+                                    src={inf.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
+                                    alt={inf.fullName} 
+                                    style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} 
+                                  />
+                                  <div>
+                                    <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)' }}>{inf.fullName}</h4>
+                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>{inf.location || 'Global'}</span>
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: '600', marginBottom: '10px', display: 'block' }}>
+                                  {inf.contentCategories && inf.contentCategories.length > 0 ? inf.contentCategories.join(', ') : 'Influencer'}
+                                </span>
+                                <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', lineHeight: '1.4', marginBottom: '16px', flex: 1 }}>
+                                  {inf.bio || 'Ecosystem creator open for marketing collaboration briefs and sponsorships.'}
+                                </p>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', background: 'rgba(255,255,255,0.01)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)', marginBottom: '16px' }}>
+                                  <div>
+                                    <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Followers</span>
+                                    <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-white)' }}>{inf.followersCount || '0'}</span>
+                                  </div>
+                                  <div>
+                                    <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Engagement</span>
+                                    <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-white)' }}>{inf.engagementRate || '0%'}</span>
+                                  </div>
+                                </div>
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-white)' }}>{inf.collaborationPricing || 'Contact for pricing'}</span>
+                                  <button onClick={() => handleOpenProfile(inf.id)} className="btn-primary" style={{ padding: '4px 12px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}>Profile</button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                   </div>
 
-                  {/* Right Side: Featured Profiles, Categories, Stats */}
+                  {/* Right Side: Recently Joined Section */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
-                    {/* Featured Creators */}
                     <div className="glass-panel" style={{ padding: '24px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Featured Partners</h3>
+                      <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Recently Joined</h3>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                        {influencers.length === 0 && freelancers.length === 0 ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>No partner profiles registered yet.</span>
+                        {recentlyJoined.length === 0 ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>No users joined yet.</span>
                         ) : (
-                          <>
-                            {/* Influencer */}
-                            {influencers.slice(0, 2).map(inf => (
-                              <div key={inf.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                  <img src={inf.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={inf.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                                  <div>
-                                    <strong style={{ color: 'var(--text-white)' }}>{inf.fullName ? inf.fullName.split(' ')[0] : 'Partner'}</strong>
-                                    <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px' }}>{inf.followersCount || '0 followers'}</span>
-                                  </div>
+                          recentlyJoined.map(u => (
+                            <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
+                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <img 
+                                  src={u.profilePhoto || u.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} 
+                                  alt={u.fullName || u.businessName} 
+                                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} 
+                                />
+                                <div>
+                                  <strong style={{ color: 'var(--text-white)', display: 'block', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {u.fullName || u.businessName}
+                                  </strong>
+                                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px', maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {getRoleProfession(u)}
+                                  </span>
                                 </div>
-                                <button onClick={() => handleOpenProfile(inf.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
                               </div>
-                            ))}
-
-                            {/* Freelancer */}
-                            {freelancers.slice(0, 2).map(fl => (
-                              <div key={fl.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                  <img src={fl.profilePhoto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'} alt={fl.fullName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                                  <div>
-                                    <strong style={{ color: 'var(--text-white)' }}>{fl.fullName ? fl.fullName.split(' ')[0] : 'Partner'}</strong>
-                                    <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '10px' }}>{fl.experience || 'Professional'}</span>
-                                  </div>
-                                </div>
-                                <button onClick={() => handleOpenProfile(fl.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
-                              </div>
-                            ))}
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Recently Verified Users */}
-                    <div className="glass-panel" style={{ padding: '24px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Recently Verified</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {verifiedUsers.length === 0 ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '12.5px' }}>No verified members yet.</span>
-                        ) : (
-                          verifiedUsers.slice(0, 3).map(vu => (
-                            <div key={vu.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                              <span style={{ color: 'var(--text-gray-light)' }}>{vu.fullName}</span>
-                              <span className="badge-premium" style={{ fontSize: '9px', padding: '2px 6px' }}>{vu.verificationStatus}</span>
+                              <button onClick={() => handleOpenProfile(u.id)} className="btn-outline-cyan" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Profile</button>
                             </div>
                           ))
                         )}
-                      </div>
-                    </div>
-
-                    {/* Popular categories */}
-                    <div className="glass-panel" style={{ padding: '24px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '12px' }}>Popular Categories</h3>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {popularCategories.map(cat => (
-                          <span key={cat.name} style={{ fontSize: '11px', background: 'rgba(255,255,255,0.02)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', color: 'var(--text-gray)' }}>
-                            {cat.name} ({cat.count})
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Recommended Connections */}
-                    <div className="glass-panel" style={{ padding: '24px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Suggested Connections</h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {businessOwners.slice(0, 2).map(bo => (
-                          <div key={bo.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12.5px' }}>
-                            <div>
-                              <span style={{ color: 'var(--text-white)', fontWeight: '700', display: 'block' }}>{bo.businessName}</span>
-                              <span style={{ color: 'var(--text-muted)', fontSize: '10px' }}>{bo.businessCategory} • {bo.location}</span>
-                            </div>
-                            <button onClick={() => { if (currentUser) { showSuccessToast({ title: '✔ Request Sent', subtitle: 'Connection request has been sent!' }); } else { handleNavigate('onboarding'); } }} className="btn-primary" style={{ padding: '2px 8px', fontSize: '10px', minHeight: '24px', borderRadius: '6px' }}>Connect</button>
-                          </div>
-                        ))}
                       </div>
                     </div>
 
@@ -830,6 +1106,10 @@ const AppContent = () => {
                   <style>{`
                     @media (max-width: 900px) {
                       .explore-main-layout {
+                        grid-template-columns: 1fr !important;
+                        gap: 20px !important;
+                      }
+                      .explore-directory-grid, .explore-search-grid {
                         grid-template-columns: 1fr !important;
                       }
                     }
@@ -842,7 +1122,7 @@ const AppContent = () => {
             !initialized ? (
               showSkeletons ? <MessagesSkeleton /> : null
             ) : (
-              !currentUser ? <RedirectToLogin /> : <MessagingCenter />
+              !currentUser ? <RedirectToLogin /> : <MessagingCenter onOpenProfile={handleOpenProfile} />
             )
           } />
           <Route path="/profile" element={
@@ -933,28 +1213,34 @@ const AppContent = () => {
         <FloatingActions 
           role={currentUser.role}
           onAction={(action) => {
-            if (action === 'create-req') {
-              setActiveDashboardTab('requirements');
-              navigate('/dashboard');
-            } else if (action === 'invite-inf') {
-              setActiveDashboardTab('influencers');
-              navigate('/dashboard');
-            } else if (action === 'invite-free') {
-              setActiveDashboardTab('freelancers');
-              navigate('/dashboard');
-            } else if (action === 'upload-port') {
-              if (currentUser.role === 'Freelancer') {
-                setActiveDashboardTab('portfolio');
-              } else if (currentUser.role === 'Influencer') {
-                setActiveDashboardTab('mediakit');
-              }
-              navigate('/dashboard');
-            } else if (action === 'schedule') {
-              if (currentUser.role === 'Influencer' || currentUser.role === 'Business Holder') {
-                setActiveDashboardTab('calendar');
-              } else {
-                setActiveDashboardTab('dashboard');
-              }
+            const map = {
+              // Business Holder
+              'post-requirement':    'requirements',
+              'create-campaign':     'requirements',
+              'find-freelancers':    'freelancers',
+              'find-influencers':    'influencers',
+              'active-requirements': 'requirements',
+              'draft-requirements':  'requirements',
+              // Freelancer
+              'upload-portfolio':    'portfolio',
+              'add-project':         'portfolio',
+              'my-applications':     'projects',
+              'find-requirements':   'discover',
+              'update-availability': 'profile',
+              // Influencer
+              'create-campaign-post': 'mediakit',
+              'upload-media-kit':     'mediakit',
+              'find-campaigns':       'campaigns',
+              'my-collaborations':    'dashboard',
+              'update-profile':       'profile',
+            };
+            if (action === 'community-post') {
+              navigate('/explore');
+              return;
+            }
+            const tab = map[action];
+            if (tab) {
+              setActiveDashboardTab(tab);
               navigate('/dashboard');
             }
           }}

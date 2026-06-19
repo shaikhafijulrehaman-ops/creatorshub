@@ -219,7 +219,8 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
   const { 
     users, currentUser, toggleSaveUser, savedProfiles, 
     toggleFollowUser, followedProfiles, updateProfile, startConversation,
-    conversations, projects, isConnected: isDbConnected, loading, initialized
+    conversations, projects, isConnected: isDbConnected, loading, initialized,
+    connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, getConnections, setActiveDashboardTab
   } = useContext(AppContext);
   const [searchParams] = useSearchParams();
   const queryUserId = searchParams.get('id');
@@ -346,9 +347,7 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
   const isOwner = currentUser && currentUser.id === user.id;
   const score = getProfileCompletionScore(user);
 
-  if (isOwner && isMobile && score < 50 && !bypassChecklist) {
-    return <CompleteYourProfile user={user} score={score} onNavigate={onNavigate} onBypass={() => setBypassChecklist(true)} />;
-  }
+
 
   const isSaved = savedProfiles.includes(user.id);
   const isFollowing = followedProfiles.includes(user.id);
@@ -462,23 +461,38 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
                 <Phone size={14} /> {user.mobileNumber}
               </span>
             )}
+            <span 
+              onClick={() => {
+                if (currentUser && currentUser.id === user.id) {
+                  if (onNavigate) {
+                    onNavigate('dashboard');
+                    setActiveDashboardTab('connections');
+                  }
+                }
+              }}
+              style={{ cursor: currentUser && currentUser.id === user.id ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              👥 {getConnections(user.id).length} Connections
+            </span>
           </div>
         </div>
 
-        {/* Action triggers (Save/Follow) */}
+        {/* Action triggers (Save/Follow/Connect/Message) */}
         {currentUser && currentUser.id !== user.id && (
           <div className="profile-actions-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+            <div style={{ display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+              
+              {/* Message button: always active */}
               <button 
                 onClick={async () => {
-                  if (!isDbConnected(currentUser.id, user.id)) return;
                   await startConversation(user.id);
                   if (onNavigate) {
-                    onNavigate('dashboard');
+                    onNavigate('messages');
+                  } else {
+                    navigate('/messages');
                   }
                   handleClose();
                 }}
-                disabled={!isDbConnected(currentUser.id, user.id)}
                 className="btn-primary"
                 style={{ 
                   height: '48px', 
@@ -488,25 +502,72 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
                   display: 'inline-flex', 
                   alignItems: 'center', 
                   justifyContent: 'center', 
-                  gap: '6px',
-                  opacity: isDbConnected(currentUser.id, user.id) ? 1 : 0.5,
-                  pointerEvents: isDbConnected(currentUser.id, user.id) ? 'auto' : 'none'
+                  gap: '6px'
                 }}
               >
                 <MessageSquare size={14} /> Message
               </button>
 
-              {!(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
-                <button 
-                  onClick={() => toggleFollowUser(user.id)}
-                  className={isFollowing ? 'btn-secondary' : 'btn-outline-cyan'}
-                  style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Heart size={14} fill={isFollowing ? 'var(--text-white)' : 'none'} style={{ marginRight: '6px' }} /> 
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
-              )}
+              {/* Connect Button and workflow */}
+              {(() => {
+                const isConnected = isDbConnected(currentUser.id, user.id);
+                const sentRequest = connectionRequests.find(r => r.sender_id === currentUser.id && r.receiver_id === user.id && r.status === 'Pending');
+                const receivedRequest = connectionRequests.find(r => r.sender_id === user.id && r.receiver_id === currentUser.id && r.status === 'Pending');
 
+                if (isConnected) {
+                  return (
+                    <button 
+                      onClick={() => removeConnection(user.id)}
+                      className="btn-secondary"
+                      style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-white)' }}
+                    >
+                      Connected ✓
+                    </button>
+                  );
+                }
+                if (sentRequest) {
+                  return (
+                    <button 
+                      disabled
+                      className="btn-secondary"
+                      style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7, cursor: 'not-allowed' }}
+                    >
+                      Request Sent
+                    </button>
+                  );
+                }
+                if (receivedRequest) {
+                  return (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => acceptConnectionRequest(receivedRequest.id, user.id)}
+                        className="btn-primary"
+                        style={{ height: '48px', padding: '0 16px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#22c55e', borderColor: '#22c55e' }}
+                      >
+                        Accept
+                      </button>
+                      <button 
+                        onClick={() => declineConnectionRequest(receivedRequest.id)}
+                        className="btn-secondary"
+                        style={{ height: '48px', padding: '0 16px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  );
+                }
+                return (
+                  <button 
+                    onClick={() => sendConnectionRequest(user.id)}
+                    className="btn-outline-cyan"
+                    style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    Connect
+                  </button>
+                );
+              })()}
+
+              {/* Bookmark Button */}
               {user.role !== 'Freelancer' && !(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
                 <button 
                   onClick={() => toggleSaveUser(user.id)}
@@ -527,303 +588,182 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
                 </button>
               )}
             </div>
-
-            {!isDbConnected(currentUser.id, user.id) && (
-              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                Connect first to start a conversation.
-              </span>
-            )}
           </div>
         )}
       </div>
 
-      {/* Grid: Details & Side info */}
       {!isDesktop ? (
-        <div style={{ marginTop: '20px' }}>
-          {/* Tabs header */}
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }} className="hide-scrollbar">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'portfolio', label: user.role === 'Influencer' ? 'Platform Reach' : 'Portfolio' },
-              { id: 'reviews', label: `Reviews (${user.reviews ? user.reviews.length : 0})` },
-              { id: 'contact', label: 'Contact' }
-            ].map(tab => {
-              const isActive = activeProfileTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveProfileTab(tab.id)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    border: '1px solid ' + (isActive ? 'var(--accent-cyan)' : 'var(--glass-border)'),
-                    background: isActive ? 'var(--accent-cyan-glow)' : 'transparent',
-                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-gray)',
-                    fontWeight: '700',
-                    fontSize: '12.5px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+        <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }} className="mobile-profile-sections">
+          
+          {/* Bio & Summary Card */}
+          <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+            <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FileText size={14} style={{ color: 'var(--accent-cyan)' }} /> Bio & Summary
+            </h4>
+            <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', lineHeight: '1.5', margin: 0 }}>
+              {user.bio || user.description || 'No summary bio provided.'}
+            </p>
           </div>
 
-          {/* Tab contents */}
-          {activeProfileTab === 'overview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Bio & Summary</h4>
-                <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', lineHeight: '1.6', margin: 0 }}>
-                  {user.bio || user.description || 'No summary bio provided.'}
-                </p>
-              </div>
-
-              <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Identity Verification</h4>
-                <div className="profile-strength-layout">
-                  <div className="rating-card-speedometer">
-                    <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '8px', marginTop: 0 }}>Ecosystem Collaboration Rating</h4>
-                    <span style={{ fontSize: '36px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
-                      {user.rating ? user.rating.toFixed(1) : '5.0'}
-                    </span>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '4px 0 10px 0' }}>
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={14} fill={i < Math.round(user.rating || 5) ? '#eab308' : 'none'} stroke={i < Math.round(user.rating || 5) ? 'none' : 'var(--text-muted)'} />
-                      ))}
-                    </div>
-                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0 }}>Based on verified collaboration escrow logs</p>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '4px', marginTop: 0 }}>Profile Strength Indicator</h4>
-                    <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
-                      <div style={{ width: `${user.profileStrength || 85}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-cyan-bright) 100%)' }}></div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
-                      <span>Completion Strength:</span>
-                      <span style={{ color: 'var(--accent-cyan)', fontWeight: '700' }}>{user.profileStrength || 85}%</span>
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', color: 'var(--text-white)', fontSize: '12px' }}>
-                      <CheckCircle size={14} style={{ color: 'var(--accent-cyan)' }} />
-                      <span>Stripe Escrow Verified</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: 'var(--text-white)', fontSize: '12px' }}>
-                      <CheckCircle size={14} style={{ color: 'var(--accent-cyan)' }} />
-                      <span>Background Check Cleared</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {user.role === 'Freelancer' && (
-                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Skills & Tech Stack</h4>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {user.skills ? user.skills.map(s => (
-                      <span key={s} className="badge-tag">{s}</span>
-                    )) : null}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeProfileTab === 'portfolio' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {user.role === 'Influencer' && user.platforms && (
-                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Platform Channels & Reach</h4>
-                  <div className="platform-channels-grid">
-                    {Object.keys(user.platforms).map(pName => {
-                      const plat = user.platforms[pName];
-                      return (
-                        <div key={pName} className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
-                            <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent-cyan)' }}>{pName}</span>
-                            <a href={plat.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                              Channel <Globe size={10} />
-                            </a>
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Followers</span>
-                              <p style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{plat.followers}</p>
-                            </div>
-                            <div>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Avg. Reach</span>
-                              <p style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{plat.reach}</p>
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Engagement Rate</span>
-                              <p style={{ fontSize: '13px', fontWeight: '700', margin: 0, color: 'var(--accent-cyan-bright)' }}>{plat.engagement || 'N/A'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {user.role === 'Influencer' && user.fraudAudit && (
-                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>🛡️ AI Audience Audit</h4>
-                  <div className="info-grid-2-col" style={{ gap: '12px' }}>
-                    <div className="info-item">
-                      <span className="info-label">Fake Followers:</span>
-                      <span className="info-val" style={{ fontWeight: '700', color: parseFloat(user.fraudAudit.fakeFollowers) > 10 ? '#ef4444' : '#22c55e' }}>
-                        {user.fraudAudit.fakeFollowers}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Authenticity:</span>
-                      <span className="info-val">{user.fraudAudit.engagementAuthenticity}</span>
-                    </div>
-                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                      <span className="info-label">Growth Pattern:</span>
-                      <span className="info-val">{user.fraudAudit.suspiciousGrowth}</span>
-                    </div>
-                    <div style={{ 
-                      gridColumn: 'span 2',
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '6px', 
-                      marginTop: '8px',
-                      padding: '8px 12px', 
-                      borderRadius: '8px',
-                      background: user.fraudAudit.badge === 'Verified Audience' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                      border: user.fraudAudit.badge === 'Verified Audience' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
-                      color: user.fraudAudit.badge === 'Verified Audience' ? '#22c55e' : '#ef4444',
-                      fontSize: '12px',
-                      fontWeight: '600'
-                    }}>
-                      <ShieldCheck size={14} />
-                      <span>{user.fraudAudit.badge}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {user.role === 'Freelancer' && user.portfolio && (
-                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Portfolio & Work Gallery</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {user.portfolio.map((port, idx) => (
-                      <div key={idx} className="glass-panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flex: '1', minWidth: '200px' }}>
-                          <div style={{ padding: '8px', background: 'rgba(0, 217, 255, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
-                            <FileText size={18} />
-                          </div>
-                          <div>
-                            <h4 style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{port.service}</h4>
-                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', margin: 0 }}>{port.description}</p>
-                          </div>
-                        </div>
-                        <a 
-                          href={port.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="btn-secondary" 
-                          style={{ padding: '0 16px', height: '36px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        >
-                          View Project <Globe size={11} />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeProfileTab === 'reviews' && (
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', margin: 0 }}>Reviews</h4>
-                {currentUser && currentUser.id !== user.id && (
-                  <button 
-                    onClick={() => setShowReviewModal(true)} 
-                    className="btn-outline-cyan"
-                    style={{ height: '36px', padding: '0 16px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <Plus size={12} /> Post Review
-                  </button>
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {!user.reviews || user.reviews.length === 0 ? (
-                  <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', margin: 0 }}>
-                    No reviews recorded yet for this profile.
-                  </p>
-                ) : (
-                  user.reviews.map(rev => (
-                    <div key={rev.id} style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '700' }}>{rev.businessName}</span>
-                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} size={11} fill={i < rev.rating ? '#eab308' : 'none'} stroke={i < rev.rating ? 'none' : 'var(--text-muted)'} />
-                          ))}
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '12px', color: 'var(--text-gray)', lineHeight: '1.4', margin: 0 }}>{rev.comment}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeProfileTab === 'contact' && (
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
-              <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '16px' }}>Contact & Socials</h4>
-              <div className="info-grid-2-col">
-                {showBusinessContact && (
-                  <>
-                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                      <span className="info-label">Email Address</span>
-                      <p className="info-val">{user.email || 'N/A'}</p>
-                    </div>
-                    {user.mobileNumber && (
-                      <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                        <span className="info-label">Mobile Number</span>
-                        <p className="info-val">{user.mobileNumber}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {user.socialLinks && Object.values(user.socialLinks).some(v => v && v.trim() !== '') && (
-                  <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
-                    <span className="info-label">Social Connections</span>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      {Object.entries(user.socialLinks).map(([platform, url]) => {
-                        if (!url || url.trim() === '') return null;
-                        return (
-                          <a 
-                            key={platform} 
-                            href={url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="btn-secondary" 
-                            style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
-                          >
-                            {platform}
+          {/* Stats / Reach / Stack Card */}
+          {user.role === 'Influencer' && user.platforms && (
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+              <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Award size={14} style={{ color: 'var(--accent-cyan)' }} /> Platform Channels & Reach
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {Object.keys(user.platforms).map(pName => {
+                  const plat = user.platforms[pName];
+                  return (
+                    <div key={pName} style={{ padding: '10px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12.5px', fontWeight: '700', color: 'var(--accent-cyan)' }}>{pName}</span>
+                        {plat.url && (
+                          <a href={plat.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '10.5px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                            Channel <Globe size={9} />
                           </a>
-                        );
-                      })}
+                        )}
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                        <div>
+                          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Followers</span>
+                          <p style={{ fontSize: '11.5px', fontWeight: '700', margin: 0 }}>{plat.followers || '0'}</p>
+                        </div>
+                        <div>
+                          <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>Engagement</span>
+                          <p style={{ fontSize: '11.5px', fontWeight: '700', margin: 0, color: 'var(--accent-cyan-bright)' }}>{plat.engagement || '0%'}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
             </div>
           )}
+
+          {/* AI Audience Audit (Influencer specific) */}
+          {user.role === 'Influencer' && user.fraudAudit && (
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+              <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ShieldCheck size={14} style={{ color: 'var(--accent-cyan)' }} /> AI Audience Audit
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <span style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)' }}>Fake Followers</span>
+                  <span style={{ fontSize: '11.5px', fontWeight: '700', color: parseFloat(user.fraudAudit.fakeFollowers) > 10 ? '#ef4444' : '#22c55e' }}>
+                    {user.fraudAudit.fakeFollowers}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ display: 'block', fontSize: '9px', color: 'var(--text-muted)' }}>Authenticity</span>
+                  <span style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-white)' }}>{user.fraudAudit.engagementAuthenticity}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Skills (Freelancer specific) */}
+          {user.role === 'Freelancer' && user.skills && user.skills.length > 0 && (
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+              <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Settings size={14} style={{ color: 'var(--accent-cyan)' }} /> Skills & Tech Stack
+              </h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {user.skills.map(s => (
+                  <span key={s} className="badge-tag" style={{ fontSize: '10px', padding: '2px 8px' }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Portfolio & Work Gallery (Freelancer specific) */}
+          {user.role === 'Freelancer' && user.portfolio && user.portfolio.length > 0 && (
+            <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+              <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Briefcase size={14} style={{ color: 'var(--accent-cyan)' }} /> Portfolio & Work
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {user.portfolio.map((port, idx) => (
+                  <div key={idx} style={{ padding: '10px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-white)', display: 'block' }}>{port.service}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{port.description}</span>
+                    </div>
+                    {port.url && (
+                      <a href={port.url} target="_blank" rel="noopener noreferrer" className="btn-secondary" style={{ padding: '4px 10px', borderRadius: '4px', fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '2px', minHeight: '26px' }}>
+                        Link <Globe size={9} />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Contact Details Card */}
+          <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+            <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Mail size={14} style={{ color: 'var(--accent-cyan)' }} /> Contact Details
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
+              <div>
+                <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Email:</span>
+                <span style={{ color: 'var(--text-white)' }}>{showBusinessContact || showSocialLinks ? (user.email || 'N/A') : 'Protected'}</span>
+              </div>
+              {user.mobileNumber && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Phone:</span>
+                  <span style={{ color: 'var(--text-white)' }}>{showBusinessContact || showSocialLinks ? user.mobileNumber : 'Protected'}</span>
+                </div>
+              )}
+              {user.website && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Website:</span>
+                  <a href={user.website} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>{user.website}</a>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Reviews Card */}
+          <div className="glass-panel" style={{ padding: '16px', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h4 style={{ fontSize: '13.5px', fontWeight: '800', color: 'var(--text-white)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Star size={14} style={{ color: 'var(--accent-cyan)' }} /> Reviews ({user.reviews ? user.reviews.length : 0})
+              </h4>
+              {currentUser && currentUser.id !== user.id && (
+                <button 
+                  onClick={() => setShowReviewModal(true)} 
+                  className="btn-outline-cyan"
+                  style={{ height: '28px', padding: '0 10px', borderRadius: '6px', fontSize: '10.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Plus size={10} /> Add
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!user.reviews || user.reviews.length === 0 ? (
+                <p style={{ fontSize: '11.5px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0', margin: 0 }}>
+                  No reviews recorded yet for this profile.
+                </p>
+              ) : (
+                user.reviews.map(rev => (
+                  <div key={rev.id} style={{ padding: '10px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', gap: '6px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: '700' }}>{rev.businessName}</span>
+                      <div style={{ display: 'flex', gap: '1px', alignItems: 'center' }}>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} size={10} fill={i < rev.rating ? '#eab308' : 'none'} stroke={i < rev.rating ? 'none' : 'var(--text-muted)'} />
+                        ))}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '11px', color: 'var(--text-gray)', lineHeight: '1.4', margin: 0 }}>{rev.comment}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
         </div>
       ) : (
         <div className="profile-details-grid">
@@ -1019,7 +959,7 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
               <div className="rating-card-speedometer">
                 <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '8px', marginTop: 0 }}>Ecosystem Collaboration Rating</h4>
                 <span style={{ fontSize: '36px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
-                  {user.rating ? user.rating.toFixed(1) : '5.0'}
+                  {Number(user.rating || 5.0).toFixed(1)}
                 </span>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '4px 0 10px 0' }}>
                   {[...Array(5)].map((_, i) => (

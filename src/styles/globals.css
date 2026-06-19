@@ -495,5 +495,128 @@ html, body {
   .glass-panel[style*="padding:20px"] {
     padding: var(--card-padding) !important;
   }
+
+  /* Compact dashboard forms */
+  .dashboard-layout form .form-input,
+  .dashboard-layout form select,
+  .dashboard-layout form textarea {
+    min-height: 38px !important;
+    padding: 8px 12px !important;
+    font-size: 13.5px !important;
+  }
+  
+  .dashboard-layout form .form-label {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .dashboard-layout form {
+    gap: 12px !important;
+  }
+
+  .dashboard-layout form .btn-primary,
+  .dashboard-layout form .btn-secondary,
+  .dashboard-layout form button[type="submit"] {
+    min-height: 38px !important;
+    padding: 8px 16px !important;
+    font-size: 13.5px !important;
+  }
+
+  /* Compact PhotoUploader inside dashboard */
+  .dashboard-layout .photo-placeholder {
+    padding: 12px !important;
+  }
+  .dashboard-layout .photo-placeholder svg {
+    width: 16px !important;
+    height: 16px !important;
+    margin-bottom: 4px !important;
+  }
+  .dashboard-layout .photo-placeholder-label {
+    font-size: 12px !important;
+  }
+  .dashboard-layout .photo-placeholder-sub {
+    font-size: 10px !important;
+    margin-top: 2px !important;
+  }
+  
+  .dashboard-layout .photo-editor-controls {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
+  
+  .dashboard-layout .photo-editor-hint {
+    font-size: 10.5px !important;
+  }
+  
+  .dashboard-layout .photo-zoom-controls {
+    padding: 2px 6px !important;
+    gap: 4px !important;
+  }
+  
+  .dashboard-layout .photo-zoom-val {
+    font-size: 11px !important;
+    min-width: 28px !important;
+  }
+  
+  .dashboard-layout .photo-btn-reset,
+  .dashboard-layout .photo-btn-save,
+  .dashboard-layout .photo-btn-change,
+  .dashboard-layout .photo-btn-remove {
+    padding: 5px 10px !important;
+    font-size: 10.5px !important;
+  }
+
+  /* Cover Banner compact styling */
+  .dashboard-layout .glass-panel > div[style*="height: 180px"],
+  .dashboard-layout .glass-panel > div[style*="height:180px"] {
+    height: 100px !important; /* Reduce banner height from 180px to 100px on mobile */
+  }
+
+  .dashboard-layout .glass-panel > div[style*="marginTop: -44px"],
+  .dashboard-layout .glass-panel > div[style*="marginTop:-44px"] {
+    margin-top: -30px !important;
+    padding: 12px !important;
+    gap: 12px !important;
+  }
+
+  .dashboard-layout .glass-panel > div[style*="marginTop: -44px"] img[style*="width: 84px"],
+  .dashboard-layout .glass-panel > div[style*="marginTop:-44px"] img[style*="width:84px"] {
+    width: 60px !important; /* Reduce profile photo size from 84px to 60px */
+    height: 60px !important;
+  }
+
+  /* Contact Information Section - Mobile Usability Redesign */
+  .dashboard-layout .biz-contact-input-wrap {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .dashboard-layout .biz-contact-input-wrap .form-input {
+    width: 100% !important;
+    flex: none !important;
+    min-height: 50px !important; /* Increase input height to 48-52px */
+    padding: 12px 16px !important; /* Proper left and right padding */
+    font-size: 14.5px !important;
+  }
+
+  .dashboard-layout .biz-contact-input-wrap .visibility-toggle {
+    align-self: flex-start !important; /* Place visibility toggle below input aligned left */
+    margin-top: 4px !important;
+  }
+
+  .dashboard-layout .biz-contact-row {
+    margin-bottom: 18px !important; /* Consistent spacing (16-20px) between contact items */
+  }
+
+  .dashboard-layout .biz-contact-label {
+    font-size: 13.5px !important;
+    margin-bottom: 4px !important;
+  }
+
+  /* Bottom spacing and overlapping prevention */
+  .dashboard-layout main {
+    padding-bottom: 120px !important; /* Prevent bottom nav and FAB overlapping forms */
+  }
 }
 

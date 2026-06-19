@@ -19,7 +19,7 @@ const CATEGORIES = [
 ];
 
 export const BusinessRequirements = () => {
-  const { currentUser, projects, createProject, setProjects } = useContext(AppContext);
+  const { currentUser, projects, createProject, setProjects, applications } = useContext(AppContext);
   const { showSuccessToast } = useToast();
 
   const businessProjects = projects.filter(p => p.businessId === currentUser.id);
@@ -168,7 +168,7 @@ export const BusinessRequirements = () => {
           {businessProjects.map(proj => {
             const s = STATUS_MAP[proj.status] || STATUS_MAP.Open;
             const isExpanded = expandedId === proj.id;
-            const appCount = (proj.proposals || []).length;
+            const appCount = (applications || []).filter(app => app.project_id === proj.id).length;
             return (
               <div key={proj.id} className="glass-panel biz-req-card">
                 {/* Card header */}

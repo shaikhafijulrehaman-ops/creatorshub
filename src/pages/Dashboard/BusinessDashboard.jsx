@@ -14,7 +14,7 @@ import { BusinessApplications } from './Business/BusinessApplications';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
 import { useResponsive } from '../../hooks/useResponsive';
 import { BusinessPublicProfile } from './Business/BusinessPublicProfile';
-import { VerificationCenter } from './Shared/VerificationCenter';
+import { MyConnections } from './Shared/MyConnections';
 import { ChevronDown } from 'lucide-react';
 
 
@@ -26,7 +26,8 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     currentUser, logoutUser, projects, createProject, users, 
     activityFeed, messages, sendMessage, activateCreatorTeam, updateProfile, loading,
     activeTabToRedirect, setActiveTabToRedirect, setActiveConversationId, notifications, setProjects,
-    activeDashboardTab, setActiveDashboardTab
+    activeDashboardTab, setActiveDashboardTab, startConversation,
+    applications
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -82,16 +83,21 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     return sum + numericBudget;
   }, 0);
 
-  // Collect All Received proposals across all campaigns
+  // Collect All Received applications across all requirements from the applications table
   const receivedApplications = [];
-  businessProjects.forEach(p => {
-    if (p.proposals) {
-      p.proposals.forEach(proposal => {
-        receivedApplications.push({
-          ...proposal,
-          projectName: p.title,
-          projectId: p.id
-        });
+  (applications || []).forEach(app => {
+    const p = businessProjects.find(proj => proj.id === app.project_id);
+    if (p) {
+      const creator = users.find(u => u.id === app.applicant_id);
+      receivedApplications.push({
+        id: app.id,
+        creatorId: app.applicant_id,
+        creatorName: creator?.fullName || 'Unknown Creator',
+        pricing: app.rate,
+        daysToComplete: 7,
+        coverLetter: app.pitch,
+        projectName: p.title,
+        projectId: p.id
       });
     }
   });
@@ -99,10 +105,9 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   // Calculate Profile Completion
   const getProfileCompletion = () => {
     let score = 10;
-    if (currentUser.logo) score += 20;
-    if (currentUser.businessName && currentUser.description) score += 25;
-    if (currentUser.website && currentUser.location) score += 25;
-    if (currentUser.verificationStatus && currentUser.verificationStatus !== 'Basic Verified') score += 20;
+    if (currentUser.logo) score += 30;
+    if (currentUser.businessName && currentUser.description) score += 30;
+    if (currentUser.website && currentUser.location) score += 30;
     return score;
   };
   const profileCompletion = getProfileCompletion();
@@ -234,13 +239,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     { id: 'influencers', label: 'Find Influencers', icon: <Users size={18} /> },
     { id: 'requirements', label: 'Post Project', icon: <FolderKanban size={18} /> },
     { id: 'applications', label: 'Applications', icon: <UserCheck size={18} /> },
+    { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
     { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-    { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> },
-    { id: 'billing', label: 'Payments', icon: <CreditCard size={18} /> }
+    { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
   ];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', position: 'relative' }}>
+    <div className="dashboard-layout" style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-deep)', position: 'relative' }}>
       
       {/* ==================== LEFT SIDEBAR ==================== */}
       <aside 
@@ -436,14 +441,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
             {/* Notification Bell */}
             <NotificationBell onClick={() => setNotifOpen(true)} />
 
-            {/* Mobile Hamburger menu */}
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-white)', cursor: 'pointer' }}
-              id="mobile-drawer-toggle"
-            >
-              <LayoutDashboard size={20} />
-            </button>
+
           </div>
         </header>
 
@@ -487,20 +485,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 { title: 'Contact Information', component: <BusinessProfile section="contact" /> },
                 { title: 'Public Profile', component: <BusinessPublicProfile businessId={currentUser.id} viewerId={currentUser.id} /> },
                 { title: 'Campaign Briefs / Projects', component: <BusinessRequirements /> },
-                { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> },
-                { title: 'Identity Verification Badge', component: <VerificationCenter /> },
-                { title: 'Workspace Checklist Settings', component: (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                      <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Escrow Auto-Release Milestones</span>
-                      <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
-                      <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Ecosystem Directory Public Listing</span>
-                      <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
-                    </div>
-                  </div>
-                )}
+                { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> }
               ].map((acc, index) => {
                 const isOpen = expandedAccordion === index;
                 return (
@@ -662,7 +647,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                               <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
                                 <span>Budget: {req.budget}</span>
                                 <span>Deadline: {req.deadline}</span>
-                                <span>Proposals: {req.proposals ? req.proposals.length : 0}</span>
+                                <span>Proposals: {(applications || []).filter(app => app.project_id === req.id).length}</span>
                               </div>
                             </div>
                             <button onClick={() => setActiveTab('requirements')} className="btn-secondary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11px' }}>
@@ -751,23 +736,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                   />
                 </div>
 
-                <select 
-                  value={talentCategoryFilter}
-                  onChange={(e) => setTalentCategoryFilter(e.target.value)}
-                  className="form-input"
-                  style={{ width: '200px', background: 'var(--bg-dark)' }}
-                >
-                  <option value="All">All Focus Areas</option>
-                  {activeTab === 'freelancers' ? (
-                    ['Website Development', 'App Development', 'UI/UX Design', 'Video Editing', 'AI Video Creation', 'Other'].map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))
-                  ) : (
-                    ['Travel', 'Lifestyle', 'Fashion', 'Technology', 'Food', 'Other'].map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))
-                  )}
-                </select>
               </div>
 
               {/* Directory Results */}
@@ -777,11 +745,8 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                   const matchesSearch = u.fullName.toLowerCase().includes(talentSearchQuery.toLowerCase()) || 
                                         (u.bio && u.bio.toLowerCase().includes(talentSearchQuery.toLowerCase())) ||
                                         (u.skills && u.skills.some(s => s.toLowerCase().includes(talentSearchQuery.toLowerCase())));
-                  const matchesCategory = talentCategoryFilter === 'All' || 
-                                          (activeTab === 'freelancers' && u.services?.includes(talentCategoryFilter)) ||
-                                          (activeTab === 'influencers' && u.contentCategories?.includes(talentCategoryFilter));
                   
-                  return matchesRole && matchesSearch && matchesCategory;
+                  return matchesRole && matchesSearch;
                 }).map(talent => (
                   <div key={talent.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -1035,7 +1000,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
           {/* ==================== 6. MESSAGES CENTER ==================== */}
           {activeTab === 'messages' && (
-            <MessagingCenter />
+            <MessagingCenter onOpenProfile={onOpenProfile} />
           )}
 
           {/* ==================== 7. CALENDAR ==================== */}
@@ -1121,13 +1086,14 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
             <BusinessProfile />
           )}
 
-          {/* ==================== 11. BILLING PLACEHOLDER ==================== */}
-          {activeTab === 'billing' && (
-            <div className="glass-panel" style={{ padding: '40px', textAlign: 'center' }}>
-              <CreditCard size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-              <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>No Payments Yet</h3>
-              <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>Fund your first campaign milestone to start secure escrow.</p>
-            </div>
+          {/* ==================== 11. MY CONNECTIONS ==================== */}
+          {activeTab === 'connections' && (
+            <MyConnections 
+              onOpenProfile={onOpenProfile} 
+              onStartChat={(userId) => {
+                startConversation(userId);
+              }}
+            />
           )}
 
           {/* ==================== 12. SETTINGS PLACEHOLDER ==================== */}

@@ -99,6 +99,30 @@
   .biz-save-row {
     padding-bottom: 96px;
   }
+  .biz-section {
+    padding: 16px !important;
+  }
+  .biz-section-title {
+    font-size: 14px !important;
+    margin-bottom: 12px !important;
+  }
+  .biz-section-sub {
+    font-size: 11.5px !important;
+    margin-top: -8px !important;
+    margin-bottom: 12px !important;
+  }
+  .biz-cover-wrap {
+    margin-bottom: 12px !important;
+  }
+  .biz-field-row {
+    gap: 10px !important;
+  }
+  .biz-field {
+    gap: 4px !important;
+  }
+  .biz-contact-row {
+    margin-bottom: 10px !important;
+  }
 }
 
 .biz-save-btn {

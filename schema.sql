@@ -54,7 +54,7 @@ create table if not exists public.users (
 -- 2. Create projects table
 create table if not exists public.projects (
     id text primary key,
-    business_id text references public.users(id) on delete cascade,
+    business_id text references public.users(id) on delete cascade not null,
     business_name text,
     title text not null,
     category text,
@@ -70,7 +70,19 @@ create table if not exists public.projects (
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Create activities table
+-- 3. Create applications table
+create table if not exists public.applications (
+    id text primary key,
+    project_id text references public.projects(id) on delete cascade not null,
+    applicant_id text references public.users(id) on delete cascade not null,
+    pitch text,
+    rate text,
+    status text default 'Pending' not null, -- 'Pending', 'Accepted', 'Rejected', 'Completed'
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    unique(project_id, applicant_id)
+);
+
+-- 4. Create activities table
 create table if not exists public.activities (
     id serial primary key,
     text text not null,
@@ -78,14 +90,14 @@ create table if not exists public.activities (
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 4. Create conversations table
+-- 5. Create conversations table
 create table if not exists public.conversations (
     id text primary key,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 5. Create conversation_members table
+-- 6. Create conversation_members table
 create table if not exists public.conversation_members (
     id text primary key,
     conversation_id text references public.conversations(id) on delete cascade not null,
@@ -94,7 +106,7 @@ create table if not exists public.conversation_members (
     unique(conversation_id, user_id)
 );
 
--- 6. Create messages table
+-- 7. Create messages table
 create table if not exists public.messages (
     id text primary key,
     conversation_id text references public.conversations(id) on delete cascade not null,
@@ -106,37 +118,58 @@ create table if not exists public.messages (
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 7. Create user_presence table
+-- 8. Create user_presence table
 create table if not exists public.user_presence (
     user_id text references public.users(id) on delete cascade primary key,
     is_online boolean default false not null,
     last_seen timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
+-- 9. Create connections table
+create table if not exists public.connections (
+    id text primary key,
+    user_id1 text references public.users(id) on delete cascade not null,
+    user_id2 text references public.users(id) on delete cascade not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    unique(user_id1, user_id2)
+);
+
+-- 10. Create connection_requests table
+create table if not exists public.connection_requests (
+    id text primary key,
+    sender_id text references public.users(id) on delete cascade not null,
+    receiver_id text references public.users(id) on delete cascade not null,
+    status text default 'Pending' not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    unique(sender_id, receiver_id)
+);
+
+-- 11. Create notifications table
+create table if not exists public.notifications (
+    id text primary key,
+    user_id text references public.users(id) on delete cascade not null,
+    sender_id text references public.users(id) on delete cascade,
+    type text not null,
+    title text not null,
+    message text not null,
+    read boolean default false not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
 -- Enable RLS
 alter table public.users enable row level security;
 alter table public.projects enable row level security;
+alter table public.applications enable row level security;
 alter table public.activities enable row level security;
 alter table public.conversations enable row level security;
 alter table public.conversation_members enable row level security;
 alter table public.messages enable row level security;
 alter table public.user_presence enable row level security;
+alter table public.connections enable row level security;
+alter table public.connection_requests enable row level security;
+alter table public.notifications enable row level security;
 
--- Idempotent column additions for existing tables
-alter table public.users add column if not exists phone_visibility text default 'Private';
-alter table public.users add column if not exists email_visibility text default 'Private';
-alter table public.users add column if not exists website_visibility text default 'Private';
-alter table public.users add column if not exists social_links_visibility text default 'Private';
-alter table public.users add column if not exists contact_visibility text default 'Private';
-alter table public.users add column if not exists cover_banner text;
-alter table public.users add column if not exists whatsapp text;
-alter table public.users add column if not exists gst text;
-alter table public.users add column if not exists contact_person text;
-alter table public.users add column if not exists address text;
-alter table public.users add column if not exists social_links text;
-alter table public.users add column if not exists field_visibility text;
-
--- Helper function to get current user ID (either from JWT claim or custom header)
+-- Helper function to get current user ID
 create or replace function public.current_user_id()
 returns text as $$
 begin
@@ -147,42 +180,34 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Drop old policies if they exist
-drop policy if exists "Allow public read/write users" on public.users;
-drop policy if exists "Allow public read/write projects" on public.projects;
-drop policy if exists "Allow public read/write activities" on public.activities;
-drop policy if exists "Allow public read/write conversations" on public.conversations;
-drop policy if exists "Allow public read/write conversation_members" on public.conversation_members;
-drop policy if exists "Allow public read/write messages" on public.messages;
-drop policy if exists "Allow public read/write user_presence" on public.user_presence;
+-- Configure RLS Policies
+create policy "Users can select their own user row" on public.users for select using (id = public.current_user_id());
+create policy "Anyone can insert user row" on public.users for insert with check (true);
+create policy "Users can update their own user row" on public.users for update using (id = public.current_user_id());
 
-drop policy if exists "View conversations" on public.conversations;
-drop policy if exists "Insert conversations" on public.conversations;
-drop policy if exists "View conversation members" on public.conversation_members;
-drop policy if exists "Insert conversation members" on public.conversation_members;
-drop policy if exists "View messages" on public.messages;
-drop policy if exists "Insert messages" on public.messages;
-drop policy if exists "Update messages" on public.messages;
-drop policy if exists "View presence" on public.user_presence;
-drop policy if exists "Modify presence" on public.user_presence;
-
-drop policy if exists "Users can select their own user row" on public.users;
-drop policy if exists "Anyone can insert user row" on public.users;
-drop policy if exists "Users can update their own user row" on public.users;
-
--- Configure RLS Policies for users table (strict owner access for select/update)
-create policy "Users can select their own user row" on public.users
-    for select using (id = public.current_user_id());
-
-create policy "Anyone can insert user row" on public.users
-    for insert with check (true);
-
-create policy "Users can update their own user row" on public.users
-    for update using (id = public.current_user_id());
-
--- Configure RLS Policies for other public tables
 create policy "Allow public read/write projects" on public.projects for all using (true);
 create policy "Allow public read/write activities" on public.activities for all using (true);
+
+-- Applications Policies
+create policy "View applications" on public.applications
+    for select using (
+        applicant_id = public.current_user_id() or
+        exists (
+            select 1 from public.projects
+            where projects.id = applications.project_id
+            and projects.business_id = public.current_user_id()
+        )
+    );
+create policy "Insert applications" on public.applications for insert with check (applicant_id = public.current_user_id());
+create policy "Update/Delete applications" on public.applications
+    for all using (
+        applicant_id = public.current_user_id() or
+        exists (
+            select 1 from public.projects
+            where projects.id = applications.project_id
+            and projects.business_id = public.current_user_id()
+        )
+    );
 
 -- Conversations Policies
 create policy "View conversations" on public.conversations
@@ -193,9 +218,7 @@ create policy "View conversations" on public.conversations
             and conversation_members.user_id = public.current_user_id()
         )
     );
-
-create policy "Insert conversations" on public.conversations
-    for insert with check (true);
+create policy "Insert conversations" on public.conversations for insert with check (true);
 
 -- Conversation Members Policies
 create policy "View conversation members" on public.conversation_members
@@ -206,9 +229,7 @@ create policy "View conversation members" on public.conversation_members
             and m.user_id = public.current_user_id()
         )
     );
-
-create policy "Insert conversation members" on public.conversation_members
-    for insert with check (true);
+create policy "Insert conversation members" on public.conversation_members for insert with check (true);
 
 -- Messages Policies
 create policy "View messages" on public.messages
@@ -219,8 +240,6 @@ create policy "View messages" on public.messages
             and conversation_members.user_id = public.current_user_id()
         )
     );
-
--- Users can only insert messages as themselves and in a conversation they are in
 create policy "Insert messages" on public.messages
     for insert with check (
         sender_id = public.current_user_id()
@@ -230,7 +249,6 @@ create policy "Insert messages" on public.messages
             and conversation_members.user_id = public.current_user_id()
         )
     );
-
 create policy "Update messages" on public.messages
     for update using (
         exists (
@@ -241,13 +259,27 @@ create policy "Update messages" on public.messages
     );
 
 -- User Presence Policies
-create policy "View presence" on public.user_presence
-    for select using (true);
+create policy "View presence" on public.user_presence for select using (true);
+create policy "Modify presence" on public.user_presence for all using (user_id = public.current_user_id());
 
-create policy "Modify presence" on public.user_presence
-    for all using (user_id = public.current_user_id());
+-- Connections Policies
+create policy "View connections" on public.connections for select using (user_id1 = public.current_user_id() or user_id2 = public.current_user_id());
+create policy "Insert connections" on public.connections for insert with check (true);
+create policy "Delete connections" on public.connections for delete using (user_id1 = public.current_user_id() or user_id2 = public.current_user_id());
 
--- Postgres RPC to authenticate user without selecting users table directly from frontend
+-- Connection Requests Policies
+create policy "View connection requests" on public.connection_requests for select using (sender_id = public.current_user_id() or receiver_id = public.current_user_id());
+create policy "Insert connection requests" on public.connection_requests for insert with check (sender_id = public.current_user_id());
+create policy "Update connection requests" on public.connection_requests for update using (sender_id = public.current_user_id() or receiver_id = public.current_user_id());
+create policy "Delete connection requests" on public.connection_requests for delete using (sender_id = public.current_user_id() or receiver_id = public.current_user_id());
+
+-- Notifications Policies
+create policy "View notifications" on public.notifications for select using (user_id = public.current_user_id());
+create policy "Insert notifications" on public.notifications for insert with check (true);
+create policy "Update notifications" on public.notifications for update using (user_id = public.current_user_id());
+create policy "Delete notifications" on public.notifications for delete using (user_id = public.current_user_id());
+
+-- Postgres RPC to authenticate
 create or replace function public.login_user(p_email text, p_password text)
 returns setof public.users as $$
 begin
@@ -255,7 +287,7 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Table-valued function to return secure filtered profiles (bypassing RLS internally, but checking visibility rules on the current session ID)
+-- Secure get_profiles function (bypass RLS internally to allow search and directory listings)
 create or replace function public.get_profiles()
 returns table (
     id text,
@@ -347,7 +379,6 @@ begin
         u.contact_person,
         u.social_links,
         u.field_visibility,
-        -- Secure conditional exposures: only show to self, or for Business Holders with Public visibility settings
         case 
             when u.id = public.current_user_id() then u.email
             when u.role = 'Business Holder' and coalesce(u.contact_visibility, 'Private') = 'Public' then u.email
@@ -367,24 +398,24 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Create secure view exposing profiles via the secure definer get_profiles function
-create or replace view public.profiles as
-select * from public.get_profiles();
+-- Create secure view exposing profiles
+create or replace view public.profiles as select * from public.get_profiles();
 
--- Grant permissions to access view and RPC functions
+-- Grant permissions
 grant select on public.profiles to anon, authenticated;
 grant execute on function public.login_user(text, text) to anon, authenticated;
 grant execute on function public.get_profiles() to anon, authenticated;
 
--- Add tables to the Supabase Realtime publication
-alter publication supabase_realtime drop table if exists conversations;
-alter publication supabase_realtime drop table if exists conversation_members;
-alter publication supabase_realtime drop table if exists messages;
-alter publication supabase_realtime drop table if exists user_presence;
-
-alter publication supabase_realtime add table conversations;
-alter publication supabase_realtime add table conversation_members;
-alter publication supabase_realtime add table messages;
-alter publication supabase_realtime add table user_presence;
-
-
+-- Setup Realtime Publication
+drop publication if exists supabase_realtime;
+create publication supabase_realtime;
+alter publication supabase_realtime add table public.conversations;
+alter publication supabase_realtime add table public.conversation_members;
+alter publication supabase_realtime add table public.messages;
+alter publication supabase_realtime add table public.user_presence;
+alter publication supabase_realtime add table public.connections;
+alter publication supabase_realtime add table public.connection_requests;
+alter publication supabase_realtime add table public.notifications;
+alter publication supabase_realtime add table public.applications;
+alter publication supabase_realtime add table public.projects;
+alter publication supabase_realtime add table public.users;

@@ -16,9 +16,9 @@ const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY)
 async function main() {
   const { data, error } = await supabase.from('users').select('id').limit(1);
   if (error) {
-    console.error('Error:', error.message);
+    console.error('Error on users:', error.message);
   } else {
-    console.log('User ID sample:', data);
+    console.log('Users check success:', data);
   }
 }
 main();

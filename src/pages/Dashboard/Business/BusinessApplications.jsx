@@ -2,12 +2,16 @@ import { useContext, useState } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
 import { UserCheck, Star, Check, X, MessageSquare, Bookmark, Users, ChevronRight, IndianRupee, Clock, Briefcase, Eye } from 'lucide-react';
+import { supabase } from '../../../supabaseClient';
 import './Business.css';
 
 const TABS = ['New', 'Shortlisted', 'Accepted', 'Rejected', 'Interview'];
 
 export const BusinessApplications = ({ onOpenMessages }) => {
-  const { currentUser, users, projects, setProjects, addNotification, startConversation, setActiveTabToRedirect, addConnection } = useContext(AppContext);
+  const { 
+    currentUser, users, projects, applications, acceptApplication, rejectApplication, 
+    addNotification, startConversation, setActiveTabToRedirect, addConnection 
+  } = useContext(AppContext);
   const { showSuccessToast } = useToast();
 
   const [activeTab, setActiveTab] = useState('New');
@@ -15,40 +19,35 @@ export const BusinessApplications = ({ onOpenMessages }) => {
 
   // Gather all proposals from all business projects
   const allApplications = [];
-  projects
-    .filter(p => p.businessId === currentUser.id)
-    .forEach(proj => {
-      (proj.proposals || []).forEach(proposal => {
-        allApplications.push({
-          ...proposal,
-          projectId: proj.id,
-          projectTitle: proj.title,
-        });
+  (applications || []).forEach(app => {
+    const proj = projects.find(p => p.id === app.project_id);
+    if (proj && proj.businessId === currentUser.id) {
+      const creator = users.find(u => u.id === app.applicant_id);
+      allApplications.push({
+        id: app.id,
+        creatorId: app.applicant_id,
+        creatorName: creator?.fullName || 'Unknown Creator',
+        pricing: app.rate,
+        daysToComplete: 7,
+        coverLetter: app.pitch,
+        projectId: app.project_id,
+        projectTitle: proj.title,
+        applicationStatus: app.status === 'Pending' ? 'New' : app.status
       });
-    });
+    }
+  });
 
   const filtered = allApplications.filter(app => {
     const s = app.applicationStatus || 'New';
     return s === activeTab;
   });
 
-  const updateProposalStatus = (projectId, creatorId, newStatus) => {
-    setProjects(prev => prev.map(p => {
-      if (p.id !== projectId) return p;
-      return {
-        ...p,
-        proposals: (p.proposals || []).map(prop =>
-          prop.creatorId === creatorId
-            ? { ...prop, applicationStatus: newStatus }
-            : prop
-        )
-      };
-    }));
+  const updateProposalStatus = async (appId, newStatus) => {
+    const dbStatus = newStatus === 'New' ? 'Pending' : newStatus;
+    await supabase.from('applications').update({ status: dbStatus }).eq('id', appId);
   };
 
   const handleViewApp = (app) => {
-    // Mark as viewed in proposal if not already
-    updateProposalStatus(app.projectId, app.creatorId, app.applicationStatus || 'New');
     setViewedApp(app);
     // Notify business viewed
     addNotification && addNotification(app.creatorId, {
@@ -58,8 +57,8 @@ export const BusinessApplications = ({ onOpenMessages }) => {
     });
   };
 
-  const handleShortlist = (app) => {
-    updateProposalStatus(app.projectId, app.creatorId, 'Shortlisted');
+  const handleShortlist = async (app) => {
+    await updateProposalStatus(app.id, 'Shortlisted');
     addNotification && addNotification(app.creatorId, {
       type: 'shortlisted',
       title: 'Your proposal has been shortlisted',
@@ -69,8 +68,8 @@ export const BusinessApplications = ({ onOpenMessages }) => {
     setViewedApp(null);
   };
 
-  const handleInterview = (app) => {
-    updateProposalStatus(app.projectId, app.creatorId, 'Interview');
+  const handleInterview = async (app) => {
+    await updateProposalStatus(app.id, 'Interview');
     addNotification && addNotification(app.creatorId, {
       type: 'invitation',
       title: 'Interview invitation received',
@@ -81,36 +80,18 @@ export const BusinessApplications = ({ onOpenMessages }) => {
   };
 
   const handleAccept = async (app) => {
-    updateProposalStatus(app.projectId, app.creatorId, 'Accepted');
-
-    // Create connection + unlock messaging
-    addConnection(currentUser.id, app.creatorId);
-    const convId = await startConversation(app.creatorId);
-
-    addNotification && addNotification(app.creatorId, {
-      type: 'accepted',
-      title: `${currentUser.businessName || 'A business'} accepted your application`,
-      body: `You can now start collaborating on "${app.projectTitle}". Messaging is now unlocked.`,
-      actionLabel: 'Open Chat',
-      actionConvId: convId,
-    });
-
+    const convId = await acceptApplication(app.id);
     showSuccessToast({
       title: 'Application Accepted',
-      subtitle: `${app.creatorName} is now connected. Messaging and contact details are unlocked.`,
+      subtitle: `${app.creatorName} is now accepted. Messaging and active workspace are activated!`,
       redirectText: 'Connection created...',
     });
     setViewedApp(null);
-    if (onOpenMessages) onOpenMessages(convId);
+    if (onOpenMessages && convId) onOpenMessages(convId);
   };
 
-  const handleReject = (app) => {
-    updateProposalStatus(app.projectId, app.creatorId, 'Rejected');
-    addNotification && addNotification(app.creatorId, {
-      type: 'rejected',
-      title: 'Application not selected',
-      body: `Your application for "${app.projectTitle}" was not selected this time.`,
-    });
+  const handleReject = async (app) => {
+    await rejectApplication(app.id);
     showSuccessToast({ title: 'Application Rejected', subtitle: 'The applicant has been notified.' });
     setViewedApp(null);
   };
@@ -169,8 +150,8 @@ export const BusinessApplications = ({ onOpenMessages }) => {
                     <h3>{viewedApp.creatorName}</h3>
                     <p className="biz-app-role">{creator?.role || 'Creator'} — {creator?.location || 'Global'}</p>
                     <div className="biz-app-rating">
-                      {[1,2,3,4,5].map(n => <Star key={n} size={13} style={{ fill: n <= Math.round(creator?.rating || 5) ? '#f59e0b' : 'none', color: '#f59e0b' }} />)}
-                      <span>{creator?.rating?.toFixed(1) || '5.0'}</span>
+                      {[1,2,3,4,5].map(n => <Star key={n} size={13} style={{ fill: n <= Math.round(Number(creator?.rating || 5)) ? '#f59e0b' : 'none', color: '#f59e0b' }} />)}
+                      <span>{Number(creator?.rating || 5.0).toFixed(1)}</span>
                     </div>
                     <span className="badge-pro" style={{ fontSize: '10px', alignSelf: 'flex-start' }}>{creator?.verificationStatus || 'Verified'}</span>
                   </div>

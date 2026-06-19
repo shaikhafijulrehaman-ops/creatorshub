@@ -114,7 +114,8 @@ const mapUserFromDb = (dbUser) => {
     contactPerson: dbUser.contact_person || null,
     address: dbUser.address || null,
     socialLinks: typeof dbUser.social_links === 'string' ? JSON.parse(dbUser.social_links) : (dbUser.social_links || {}),
-    fieldVisibility: typeof dbUser.field_visibility === 'string' ? JSON.parse(dbUser.field_visibility) : (dbUser.field_visibility || {})
+    fieldVisibility: typeof dbUser.field_visibility === 'string' ? JSON.parse(dbUser.field_visibility) : (dbUser.field_visibility || {}),
+    createdAt: dbUser.created_at || null
   };
 };
 
@@ -202,16 +203,14 @@ export const AppProvider = ({ children }) => {
   });
 
   // Notifications state
-  const [notifications, setNotifications] = useState(() => {
-    const saved = localStorage.getItem('ch_notifications');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [notifications, setNotifications] = useState([]);
 
-  // Connections state (accepted collaborators)
-  const [connections, setConnections] = useState(() => {
-    const saved = localStorage.getItem('ch_connections');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Applications state
+  const [applications, setApplications] = useState([]);
+
+  // Connections & Requests state
+  const [connections, setConnections] = useState([]);
+  const [connectionRequests, setConnectionRequests] = useState([]);
 
   // Global Active Dashboard Tab
   const [activeDashboardTab, setActiveDashboardTab] = useState('dashboard');
@@ -309,6 +308,19 @@ export const AppProvider = ({ children }) => {
         setMessages(groupedMessages);
         localStorage.setItem('ch_messages', JSON.stringify(groupedMessages));
 
+        // 4.5 Fetch Applications
+        const { data: dbApps, error: appsErr } = await supabase.from('applications').select('*');
+        let finalApps = [];
+        if (appsErr) {
+          console.warn('Error fetching applications from Supabase:', appsErr);
+          const saved = localStorage.getItem('ch_applications');
+          finalApps = saved ? JSON.parse(saved) : [];
+        } else {
+          finalApps = dbApps || [];
+        }
+        setApplications(finalApps);
+        localStorage.setItem('ch_applications', JSON.stringify(finalApps));
+
         // 5. Sync logged in user session & relationships
         let activeUser = null;
 
@@ -383,15 +395,14 @@ export const AppProvider = ({ children }) => {
           setCurrentUser(activeUser);
           localStorage.setItem('ch_current_user', JSON.stringify(activeUser));
 
-          const { data: dbSaved } = await supabase.from('saved_profiles').select('saved_user_id').eq('user_id', activeUser.id);
-          const savedIds = dbSaved ? dbSaved.map(s => s.saved_user_id) : [];
-          setSavedProfiles(savedIds);
-          localStorage.setItem('ch_saved', JSON.stringify(savedIds));
+          const { data: dbConns } = await supabase.from('connections').select('*').or(`user_id1.eq.${activeUser.id},user_id2.eq.${activeUser.id}`);
+          if (dbConns) setConnections(dbConns);
 
-          const { data: dbFollowed } = await supabase.from('followed_profiles').select('followed_user_id').eq('user_id', activeUser.id);
-          const followedIds = dbFollowed ? dbFollowed.map(f => f.followed_user_id) : [];
-          setFollowedProfiles(followedIds);
-          localStorage.setItem('ch_followed', JSON.stringify(followedIds));
+          const { data: dbReqs } = await supabase.from('connection_requests').select('*').or(`sender_id.eq.${activeUser.id},receiver_id.eq.${activeUser.id}`);
+          if (dbReqs) setConnectionRequests(dbReqs);
+
+          const { data: dbNotifs } = await supabase.from('notifications').select('*').eq('user_id', activeUser.id).order('created_at', { ascending: false });
+          if (dbNotifs) setNotifications(dbNotifs);
         }
       } catch (err) {
         console.error('Error loading Supabase data:', err);
@@ -403,24 +414,166 @@ export const AppProvider = ({ children }) => {
     initData();
   }, []);
 
-  // Sync state mutations to LocalStorage as a local cache/fallback
+  // Realtime database subscription for connections, requests, notifications, and profile broadcasts
   useEffect(() => {
-    localStorage.setItem('ch_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('ch_projects', JSON.stringify(projects));
-  }, [projects]);
-
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('ch_current_user', JSON.stringify(currentUser));
-      setSupabaseUserHeader(currentUser.id);
-    } else {
-      localStorage.removeItem('ch_current_user');
-      setSupabaseUserHeader(null);
+    if (!currentUser) {
+      setConnections([]);
+      setConnectionRequests([]);
+      setNotifications([]);
+      return;
     }
+
+    const connectionsSub = supabase
+      .channel('connections-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'connections' }, payload => {
+        const conn = payload.new;
+        if (payload.eventType === 'INSERT') {
+          if (conn.user_id1 === currentUser.id || conn.user_id2 === currentUser.id) {
+            setConnections(prev => {
+              if (prev.some(c => c.id === conn.id)) return prev;
+              return [...prev, conn];
+            });
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const oldConn = payload.old;
+          setConnections(prev => prev.filter(c => c.id !== oldConn.id));
+        }
+      })
+      .subscribe();
+
+    const requestsSub = supabase
+      .channel('requests-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'connection_requests' }, payload => {
+        const req = payload.new;
+        if (payload.eventType === 'INSERT') {
+          if (req.sender_id === currentUser.id || req.receiver_id === currentUser.id) {
+            setConnectionRequests(prev => {
+              if (prev.some(r => r.id === req.id)) return prev;
+              return [...prev, req];
+            });
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          if (req.sender_id === currentUser.id || req.receiver_id === currentUser.id) {
+            setConnectionRequests(prev => prev.map(r => r.id === req.id ? req : r));
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const oldReq = payload.old;
+          setConnectionRequests(prev => prev.filter(r => r.id !== oldReq.id));
+        }
+      })
+      .subscribe();
+
+    const notificationsSub = supabase
+      .channel('notifications-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, payload => {
+        const notif = payload.new;
+        if (payload.eventType === 'INSERT') {
+          if (notif.user_id === currentUser.id) {
+            setNotifications(prev => {
+              if (prev.some(n => n.id === notif.id)) return prev;
+              return [notif, ...prev];
+            });
+          }
+        } else if (payload.eventType === 'UPDATE') {
+          if (notif.user_id === currentUser.id) {
+            setNotifications(prev => prev.map(n => n.id === notif.id ? notif : n));
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const oldNotif = payload.old;
+          setNotifications(prev => prev.filter(n => n.id !== oldNotif.id));
+        }
+      })
+      .subscribe();
+
+    const profileChannel = supabase.channel('profile-updates');
+    profileChannel
+      .on('broadcast', { event: 'profile_changed' }, ({ payload }) => {
+        console.log('Realtime broadcast received: profile changed', payload);
+        const mapped = mapUserFromDb(payload.user);
+        setUsers(prev => {
+          const exists = prev.some(u => u.id === mapped.id);
+          if (exists) {
+            return prev.map(u => u.id === mapped.id ? { ...u, ...mapped } : u);
+          }
+          return [...prev, mapped];
+        });
+      })
+      .subscribe();
+
+    const applicationsSub = supabase
+      .channel('applications-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, payload => {
+        const app = payload.new;
+        if (payload.eventType === 'INSERT') {
+          setApplications(prev => {
+            if (prev.some(a => a.id === app.id)) return prev;
+            return [...prev, app];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          setApplications(prev => prev.map(a => a.id === app.id ? app : a));
+        } else if (payload.eventType === 'DELETE') {
+          const oldApp = payload.old;
+          setApplications(prev => prev.filter(a => a.id !== oldApp.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(connectionsSub);
+      supabase.removeChannel(requestsSub);
+      supabase.removeChannel(notificationsSub);
+      supabase.removeChannel(profileChannel);
+      supabase.removeChannel(applicationsSub);
+    };
   }, [currentUser]);
+
+  const broadcastProfileChange = (userObject) => {
+    const sanitized = {
+      id: userObject.id,
+      role: userObject.role,
+      full_name: userObject.fullName || userObject.full_name,
+      location: userObject.location,
+      description: userObject.description,
+      business_name: userObject.businessName,
+      business_category: userObject.businessCategory,
+      logo: userObject.logo,
+      profile_photo: userObject.profilePhoto,
+      bio: userObject.bio,
+      website: userObject.website,
+      team_size: userObject.teamSize,
+      monthly_marketing_budget: userObject.monthlyMarketingBudget,
+      content_categories: JSON.stringify(userObject.contentCategories || []),
+      platforms: JSON.stringify(userObject.platforms || {}),
+      followers_count: userObject.followersCount,
+      average_reach: userObject.averageReach,
+      engagement_rate: userObject.engagementRate,
+      languages: JSON.stringify(userObject.languages || []),
+      collaboration_pricing: userObject.collaborationPricing,
+      verification_status: userObject.verificationStatus,
+      profile_strength: userObject.profileStrength,
+      rating: userObject.rating?.toString(),
+      reviews: JSON.stringify(userObject.reviews || []),
+      services: JSON.stringify(userObject.services || []),
+      portfolio: JSON.stringify(userObject.portfolio || []),
+      skills: JSON.stringify(userObject.skills || []),
+      experience: userObject.experience,
+      cover_banner: userObject.coverBanner,
+      whatsapp: userObject.whatsapp,
+      contact_person: userObject.contactPerson,
+      social_links: JSON.stringify(userObject.socialLinks || {}),
+      field_visibility: JSON.stringify(userObject.fieldVisibility || {}),
+      email: (userObject.role === 'Business Holder' && userObject.contactVisibility === 'Public') ? userObject.email : null,
+      mobile_number: (userObject.role === 'Business Holder' && userObject.contactVisibility === 'Public') ? userObject.mobileNumber : null,
+      address: (userObject.role === 'Business Holder' && userObject.contactVisibility === 'Public') ? userObject.address : null
+    };
+
+    const channel = supabase.channel('profile-updates');
+    channel.send({
+      type: 'broadcast',
+      event: 'profile_changed',
+      payload: { user: sanitized }
+    }).then(() => console.log('Profile change broadcasted.'));
+  };
 
   // Auth Operations
   const registerUser = (role, basicDetails, profileDetails = {}, verificationLevel = 'Basic Verified') => {
@@ -474,6 +627,7 @@ export const AppProvider = ({ children }) => {
     // Supabase Insert
     supabase.from('users').insert([mapUserToDb(newUser)]).then(({ error }) => {
       if (error) console.error('Error inserting user to Supabase:', error);
+      else broadcastProfileChange(newUser);
     });
 
     return newUser;
@@ -558,7 +712,10 @@ export const AppProvider = ({ children }) => {
           console.log('AppContext: Syncing profile changes to Supabase...');
           supabase.from('users').update(mapUserToDb(merged)).eq('id', userId).then(({ error }) => {
             if (error) console.error('Error updating user in Supabase:', error);
-            else console.log('AppContext: Supabase profile sync completed.');
+            else {
+              console.log('AppContext: Supabase profile sync completed.');
+              broadcastProfileChange(merged);
+            }
           });
         }
       }, 0);
@@ -568,44 +725,37 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Helper to calculate profile strength dynamically
   const calculateProfileStrength = (role, user) => {
     if (!user) return 15;
     let score = 15; // baseline
     if (role === 'Business Holder') {
       const hasBusinessProfile = user.businessName && user.businessCategory && user.description;
       const hasContactDetails = user.mobileNumber && user.address;
-      const hasVerification = user.verificationRequested || (user.verificationStatus && user.verificationStatus !== 'Basic Verified');
       const hasPreferences = user.teamSize && user.monthlyMarketingBudget && user.website;
       
-      if (hasBusinessProfile) score += 25; // to 40%
-      if (hasContactDetails) score += 20;  // to 60%
-      if (hasVerification) score += 20;    // to 80%
-      if (hasPreferences) score += 20;      // to 100%
+      if (hasBusinessProfile) score += 30; 
+      if (hasContactDetails) score += 30;  
+      if (hasPreferences) score += 25;      
     } else if (role === 'Influencer') {
       const hasContentCategory = user.contentCategories && user.contentCategories.length > 0;
       const hasPlatform = user.platforms && Object.keys(user.platforms).length > 0;
       const hasProfileUrl = user.profileUrl || (user.platforms && Object.values(user.platforms).some(p => p.url));
-      const hasVerification = user.verificationRequested || (user.verificationStatus && user.verificationStatus !== 'Basic Verified');
       const hasAudienceDetails = user.followersCount && user.averageReach && user.collaborationPricing && user.bio;
       
-      if (hasContentCategory) score += 5;   // to 20%
-      if (hasPlatform) score += 20;         // to 40%
-      if (hasProfileUrl) score += 20;       // to 60%
-      if (hasVerification) score += 20;     // to 80%
-      if (hasAudienceDetails) score += 20;  // to 100%
+      if (hasContentCategory) score += 15;   
+      if (hasPlatform) score += 25;         
+      if (hasProfileUrl) score += 25;       
+      if (hasAudienceDetails) score += 20;  
     } else {
       const hasServices = user.services && user.services.length > 0;
       const hasPortfolio = user.portfolio && user.portfolio.length > 0;
       const hasPreviousWork = user.experience && user.bio;
       const hasSkills = user.skills && user.skills.length > 0;
-      const hasVerification = user.verificationRequested || (user.verificationStatus && user.verificationStatus !== 'Basic Verified');
       
-      if (hasServices) score += 5;          // to 20%
-      if (hasPortfolio) score += 20;         // to 40%
-      if (hasPreviousWork) score += 20;      // to 60%
-      if (hasSkills) score += 20;            // to 80%
-      if (hasVerification) score += 20;      // to 100%
+      if (hasServices) score += 15;          
+      if (hasPortfolio) score += 25;         
+      if (hasPreviousWork) score += 25;      
+      if (hasSkills) score += 20;            
     }
     return Math.min(100, score);
   };
@@ -649,29 +799,145 @@ export const AppProvider = ({ children }) => {
     return newProject;
   };
 
-  const applyToProject = (projectId, proposal) => {
-    let updatedProject = null;
-    setProjects(prev => prev.map(p => {
-      if (p.id === projectId) {
-        const exists = p.proposals.some(prop => prop.creatorId === proposal.creatorId);
-        if (exists) return p;
-        updatedProject = {
-          ...p,
-          proposals: [...p.proposals, { ...proposal, status: 'Pending' }]
-        };
-        return updatedProject;
-      }
-      return p;
-    }));
-    addActivity(`${proposal.creatorName} submitted a proposal for "${projects.find(p => p.id === projectId)?.title}"`);
+  const applyToProject = async (projectId, proposalOrPitch, rate) => {
+    if (!currentUser) return;
+    
+    let pitch = '';
+    let rateVal = '';
+    if (typeof proposalOrPitch === 'object' && proposalOrPitch !== null) {
+      pitch = proposalOrPitch.coverLetter || proposalOrPitch.pitch || '';
+      rateVal = proposalOrPitch.pricing || proposalOrPitch.rate || '';
+    } else {
+      pitch = proposalOrPitch;
+      rateVal = rate;
+    }
 
-    setTimeout(() => {
-      if (updatedProject) {
-        supabase.from('projects').update({ proposals: updatedProject.proposals }).eq('id', projectId).then(({ error }) => {
-          if (error) console.error('Error applying to project in Supabase:', error);
+    const app = {
+      id: `app-${Date.now()}`,
+      project_id: projectId,
+      applicant_id: currentUser.id,
+      pitch,
+      rate: rateVal,
+      status: 'Pending'
+    };
+
+    setApplications(prev => {
+      if (prev.some(a => a.project_id === projectId && a.applicant_id === currentUser.id)) return prev;
+      return [...prev, app];
+    });
+
+    const proj = projects.find(p => p.id === projectId);
+    addActivity(`${currentUser.fullName} applied to project: "${proj?.title || 'Unknown'}"`);
+
+    const { error } = await supabase.from('applications').insert([app]);
+    if (error) {
+      console.error('Error applying to project in Supabase:', error);
+    } else {
+      if (proj) {
+        await addNotification(proj.businessId, {
+          type: 'project_application',
+          title: 'New Project Application',
+          message: `${currentUser.fullName} applied to your requirement: "${proj.title}".`
         });
       }
-    }, 0);
+    }
+  };
+
+  const acceptApplication = async (appId) => {
+    const app = applications.find(a => a.id === appId);
+    if (!app) return null;
+
+    setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: 'Accepted' } : a));
+    await supabase.from('applications').update({ status: 'Accepted' }).eq('id', appId);
+
+    const proj = projects.find(p => p.id === app.project_id);
+    if (proj) {
+      const applicant = users.find(u => u.id === app.applicant_id);
+      const assignedRole = applicant?.role === 'Influencer' ? 'Influencer' : 'Contractor';
+      
+      const newTeam = {
+        members: { [assignedRole]: app.applicant_id },
+        milestones: [
+          { id: 'm-1', title: 'Concept Alignment & Briefing', status: 'Completed', deadline: '2026-06-25' },
+          { id: 'm-2', title: 'UI Layout Drafts & Scripting', status: 'In Progress', deadline: '2026-07-05' },
+          { id: 'm-3', title: 'Design Handoff & Video Editing Draft', status: 'Pending', deadline: '2026-07-20' },
+          { id: 'm-4', title: 'Website Launch & Campaign Rollout', status: 'Pending', deadline: '2026-08-10' }
+        ],
+        payments: [
+          { id: 'p-1', title: 'Initial Deposit (Escrowed)', amount: '₹1,000', status: 'Paid' },
+          { id: 'p-2', title: 'Milestone 2 Release', amount: '₹1,200', status: 'Pending' },
+          { id: 'p-3', title: 'Final Deliverable Settlement', amount: '₹1,300', status: 'Pending' }
+        ],
+        deliverables: [
+          { id: 'd-1', title: 'Summer Campaign Branding Book', type: 'Figma File', status: 'Uploaded', url: 'https://figma.com/design-book' },
+          { id: 'd-2', title: 'Commercial Video Hook (15s)', type: 'Video', status: 'Pending', url: '' }
+        ]
+      };
+
+      setProjects(prev => prev.map(p => p.id === proj.id ? { ...p, status: 'Active Workspace', team: newTeam } : p));
+      await supabase.from('projects').update({
+        status: 'Active Workspace',
+        team: newTeam
+      }).eq('id', proj.id);
+
+      const initialMsg = {
+        senderId: 'system',
+        senderName: 'Creators Hub AI',
+        text: 'Workspace successfully activated! Creator Team fully assembled. You can now chat, share files, track milestones, and manage payments in one central place.',
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => ({
+        ...prev,
+        [proj.id]: [...(prev[proj.id] || []), initialMsg]
+      }));
+
+      await supabase.from('messages').insert([{
+        project_id: proj.id,
+        sender_id: initialMsg.senderId,
+        sender_name: initialMsg.senderName,
+        text: initialMsg.text
+      }]);
+
+      const convId = await startConversation(app.applicant_id);
+
+      await addNotification(app.applicant_id, {
+        type: 'application_accepted',
+        title: 'Application Accepted',
+        message: `${currentUser.businessName || currentUser.fullName || 'Business'} accepted your application for "${proj.title}".`
+      });
+
+      addActivity(`Creator Team assembled for project: "${proj.title}"! Workspace activated.`);
+      return convId;
+    }
+    return null;
+  };
+
+  const rejectApplication = async (appId) => {
+    const app = applications.find(a => a.id === appId);
+    if (!app) return;
+
+    setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: 'Rejected' } : a));
+    await supabase.from('applications').update({ status: 'Rejected' }).eq('id', appId);
+
+    const proj = projects.find(p => p.id === app.project_id);
+    if (proj) {
+      await addNotification(app.applicant_id, {
+        type: 'application_rejected',
+        title: 'Application Update',
+        message: `Your application for "${proj.title}" was not selected.`
+      });
+    }
+  };
+
+  const addConnection = async (user1Id, user2Id) => {
+    const connId = `conn-${Date.now()}`;
+    const newConn = {
+      id: connId,
+      user_id1: user1Id < user2Id ? user1Id : user2Id,
+      user_id2: user1Id < user2Id ? user2Id : user1Id
+    };
+    const { error } = await supabase.from('connections').insert([newConn]);
+    if (error) console.error('Error adding connection:', error);
   };
 
   const inviteCreatorToProject = (projectId, creatorId) => {
@@ -1029,6 +1295,12 @@ export const AppProvider = ({ children }) => {
     }
   }, [p2pMessages]);
 
+  useEffect(() => {
+    if (initialized) {
+      localStorage.setItem('ch_applications', JSON.stringify(applications));
+    }
+  }, [applications, initialized]);
+
   // Realtime Messages Subscription
   useEffect(() => {
     if (!currentUser) return;
@@ -1262,56 +1534,85 @@ export const AppProvider = ({ children }) => {
       .eq('seen', false);
   };
 
-  // === Notification System ===
-  useEffect(() => {
-    localStorage.setItem('ch_notifications', JSON.stringify(notifications));
-  }, [notifications]);
-
-  useEffect(() => {
-    localStorage.setItem('ch_connections', JSON.stringify(connections));
-  }, [connections]);
-
-  const addNotification = (targetUserId, notifData) => {
-    const notif = {
+  // === Connection System & Notifications ===
+  const addNotification = async (targetUserId, notifData) => {
+    const newNotif = {
       id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      targetUserId,
-      read: false,
-      time: 'Just now',
-      createdAt: new Date().toISOString(),
-      ...notifData,
+      user_id: targetUserId,
+      sender_id: currentUser.id,
+      type: notifData.type,
+      title: notifData.title,
+      message: notifData.message,
+      read: false
     };
-    setNotifications(prev => [notif, ...prev]);
+    await supabase.from('notifications').insert([newNotif]);
   };
 
-  const markNotificationRead = (notifId) => {
-    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+  const markNotificationRead = async (notifId) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', notifId);
   };
 
-  const clearNotifications = () => {
-    setNotifications([]);
+  const clearNotifications = async () => {
+    await supabase.from('notifications').delete().eq('user_id', currentUser.id);
   };
 
-  // === Connection System ===
   const isConnected = (userAId, userBId) => {
     return connections.some(c =>
-      (c.userId1 === userAId && c.userId2 === userBId) ||
-      (c.userId1 === userBId && c.userId2 === userAId)
+      (c.user_id1 === userAId && c.user_id2 === userBId) ||
+      (c.user_id1 === userBId && c.user_id2 === userAId)
     );
   };
 
   const getConnections = (userId) => {
     return connections
-      .filter(c => c.userId1 === userId || c.userId2 === userId)
-      .map(c => c.userId1 === userId ? c.userId2 : c.userId1);
+      .filter(c => c.user_id1 === userId || c.user_id2 === userId)
+      .map(c => c.user_id1 === userId ? c.user_id2 : c.user_id1);
   };
 
-  const addConnection = (userAId, userBId) => {
-    if (isConnected(userAId, userBId)) return;
-    setConnections(prev => [...prev, {
-      userId1: userAId,
-      userId2: userBId,
-      connectedAt: new Date().toISOString()
-    }]);
+  const sendConnectionRequest = async (targetUserId) => {
+    const reqId = `req-${Date.now()}`;
+    const newReq = {
+      id: reqId,
+      sender_id: currentUser.id,
+      receiver_id: targetUserId,
+      status: 'Pending'
+    };
+    const { error } = await supabase.from('connection_requests').insert([newReq]);
+    if (!error) {
+      await addNotification(targetUserId, {
+        type: 'connection_request',
+        title: 'New Connection Request',
+        message: `${currentUser.fullName} sent you a connection request.`
+      });
+    }
+  };
+
+  const acceptConnectionRequest = async (requestId, senderId) => {
+    await supabase.from('connection_requests').delete().eq('id', requestId);
+    const connId = `conn-${Date.now()}`;
+    const newConn = {
+      id: connId,
+      user_id1: currentUser.id < senderId ? currentUser.id : senderId,
+      user_id2: currentUser.id < senderId ? senderId : currentUser.id
+    };
+    const { error } = await supabase.from('connections').insert([newConn]);
+    if (!error) {
+      await addNotification(senderId, {
+        type: 'connection_accepted',
+        title: 'Connection Accepted',
+        message: `${currentUser.fullName} accepted your connection request.`
+      });
+    }
+  };
+
+  const declineConnectionRequest = async (requestId) => {
+    await supabase.from('connection_requests').delete().eq('id', requestId);
+  };
+
+  const removeConnection = async (targetUserId) => {
+    await supabase.from('connections')
+      .delete()
+      .or(`and(user_id1.eq.${currentUser.id},user_id2.eq.${targetUserId}),and(user_id1.eq.${targetUserId},user_id2.eq.${currentUser.id})`);
   };
 
   return (
@@ -1319,6 +1620,7 @@ export const AppProvider = ({ children }) => {
       users,
       projects,
       setProjects,
+      applications,
       currentUser,
       activityFeed,
       savedProfiles,
@@ -1331,6 +1633,9 @@ export const AppProvider = ({ children }) => {
       updateProfile,
       createProject,
       applyToProject,
+      acceptApplication,
+      rejectApplication,
+      addConnection,
       inviteCreatorToProject,
       activateCreatorTeam,
       sendMessage,
@@ -1359,7 +1664,11 @@ export const AppProvider = ({ children }) => {
       connections,
       isConnected,
       getConnections,
-      addConnection,
+      connectionRequests,
+      sendConnectionRequest,
+      acceptConnectionRequest,
+      declineConnectionRequest,
+      removeConnection,
       activeDashboardTab,
       setActiveDashboardTab
     }}>

@@ -10,7 +10,7 @@ import { supabase } from '../../../supabaseClient';
 import { useToast } from '../../../components/SuccessToast';
 import { useResponsive } from '../../../hooks/useResponsive';
 
-export const MessagingCenter = () => {
+export const MessagingCenter = ({ onOpenProfile }) => {
   const { 
     currentUser, users, conversations, activeConversationId, 
     setActiveConversationId, p2pMessages, sendP2PMessage, 
@@ -244,21 +244,27 @@ export const MessagingCenter = () => {
     }
   };
 
-  // Filter connections for the New Chat modal
-  const connectedIds = getConnections(currentUser.id);
-  const connectedUsers = users.filter(u => connectedIds.includes(u.id));
-  const filteredConnections = connectedUsers.filter(u => {
+  // Filter all users globally for the New Chat modal
+  const filteredConnections = users.filter(u => {
+    if (u.id === currentUser.id) return false;
     const term = newChatSearch.toLowerCase();
     const nameMatch = u.fullName.toLowerCase().includes(term);
     const userMatch = u.username?.toLowerCase().includes(term) || false;
     const bizMatch  = u.businessName?.toLowerCase().includes(term) || false;
-    return nameMatch || userMatch || bizMatch;
+    const roleMatch = u.role?.toLowerCase().includes(term) || false;
+    const locMatch  = u.location?.toLowerCase().includes(term) || false;
+    return nameMatch || userMatch || bizMatch || roleMatch || locMatch;
   });
 
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
     const member = users.find(u => u.id === c.otherUserId);
     if (!member) return false;
+    
+    const msgs = p2pMessages[c.id] || [];
+    const hasMessages = msgs.length > 0 || c.id === activeConversationId;
+    if (!hasMessages) return false;
+
     const nameMatch = member.fullName.toLowerCase().includes(searchTerm.toLowerCase());
     const roleMatch = member.role.toLowerCase().includes(searchTerm.toLowerCase());
     const bizMatch = member.businessName?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
@@ -824,7 +830,7 @@ export const MessagingCenter = () => {
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Rating</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginTop: '3px' }}>
                   <Star size={12} fill="#eab308" stroke="#eab308" />
-                  <strong style={{ fontSize: '13px', color: 'var(--text-white)' }}>{otherUser.rating?.toFixed(1) || '5.0'}</strong>
+                  <strong style={{ fontSize: '13px', color: 'var(--text-white)' }}>{Number(otherUser.rating || 5.0).toFixed(1)}</strong>
                 </div>
               </div>
               <div>
@@ -919,37 +925,84 @@ export const MessagingCenter = () => {
               {filteredConnections.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-gray)' }}>
                   <User size={28} style={{ opacity: 0.2, marginBottom: '8px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
-                  <span style={{ fontSize: '12.5px' }}>No connected collaborators found.</span>
+                  <span style={{ fontSize: '12.5px' }}>No users found.</span>
                 </div>
               ) : (
                 filteredConnections.map(user => (
                   <div 
                     key={user.id}
-                    onClick={async () => {
-                      await startConversation(user.id);
-                      setShowNewChatModal(false);
-                      setNewChatSearch('');
-                    }}
                     className="glass-panel-hover"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
+                      justifyContent: 'space-between',
                       gap: '12px',
                       padding: '10px 12px',
                       borderRadius: '12px',
-                      cursor: 'pointer',
                       transition: 'all 0.2s ease',
                       border: '1px solid transparent'
                     }}
                   >
-                    <img 
-                      src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
-                      alt={user.fullName} 
-                      style={{ width: '36px', height: '36px', borderRadius: user.role === 'Business Holder' ? '6px' : '50%', objectFit: 'cover' }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <strong style={{ fontSize: '13px', color: 'var(--text-white)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{user.fullName}</strong>
-                      <span style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>{user.businessName || user.role}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                      <img 
+                        src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
+                        alt={user.fullName} 
+                        style={{ width: '36px', height: '36px', borderRadius: user.role === 'Business Holder' ? '6px' : '50%', objectFit: 'cover' }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <strong style={{ fontSize: '13px', color: 'var(--text-white)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{user.fullName}</strong>
+                          {user.verificationStatus && user.verificationStatus !== 'Basic Verified' && (
+                            <Award size={13} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} />
+                          )}
+                        </div>
+                        <span style={{ fontSize: '11px', color: 'var(--accent-cyan)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {user.role} {user.location ? `• ${user.location}` : ''}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowNewChatModal(false);
+                          setNewChatSearch('');
+                          if (onOpenProfile) {
+                            onOpenProfile(user.id);
+                          }
+                        }}
+                        className="btn-secondary"
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          minHeight: '28px',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await startConversation(user.id);
+                          setShowNewChatModal(false);
+                          setNewChatSearch('');
+                        }}
+                        className="btn-primary"
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          minHeight: '28px',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Message
+                      </button>
                     </div>
                   </div>
                 ))
