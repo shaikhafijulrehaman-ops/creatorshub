@@ -41,6 +41,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   useEffect(() => {
     if (activeTabToRedirect === 'messages') {
@@ -273,10 +274,33 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
           {/* Sidebar Brand Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 8px 20px 8px', borderBottom: '1px solid var(--glass-border)' }}>
             <div 
-              style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'var(--grad-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', color: '#000', cursor: 'pointer' }}
+              style={{ 
+                width: '36px', 
+                height: '36px', 
+                borderRadius: '8px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                cursor: 'pointer',
+                background: logoFailed ? 'var(--grad-primary)' : 'transparent',
+                overflow: 'hidden'
+              }}
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             >
-              CH
+              {!logoFailed ? (
+                <img 
+                  src="/creators-hub-logo.png" 
+                  alt="CH" 
+                  onError={() => setLogoFailed(true)}
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain' 
+                  }} 
+                />
+              ) : (
+                <span style={{ fontWeight: '800', color: '#000' }}>CH</span>
+              )}
             </div>
             {!sidebarCollapsed && (
               <div>
