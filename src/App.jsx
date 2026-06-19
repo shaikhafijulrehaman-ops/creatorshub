@@ -34,9 +34,9 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
       position: 'sticky',
       top: 0,
       zIndex: 1000,
-      background: 'rgba(10, 11, 18, 0.85)',
+      background: 'rgba(255, 255, 255, 0.85)',
       backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+      borderBottom: '1px solid var(--glass-border)',
       padding: '12px 16px',
       display: 'flex',
       alignItems: 'center',
@@ -53,7 +53,7 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
           alignItems: 'center',
           justifyContent: 'center',
           fontWeight: '800',
-          color: '#000',
+          color: '#fff',
           fontSize: '14px'
         }}>
           CH
@@ -115,9 +115,9 @@ const MobileBottomNav = ({ currentPage, onNavigate, currentUser }) => {
       left: 0,
       right: 0,
       height: '60px',
-      background: 'rgba(10, 11, 18, 0.95)',
+      background: 'rgba(255, 255, 255, 0.95)',
       backdropFilter: 'blur(16px)',
-      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+      borderTop: '1px solid var(--glass-border)',
       display: 'flex',
       justifyContent: 'space-around',
       alignItems: 'center',
