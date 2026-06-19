@@ -1,8 +1,8 @@
 .fab-root {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  z-index: 9999;
+  position: fixed !important;
+  bottom: 32px !important;
+  right: 32px !important;
+  z-index: 9999 !important;
   display: flex;
   flex-direction: column-reverse;
   align-items: flex-end;
@@ -146,16 +146,16 @@
 /* Tablet adjustments */
 @media (max-width: 1024px) {
   .fab-root {
-    bottom: 28px;
-    right: 24px;
+    bottom: 28px !important;
+    right: 24px !important;
   }
 }
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
   .fab-root {
-    bottom: 88px;
-    right: 20px;
+    bottom: 88px !important;
+    right: 20px !important;
   }
 
   .fab-trigger {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, FolderKanban, Upload, Users, Briefcase, Calendar } from 'lucide-react';
 import './FloatingActions.css';
 
@@ -23,7 +24,7 @@ export const FloatingActions = ({ role, onAction }) => {
   // If role is undefined or not found, don't render anything
   if (!role) return null;
 
-  return (
+  return createPortal(
     <div className="fab-root" role="region" aria-label="Quick actions">
       {/* Action Items */}
       <div className={`fab-menu${open ? ' fab-menu--open' : ''}`} aria-hidden={!open}>
@@ -53,7 +54,8 @@ export const FloatingActions = ({ role, onAction }) => {
       >
         {open ? <X size={24} /> : <Plus size={24} />}
       </button>
-    </div>
+    </div>,
+    document.body
   );
 };
 
