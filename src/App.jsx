@@ -13,7 +13,8 @@ import { MessagingCenter } from './pages/Dashboard/Shared/MessagingCenter';
 import { 
   Search, Briefcase, Sparkles, Home, MessageSquare, User, Bell, Menu, X, 
   CreditCard, BarChart2, ShieldCheck, LogOut, ChevronLeft, Calendar,
-  Star, Award, BarChart3, LayoutDashboard, FileText, Users, CheckSquare, Upload
+  Star, Award, BarChart3, LayoutDashboard, FileText, Users, CheckSquare, Upload,
+  FolderKanban, UserCheck, Settings
 } from 'lucide-react';
 import { useToast } from './components/SuccessToast';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -28,7 +29,7 @@ const RedirectToLogin = () => {
   return null;
 };
 
-const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, currentUser }) => {
+const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, currentUser, onNavigate }) => {
   return (
     <header style={{
       position: 'sticky',
@@ -43,7 +44,10 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
       justifyContent: 'space-between',
       height: '56px'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div 
+        onClick={() => onNavigate('landing')}
+        style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+      >
         <div style={{
           width: '32px',
           height: '32px',
@@ -62,37 +66,44 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        <button 
-          onClick={onOpenNotifications}
-          style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
-        >
-          <Bell size={20} />
-          {notificationCount > 0 && (
-            <span style={{
-              position: 'absolute',
-              top: '2px',
-              right: '2px',
-              width: '8px',
-              height: '8px',
-              background: '#ef4444',
-              borderRadius: '50%'
-            }} />
-          )}
-        </button>
+        {currentUser && (
+          <button 
+            onClick={onOpenNotifications}
+            style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+          >
+            <Bell size={20} />
+            {notificationCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: '2px',
+                right: '2px',
+                width: '8px',
+                height: '8px',
+                background: '#ef4444',
+                borderRadius: '50%'
+              }} />
+            )}
+          </button>
+        )}
 
-        <button 
-          onClick={onOpenDrawer}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-        >
-          {currentUser ? (
+        {currentUser && (
+          <button 
+            onClick={() => onNavigate('profile')}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          >
             <img 
               src={currentUser.profilePhoto || currentUser.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
               alt={currentUser.fullName} 
               style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--accent-cyan)' }}
             />
-          ) : (
-            <Menu size={20} style={{ color: 'var(--text-gray)' }} />
-          )}
+          </button>
+        )}
+
+        <button 
+          onClick={onOpenDrawer}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-gray)' }}
+        >
+          <Menu size={20} />
         </button>
       </div>
     </header>
@@ -281,9 +292,13 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
               <button
                 key={tab.id}
                 onClick={() => {
-                  setActiveDashboardTab(tab.id);
                   onClose();
-                  onNavigate('dashboard');
+                  if (tab.id === 'profile') {
+                    onNavigate('profile');
+                  } else {
+                    setActiveDashboardTab(tab.id);
+                    onNavigate('dashboard');
+                  }
                 }}
                 style={{
                   display: 'flex',
@@ -346,7 +361,7 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
 };
 
 const AppContent = () => {
-  const { currentUser, users, projects, loading, logoutUser, activeDashboardTab, setActiveDashboardTab, notifications = [] } = useContext(AppContext);
+  const { currentUser, users, projects, loading, initialized, logoutUser, activeDashboardTab, setActiveDashboardTab, notifications = [] } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   
   const navigate = useNavigate();
@@ -437,8 +452,12 @@ const AppContent = () => {
   };
 
   const handleOpenProfile = (userId) => {
-    setActiveProfileId(userId);
-    setActiveWorkspaceId(null);
+    if (isMobile) {
+      navigate(`/profile?id=${userId}`);
+    } else {
+      setActiveProfileId(userId);
+      setActiveWorkspaceId(null);
+    }
   };
 
   // Route back to dashboard or active list
@@ -456,7 +475,7 @@ const AppContent = () => {
       <Particles />
 
       {/* Global loading state spinner */}
-      {loading && (
+      {(loading || !initialized) && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-deep)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
           <div className="loader-spinner" style={{ width: '48px', height: '48px', border: '3px solid var(--accent-cyan-glow)', borderTopColor: 'var(--accent-cyan)' }} />
           <span style={{ fontSize: '13.5px', color: 'var(--text-gray)', fontWeight: '600', letterSpacing: '0.05em' }}>Loading Creators Hub...</span>
@@ -471,6 +490,7 @@ const AppContent = () => {
           onOpenNotifications={() => setMobileNotificationsOpen(true)} 
           notificationCount={notifications.filter(n => !n.read).length} 
           currentUser={currentUser} 
+          onNavigate={handleNavigate}
         />
       ) : (
         <Header onNavigate={handleNavigate} currentPage={currentPage} />

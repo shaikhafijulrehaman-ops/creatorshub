@@ -1,14 +1,174 @@
-import { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { 
   Star, Heart, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
   MapPin, Phone, Plus, X, Code, CheckCircle, FileText,
-  Briefcase, ChevronDown, ChevronUp, MessageSquare
+  Briefcase, ChevronDown, ChevronUp, MessageSquare, RefreshCw
 } from 'lucide-react';
 import { useToast } from '../../../components/SuccessToast';
 import { useResponsive } from '../../../hooks/useResponsive';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BusinessPublicProfile } from '../Business/BusinessPublicProfile';
+
+class ProfileErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ProfileView boundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="glass-panel" style={{ padding: '32px', margin: '20px auto', maxWidth: '600px', textAlign: 'center', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.04)' }}>
+          <AlertTriangle size={48} style={{ color: '#ef4444', marginBottom: '16px', marginLeft: 'auto', marginRight: 'auto' }} />
+          <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '8px' }}>Something went wrong</h3>
+          <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', marginBottom: '20px' }}>
+            We encountered an unexpected error while loading this profile.
+          </p>
+          <button 
+            onClick={() => this.setState({ hasError: false, error: null })} 
+            className="btn-primary" 
+            style={{ padding: '8px 20px', borderRadius: '10px' }}
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const ProfileSkeleton = () => {
+  return (
+    <div className="glass-panel profile-view-container" style={{ padding: '24px', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '20px' }}>
+        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite' }} className="skeleton-pulse" />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ width: '150px', height: '20px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ width: '100px', height: '12px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s infinite' }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ width: '80px', height: '32px', borderRadius: '16px', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ width: '80px', height: '32px', borderRadius: '16px', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ width: '80px', height: '32px', borderRadius: '16px', background: 'rgba(255,255,255,0.04)' }} />
+      </div>
+      <div style={{ flex: 1, borderRadius: '16px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ width: '120px', height: '16px', borderRadius: '4px', background: 'rgba(255,255,255,0.05)' }} />
+        <div style={{ width: '100%', height: '12px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }} />
+        <div style={{ width: '90%', height: '12px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }} />
+        <div style={{ width: '95%', height: '12px', borderRadius: '4px', background: 'rgba(255,255,255,0.03)' }} />
+      </div>
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 0.6; }
+          50% { opacity: 0.3; }
+          100% { opacity: 0.6; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+const ProfileErrorCard = () => {
+  return (
+    <div className="glass-panel" style={{ padding: '40px 24px', margin: '40px auto', maxWidth: '500px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '24px', background: 'rgba(10,11,18,0.3)', backdropFilter: 'blur(16px)' }}>
+      <div style={{ display: 'inline-flex', padding: '16px', background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', borderRadius: '50%', marginBottom: '20px' }}>
+        <AlertTriangle size={36} />
+      </div>
+      <h3 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '10px' }}>Failed to Load Profile</h3>
+      <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', lineHeight: '1.6', marginBottom: '24px' }}>
+        We encountered a network error or the profile doesn't exist. Please check your connection and try again.
+      </p>
+      <button 
+        onClick={() => window.location.reload()} 
+        className="btn-primary" 
+        style={{ width: '100%', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: '700' }}
+      >
+        <RefreshCw size={16} /> Retry Connection
+      </button>
+    </div>
+  );
+};
+
+const CompleteYourProfile = ({ user, score, onNavigate, onBypass }) => {
+  const missingItems = [];
+  if (user.role === 'Business Holder') {
+    if (!user.profilePhoto && !user.logo) missingItems.push({ label: 'Profile Photo / Logo', desc: 'Add a brand logo or avatar' });
+    if (!user.fullName && !user.businessName) missingItems.push({ label: 'Business Name', desc: 'Specify your company or brand name' });
+    if (!user.bio && !user.description) missingItems.push({ label: 'Bio / Description', desc: 'Tell creators what your business does' });
+    if (!user.location) missingItems.push({ label: 'Location', desc: 'Set your corporate or regional location' });
+    if (!user.email && !user.mobileNumber) missingItems.push({ label: 'Contact Details', desc: 'Add an email or phone number for connection requests' });
+  } else if (user.role === 'Freelancer') {
+    if (!user.profilePhoto) missingItems.push({ label: 'Profile Photo', desc: 'Upload a professional headshot' });
+    if (!user.bio) missingItems.push({ label: 'Bio / Summary', desc: 'Write a quick summary of your expertise' });
+    if (!user.location) missingItems.push({ label: 'Location', desc: 'Specify your region or timezone' });
+    if (!user.skills || user.skills.length === 0) missingItems.push({ label: 'Skills & Tech Stack', desc: 'List at least one professional skill' });
+    if (!user.portfolio || user.portfolio.length === 0) missingItems.push({ label: 'Portfolio Item', desc: 'Add a project link or file to show off your work' });
+  } else if (user.role === 'Influencer') {
+    if (!user.profilePhoto) missingItems.push({ label: 'Profile Photo', desc: 'Upload an avatar' });
+    if (!user.platforms || Object.keys(user.platforms).length === 0) missingItems.push({ label: 'Social Platforms', desc: 'Connect at least one channel' });
+    if (!user.contentCategories || user.contentCategories.length === 0) missingItems.push({ label: 'Content Categories', desc: 'Specify your niche' });
+    if (!user.verificationStatus || user.verificationStatus === 'Basic Verified') missingItems.push({ label: 'Ecosystem Verification', desc: 'Complete identity checks' });
+  }
+
+  return (
+    <div className="glass-panel" style={{ padding: '32px 24px', margin: '20px auto', maxWidth: '600px', border: '1px solid var(--glass-border)', borderRadius: '24px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Incomplete Profile</span>
+        <h2 style={{ fontSize: '22px', fontWeight: '800', marginTop: '8px', color: 'var(--text-white)' }}>Complete Your Profile</h2>
+        <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', marginTop: '4px' }}>
+          Your profile is currently at <strong style={{ color: 'var(--accent-cyan)' }}>{score}%</strong> completion. Fill out missing details to unlock full features.
+        </p>
+        <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', margin: '16px auto 0 auto', maxWidth: '300px' }}>
+          <div style={{ width: `${score}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-cyan-bright) 100%)' }} />
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '28px' }}>
+        {missingItems.map((item, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: '12px', padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px dashed var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '10px', marginTop: '2px' }} />
+            <div>
+              <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-white)', margin: 0 }}>{item.label}</h4>
+              <p style={{ fontSize: '11.5px', color: 'var(--text-gray-light)', margin: 0, marginTop: '2px' }}>{item.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <button 
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate('dashboard');
+            }
+          }}
+          className="btn-primary"
+          style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: '700' }}
+        >
+          Go to Settings Wizard
+        </button>
+        <button 
+          onClick={onBypass}
+          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
+        >
+          View Public Profile Anyway
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) => {
   return (
@@ -55,12 +215,16 @@ const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) =
   );
 };
 
-export const ProfileView = ({ userId, onClose, onNavigate }) => {
+const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
   const { 
     users, currentUser, toggleSaveUser, savedProfiles, 
     toggleFollowUser, followedProfiles, updateProfile, startConversation,
-    conversations, projects, isConnected: isDbConnected
+    conversations, projects, isConnected: isDbConnected, loading, initialized
   } = useContext(AppContext);
+  const [searchParams] = useSearchParams();
+  const queryUserId = searchParams.get('id');
+  const targetUserId = queryUserId || userId || currentUser?.id;
+  const [bypassChecklist, setBypassChecklist] = useState(false);
   const { showSuccessToast } = useToast();
   const { isMobile, isTablet, isDesktop } = useResponsive();
   const navigate = useNavigate();
@@ -118,8 +282,58 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
     }));
   };
 
-  const user = users.find(u => u.id === userId);
-  if (!user) return <div>User not found.</div>;
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        navigate('/dashboard');
+      }
+    }
+  };
+
+  const getProfileCompletionScore = (u) => {
+    if (!u) return 0;
+    let score = 0;
+    if (u.role === 'Business Holder') {
+      if (u.profilePhoto || u.logo) score += 20;
+      if (u.fullName || u.businessName) score += 20;
+      if (u.bio || u.description) score += 20;
+      if (u.location) score += 20;
+      if (u.email || u.mobileNumber) score += 20;
+    } else if (u.role === 'Freelancer') {
+      if (u.profilePhoto) score += 20;
+      if (u.bio) score += 20;
+      if (u.location) score += 20;
+      if (u.skills && u.skills.length > 0) score += 20;
+      if (u.portfolio && u.portfolio.length > 0) score += 20;
+    } else if (u.role === 'Influencer') {
+      score = 15;
+      if (u.profilePhoto) score += 20;
+      if (u.platforms && Object.keys(u.platforms).length > 0) score += 25;
+      if (u.contentCategories && u.contentCategories.length > 0) score += 20;
+      if (u.verificationStatus && u.verificationStatus !== 'Basic Verified') score += 20;
+    }
+    return score;
+  };
+
+  if (loading || !initialized) {
+    return <ProfileSkeleton />;
+  }
+
+  const user = users.find(u => u.id === targetUserId);
+  if (!user) {
+    return <ProfileErrorCard />;
+  }
+
+  const isOwner = currentUser && currentUser.id === user.id;
+  const score = getProfileCompletionScore(user);
+
+  if (isOwner && isMobile && score < 50 && !bypassChecklist) {
+    return <CompleteYourProfile user={user} score={score} onNavigate={onNavigate} onBypass={() => setBypassChecklist(true)} />;
+  }
 
   const isSaved = savedProfiles.includes(user.id);
   const isFollowing = followedProfiles.includes(user.id);
@@ -132,7 +346,6 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
     return mutualFollow || hasConversation;
   })();
 
-  const isOwner = currentUser && currentUser.id === user.id;
   const showBusinessContact = isOwner || (user.role === 'Business Holder' && user.contactVisibility === 'Public');
   const showSocialLinks = isOwner || (user.role === 'Influencer' && user.socialLinksVisibility === 'Public');
 
@@ -170,7 +383,7 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
       
       {/* Back button */}
       <button 
-        onClick={onClose}
+        onClick={handleClose}
         style={{
           position: 'absolute',
           top: '20px',
@@ -248,7 +461,7 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
                   if (onNavigate) {
                     onNavigate('dashboard');
                   }
-                  onClose();
+                  handleClose();
                 }}
                 disabled={!isDbConnected(currentUser.id, user.id)}
                 className="btn-primary"
@@ -1218,5 +1431,13 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
       `}</style>
 
     </div>
+  );
+};
+
+export const ProfileView = (props) => {
+  return (
+    <ProfileErrorBoundary>
+      <ProfileViewInner {...props} />
+    </ProfileErrorBoundary>
   );
 };

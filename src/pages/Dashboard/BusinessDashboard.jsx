@@ -408,7 +408,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
             {/* Profile Completion Indicator */}
             {profileCompletion < 100 && (
               <div 
-                onClick={() => setActiveTab('profile')}
+                onClick={() => {
+                  if (isMobile || isTablet) {
+                    onNavigate('profile');
+                  } else {
+                    setActiveTab('profile');
+                  }
+                }}
                 className="glass-panel"
                 style={{
                   padding: '6px 12px',
@@ -541,7 +547,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                     <h3 style={{ fontSize: '16.5px', fontWeight: '800', color: 'var(--text-white)' }}>Complete your Business Profile</h3>
                     <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '4px' }}>Fill in details like logo, cover image, and about section to gain a 3x increase in creator application rates.</p>
                   </div>
-                  <button onClick={() => setActiveTab('profile')} className="btn-primary" style={{ padding: '8px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12.5px' }}>
+                  <button onClick={() => {
+                    if (isMobile || isTablet) {
+                      onNavigate('profile');
+                    } else {
+                      setActiveTab('profile');
+                    }
+                  }} className="btn-primary" style={{ padding: '8px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12.5px' }}>
                     Finish Setup <ArrowRight size={14} />
                   </button>
                 </div>

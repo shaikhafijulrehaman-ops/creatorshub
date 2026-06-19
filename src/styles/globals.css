@@ -416,7 +416,7 @@ html, body {
   }
   
   /* Touch target min-heights */
-  .form-input, select, button, .btn-primary, .btn-secondary, .btn-outline-cyan {
+  .form-input, select, .btn-primary, .btn-secondary, .btn-outline-cyan {
     min-height: 48px !important;
   }
   

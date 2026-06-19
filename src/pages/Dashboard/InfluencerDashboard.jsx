@@ -11,6 +11,7 @@ import { VerificationCenter } from './Shared/VerificationCenter';
 import { useToast } from '../../components/SuccessToast';
 import { ApplicationForm } from './Shared/ApplicationForm';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const BrandIcon = ({ type, size = 16, style = {} }) => {
   const icons = {
@@ -56,6 +57,7 @@ const BrandIcon = ({ type, size = 16, style = {} }) => {
 const generateTaskId = () => `t-${Date.now()}`;
 
 export const InfluencerDashboard = ({ onNavigate }) => {
+  const { isMobile, isTablet } = useResponsive();
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
     activityFeed, messages, sendMessage, loading,
@@ -495,7 +497,13 @@ export const InfluencerDashboard = ({ onNavigate }) => {
             {/* Profile Completion Indicator */}
             {profileCompletion < 100 && (
               <div 
-                onClick={() => setActiveTab('profile')}
+                onClick={() => {
+                  if (isMobile || isTablet) {
+                    onNavigate('profile');
+                  } else {
+                    setActiveTab('profile');
+                  }
+                }}
                 className="glass-panel"
                 style={{
                   padding: '6px 12px',

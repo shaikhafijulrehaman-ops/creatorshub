@@ -217,6 +217,7 @@ export const AppProvider = ({ children }) => {
   const [activeDashboardTab, setActiveDashboardTab] = useState('dashboard');
 
   const [theme] = useState('light');
+  const [initialized, setInitialized] = useState(false);
 
   const toggleTheme = () => {
     // Dark mode disabled
@@ -396,6 +397,7 @@ export const AppProvider = ({ children }) => {
         console.error('Error loading Supabase data:', err);
       } finally {
         setLoading(false);
+        setInitialized(true);
       }
     };
     initData();
@@ -1337,6 +1339,7 @@ export const AppProvider = ({ children }) => {
       calculateMatchPercentage,
       generateAiProfileContent,
       loading,
+      initialized,
       theme,
       toggleTheme,
       conversations,

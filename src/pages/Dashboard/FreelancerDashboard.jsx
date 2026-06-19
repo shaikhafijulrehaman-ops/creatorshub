@@ -11,10 +11,12 @@ import { VerificationCenter } from './Shared/VerificationCenter';
 import { useToast } from '../../components/SuccessToast';
 import { ApplicationForm } from './Shared/ApplicationForm';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const generateTaskId = () => `t-${Date.now()}`;
 
 export const FreelancerDashboard = ({ onNavigate }) => {
+  const { isMobile, isTablet } = useResponsive();
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
     users, activityFeed, messages, sendMessage, loading,
@@ -443,7 +445,13 @@ export const FreelancerDashboard = ({ onNavigate }) => {
             {/* Profile Completion Indicator */}
             {profileCompletion < 100 && (
               <div 
-                onClick={() => setActiveTab('profile')}
+                onClick={() => {
+                  if (isMobile || isTablet) {
+                    onNavigate('profile');
+                  } else {
+                    setActiveTab('profile');
+                  }
+                }}
                 className="glass-panel"
                 style={{
                   padding: '6px 12px',
