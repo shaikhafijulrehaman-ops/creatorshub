@@ -8,6 +8,9 @@ import {
   MapPin, Clock, ArrowRight, Send, ExternalLink, CreditCard
 } from 'lucide-react';
 import { VerificationCenter } from './Shared/VerificationCenter';
+import { useToast } from '../../components/SuccessToast';
+import { ApplicationForm } from './Shared/ApplicationForm';
+import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
 
 const generateTaskId = () => `t-${Date.now()}`;
 
@@ -15,11 +18,14 @@ export const FreelancerDashboard = ({ onNavigate }) => {
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
     users, activityFeed, messages, sendMessage, loading,
-    activeTabToRedirect, setActiveTabToRedirect
+    activeTabToRedirect, setActiveTabToRedirect, notifications,
+    activeDashboardTab, setActiveDashboardTab
   } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
+  const [notifOpen, setNotifOpen] = useState(false);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const activeTab = activeDashboardTab;
+  const setActiveTab = setActiveDashboardTab;
   
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -97,7 +103,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
   const handleApplySubmit = (e) => {
     e.preventDefault();
     if (!coverLetter || !bidPrice) {
-      alert('Please fill out cover letter and bid price.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out cover letter and bid price.' });
       return;
     }
 
@@ -113,7 +119,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     setCoverLetter('');
     setBidPrice('');
     setShowApplyModal(false);
-    alert('Application Pitch submitted successfully!');
+    showSuccessToast({ title: '✔ Application Sent', subtitle: 'Your pitch has been submitted successfully!', redirectText: 'Redirecting to applications...' });
     setActiveTab('applications');
   };
 
@@ -121,7 +127,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
   const handleAddPortfolioItem = (e) => {
     e.preventDefault();
     if (!portTitle || !portUrl) {
-      alert('Please fill out required fields.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out the required fields.' });
       return;
     }
 
@@ -139,14 +145,14 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     setPortUrl('');
     setPortDesc('');
     setShowPortfolioModal(false);
-    alert('Portfolio item published!');
+    showSuccessToast({ title: '✔ Portfolio Updated', subtitle: 'Your portfolio item has been published!' });
   };
 
   // Add Certificate Item
   const handleAddCertificate = (e) => {
     e.preventDefault();
     if (!certTitle || !certOrg) {
-      alert('Please fill out certificate fields.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out the certificate fields.' });
       return;
     }
 
@@ -162,7 +168,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
     setCertTitle('');
     setCertOrg('');
     setCertYear('');
-    alert('Certificate added!');
+    showSuccessToast({ title: '✔ Certificate Added', subtitle: 'Your certificate has been added successfully!' });
   };
 
   // Handle Workspace Chat Send
@@ -457,6 +463,9 @@ export const FreelancerDashboard = ({ onNavigate }) => {
               </div>
             )}
 
+            {/* Notification Bell */}
+            <NotificationBell onClick={() => setNotifOpen(true)} />
+
             {/* Mobile Hamburger menu */}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -678,6 +687,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                     <option value="App Development">App Dev</option>
                     <option value="UI/UX Design">UI/UX Design</option>
                     <option value="Video Editing">Video Editing</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
 
@@ -1067,7 +1077,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                           onClick={() => {
                             const updated = currentUser.portfolio.filter((_, i) => i !== idx);
                             updateProfile(currentUser.id, { portfolio: updated });
-                            alert('Project removed.');
+                            showSuccessToast({ title: '✔ Project Removed', subtitle: 'Portfolio project has been removed.' });
                           }} 
                           style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
                         >
@@ -1250,7 +1260,7 @@ export const FreelancerDashboard = ({ onNavigate }) => {
                       bio: e.target.bio.value,
                       skills: e.target.skills.value ? e.target.skills.value.split(',').map(s => s.trim()) : []
                     });
-                    alert('Profile details saved!');
+                    showSuccessToast({ title: '✔ Profile Updated Successfully', subtitle: 'Your latest changes have been saved.', redirectText: 'Redirecting to your dashboard...' });
                   }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
                       <label className="form-label">Full Name</label>
@@ -1307,64 +1317,15 @@ export const FreelancerDashboard = ({ onNavigate }) => {
       </div>
 
       {/* ==================== APPLY PROPOSAL MODAL ==================== */}
-      {showApplyModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div className="glass-panel animate-scale-up" style={{ width: '92%', maxWidth: '500px', padding: '32px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '14px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Submit Proposal Pitch</h3>
-              <button onClick={() => setShowApplyModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label className="form-label">Escrow Bid Price*</label>
-                <input 
-                  type="text" 
-                  value={bidPrice} 
-                  onChange={(e) => setBidPrice(e.target.value)} 
-                  className="form-input" 
-                  placeholder="E.g. ₹1,200" 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Days to Complete*</label>
-                <input 
-                  type="number" 
-                  value={daysToComplete} 
-                  onChange={(e) => setDaysToComplete(e.target.value)} 
-                  className="form-input" 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Pitch Pitch / Cover Letter*</label>
-                <textarea 
-                  value={coverLetter} 
-                  onChange={(e) => setCoverLetter(e.target.value)} 
-                  className="form-input" 
-                  rows={4} 
-                  placeholder="Explain why you are the best fit for this campaign, highlight your past portfolio links..." 
-                  required 
-                />
-              </div>
-
-              <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Submit Bid Pitch</button>
-            </form>
-          </div>
-        </div>
+      {showApplyModal && selectedProjectId && (
+        <ApplicationForm 
+          project={projects.find(p => p.id === selectedProjectId)} 
+          onClose={() => { setShowApplyModal(false); setSelectedProjectId(''); }}
+        />
       )}
+
+      {/* Slide-in Notifications Center */}
+      <NotificationCenter open={notifOpen} onClose={() => setNotifOpen(false)} />
 
       {/* ==================== PORTFOLIO UPLOAD MODAL ==================== */}
       {showPortfolioModal && (

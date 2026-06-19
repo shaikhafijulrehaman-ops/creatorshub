@@ -229,12 +229,16 @@ export const Header = ({ onNavigate, currentPage }) => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: 'var(--text-white)',
-                  fontWeight: '600',
-                  fontSize: '14px',
+                  color: currentPage === 'login' ? 'var(--text-white)' : 'var(--text-gray)',
+                  borderBottom: currentPage === 'login' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                  paddingBottom: '4px',
+                  fontWeight: '500',
+                  fontSize: '15px',
                   cursor: 'pointer',
-                  padding: '10px 16px',
-                  minHeight: '44px'
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
+                  minHeight: '44px',
+                  transition: 'var(--transition-fast)'
                 }}
               >
                 Login
@@ -248,7 +252,10 @@ export const Header = ({ onNavigate, currentPage }) => {
                   minHeight: '44px',
                   background: 'var(--btn-primary-bg)',
                   color: 'var(--btn-primary-text)',
-                  boxShadow: '0 0 12px var(--accent-cyan-glow)'
+                  boxShadow: currentPage === 'register' 
+                    ? '0 0 16px var(--accent-cyan-glow), inset 0 0 8px var(--accent-cyan-glow)' 
+                    : '0 0 12px var(--accent-cyan-glow)',
+                  fontWeight: currentPage === 'register' ? '700' : '600'
                 }}
               >
                 Join Hub
@@ -340,6 +347,11 @@ export const Header = ({ onNavigate, currentPage }) => {
           <button 
             onClick={() => handleLinkClick('explore')}
             className="drawer-nav-item"
+            style={{
+              background: currentPage === 'explore' ? 'var(--accent-cyan-glow)' : 'none',
+              color: currentPage === 'explore' ? 'var(--accent-cyan)' : 'var(--text-white)',
+              fontWeight: currentPage === 'explore' ? '700' : '600'
+            }}
           >
             Explore Directory
           </button>
@@ -386,14 +398,25 @@ export const Header = ({ onNavigate, currentPage }) => {
               <button 
                 onClick={() => handleLinkClick('onboarding', { loginOnly: true })}
                 className="btn-secondary"
-                style={{ width: '100%', minHeight: '48px' }}
+                style={{ 
+                  width: '100%', 
+                  minHeight: '48px',
+                  borderColor: currentPage === 'login' ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)',
+                  background: currentPage === 'login' ? 'rgba(0, 217, 255, 0.05)' : 'none',
+                  fontWeight: currentPage === 'login' ? '700' : '600'
+                }}
               >
                 Sign In
               </button>
               <button 
                 onClick={() => handleLinkClick('onboarding')}
                 className="btn-primary"
-                style={{ width: '100%', minHeight: '48px' }}
+                style={{ 
+                  width: '100%', 
+                  minHeight: '48px',
+                  boxShadow: currentPage === 'register' ? '0 0 16px var(--accent-cyan-glow)' : '0 4px 14px 0 rgba(0, 0, 0, 0.05)',
+                  fontWeight: currentPage === 'register' ? '700' : '600'
+                }}
               >
                 Join Creators Hub
               </button>

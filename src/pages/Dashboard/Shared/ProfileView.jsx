@@ -5,6 +5,10 @@ import {
   MapPin, Phone, Plus, X, Code, CheckCircle, FileText,
   Briefcase, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
+import { useToast } from '../../../components/SuccessToast';
+import { useResponsive } from '../../../hooks/useResponsive';
+import { useNavigate } from 'react-router-dom';
+import { BusinessPublicProfile } from '../Business/BusinessPublicProfile';
 
 const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) => {
   return (
@@ -55,8 +59,12 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
   const { 
     users, currentUser, toggleSaveUser, savedProfiles, 
     toggleFollowUser, followedProfiles, updateProfile, startConversation,
-    conversations, projects
+    conversations, projects, isConnected: isDbConnected
   } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
+  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const navigate = useNavigate();
+  const [activeProfileTab, setActiveProfileTab] = useState('overview');
 
   // Review states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -131,7 +139,7 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
   const handlePostReview = (e) => {
     e.preventDefault();
     if (!reviewComment) {
-      alert('Please write a comment.');
+      showSuccessToast({ title: '⚠ Missing Comment', subtitle: 'Please write a comment before posting.' });
       return;
     }
 
@@ -185,8 +193,14 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
         <X size={20} />
       </button>
 
-      {/* Header Profile Meta */}
-      <div className="profile-header-meta">
+      {user.role === 'Business Holder' ? (
+        <div style={{ marginTop: '20px', width: '100%' }}>
+          <BusinessPublicProfile businessId={user.id} viewerId={currentUser?.id} />
+        </div>
+      ) : (
+        <>
+          {/* Header Profile Meta */}
+          <div className="profile-header-meta">
         <img 
           src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'} 
           alt={user.fullName}
@@ -225,57 +239,366 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
 
         {/* Action triggers (Save/Follow) */}
         {currentUser && currentUser.id !== user.id && (
-          <div className="profile-actions-wrapper">
-            <button 
-              onClick={async () => {
-                await startConversation(user.id);
-                if (onNavigate) {
-                  onNavigate('dashboard');
-                }
-                onClose();
-              }}
-              className="btn-primary"
-              style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-            >
-              <MessageSquare size={14} /> Message
-            </button>
-
-            {!(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
+          <div className="profile-actions-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
               <button 
-                onClick={() => toggleFollowUser(user.id)}
-                className={isFollowing ? 'btn-secondary' : 'btn-outline-cyan'}
-                style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Heart size={14} fill={isFollowing ? 'var(--text-white)' : 'none'} style={{ marginRight: '6px' }} /> 
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
-            )}
-
-            {user.role !== 'Freelancer' && !(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
-              <button 
-                onClick={() => toggleSaveUser(user.id)}
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid var(--glass-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
-                  cursor: 'pointer'
+                onClick={async () => {
+                  if (!isDbConnected(currentUser.id, user.id)) return;
+                  await startConversation(user.id);
+                  if (onNavigate) {
+                    onNavigate('dashboard');
+                  }
+                  onClose();
+                }}
+                disabled={!isDbConnected(currentUser.id, user.id)}
+                className="btn-primary"
+                style={{ 
+                  height: '48px', 
+                  padding: '0 20px', 
+                  fontSize: '13px', 
+                  borderRadius: '10px', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '6px',
+                  opacity: isDbConnected(currentUser.id, user.id) ? 1 : 0.5,
+                  pointerEvents: isDbConnected(currentUser.id, user.id) ? 'auto' : 'none'
                 }}
               >
-                <Bookmark size={16} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
+                <MessageSquare size={14} /> Message
               </button>
+
+              {!(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
+                <button 
+                  onClick={() => toggleFollowUser(user.id)}
+                  className={isFollowing ? 'btn-secondary' : 'btn-outline-cyan'}
+                  style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Heart size={14} fill={isFollowing ? 'var(--text-white)' : 'none'} style={{ marginRight: '6px' }} /> 
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              )}
+
+              {user.role !== 'Freelancer' && !(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
+                <button 
+                  onClick={() => toggleSaveUser(user.id)}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isSaved ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Bookmark size={16} fill={isSaved ? 'var(--accent-cyan)' : 'none'} />
+                </button>
+              )}
+            </div>
+
+            {!isDbConnected(currentUser.id, user.id) && (
+              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Connect first to start a conversation.
+              </span>
             )}
           </div>
         )}
       </div>
 
       {/* Grid: Details & Side info */}
-      <div className="profile-details-grid">
+      {!isDesktop ? (
+        <div style={{ marginTop: '20px' }}>
+          {/* Tabs header */}
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)' }} className="hide-scrollbar">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'portfolio', label: user.role === 'Influencer' ? 'Platform Reach' : 'Portfolio' },
+              { id: 'reviews', label: `Reviews (${user.reviews ? user.reviews.length : 0})` },
+              { id: 'contact', label: 'Contact' }
+            ].map(tab => {
+              const isActive = activeProfileTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveProfileTab(tab.id)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    border: '1px solid ' + (isActive ? 'var(--accent-cyan)' : 'var(--glass-border)'),
+                    background: isActive ? 'var(--accent-cyan-glow)' : 'transparent',
+                    color: isActive ? 'var(--accent-cyan)' : 'var(--text-gray)',
+                    fontWeight: '700',
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tab contents */}
+          {activeProfileTab === 'overview' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Bio & Summary</h4>
+                <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', lineHeight: '1.6', margin: 0 }}>
+                  {user.bio || user.description || 'No summary bio provided.'}
+                </p>
+              </div>
+
+              <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Identity Verification</h4>
+                <div className="profile-strength-layout">
+                  <div className="rating-card-speedometer">
+                    <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '8px', marginTop: 0 }}>Ecosystem Collaboration Rating</h4>
+                    <span style={{ fontSize: '36px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
+                      {user.rating ? user.rating.toFixed(1) : '5.0'}
+                    </span>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '4px 0 10px 0' }}>
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} size={14} fill={i < Math.round(user.rating || 5) ? '#eab308' : 'none'} stroke={i < Math.round(user.rating || 5) ? 'none' : 'var(--text-muted)'} />
+                      ))}
+                    </div>
+                    <p style={{ fontSize: '10px', color: 'var(--text-muted)', margin: 0 }}>Based on verified collaboration escrow logs</p>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <h4 style={{ fontSize: '13px', color: 'var(--text-gray)', marginBottom: '4px', marginTop: 0 }}>Profile Strength Indicator</h4>
+                    <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                      <div style={{ width: `${user.profileStrength || 85}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-cyan-bright) 100%)' }}></div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
+                      <span>Completion Strength:</span>
+                      <span style={{ color: 'var(--accent-cyan)', fontWeight: '700' }}>{user.profileStrength || 85}%</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '12px', color: 'var(--text-white)', fontSize: '12px' }}>
+                      <CheckCircle size={14} style={{ color: 'var(--accent-cyan)' }} />
+                      <span>Stripe Escrow Verified</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', color: 'var(--text-white)', fontSize: '12px' }}>
+                      <CheckCircle size={14} style={{ color: 'var(--accent-cyan)' }} />
+                      <span>Background Check Cleared</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {user.role === 'Freelancer' && (
+                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Skills & Tech Stack</h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {user.skills ? user.skills.map(s => (
+                      <span key={s} className="badge-tag">{s}</span>
+                    )) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeProfileTab === 'portfolio' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {user.role === 'Influencer' && user.platforms && (
+                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Platform Channels & Reach</h4>
+                  <div className="platform-channels-grid">
+                    {Object.keys(user.platforms).map(pName => {
+                      const plat = user.platforms[pName];
+                      return (
+                        <div key={pName} className="glass-panel" style={{ padding: '16px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--accent-cyan)' }}>{pName}</span>
+                            <a href={plat.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              Channel <Globe size={10} />
+                            </a>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            <div>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Followers</span>
+                              <p style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{plat.followers}</p>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Avg. Reach</span>
+                              <p style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{plat.reach}</p>
+                            </div>
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Engagement Rate</span>
+                              <p style={{ fontSize: '13px', fontWeight: '700', margin: 0, color: 'var(--accent-cyan-bright)' }}>{plat.engagement || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {user.role === 'Influencer' && user.fraudAudit && (
+                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>🛡️ AI Audience Audit</h4>
+                  <div className="info-grid-2-col" style={{ gap: '12px' }}>
+                    <div className="info-item">
+                      <span className="info-label">Fake Followers:</span>
+                      <span className="info-val" style={{ fontWeight: '700', color: parseFloat(user.fraudAudit.fakeFollowers) > 10 ? '#ef4444' : '#22c55e' }}>
+                        {user.fraudAudit.fakeFollowers}
+                      </span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Authenticity:</span>
+                      <span className="info-val">{user.fraudAudit.engagementAuthenticity}</span>
+                    </div>
+                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                      <span className="info-label">Growth Pattern:</span>
+                      <span className="info-val">{user.fraudAudit.suspiciousGrowth}</span>
+                    </div>
+                    <div style={{ 
+                      gridColumn: 'span 2',
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      marginTop: '8px',
+                      padding: '8px 12px', 
+                      borderRadius: '8px',
+                      background: user.fraudAudit.badge === 'Verified Audience' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                      border: user.fraudAudit.badge === 'Verified Audience' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                      color: user.fraudAudit.badge === 'Verified Audience' ? '#22c55e' : '#ef4444',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      <ShieldCheck size={14} />
+                      <span>{user.fraudAudit.badge}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {user.role === 'Freelancer' && user.portfolio && (
+                <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '12px' }}>Portfolio & Work Gallery</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {user.portfolio.map((port, idx) => (
+                      <div key={idx} className="glass-panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flex: '1', minWidth: '200px' }}>
+                          <div style={{ padding: '8px', background: 'rgba(0, 217, 255, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
+                            <FileText size={18} />
+                          </div>
+                          <div>
+                            <h4 style={{ fontSize: '13px', fontWeight: '700', margin: 0 }}>{port.service}</h4>
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', margin: 0 }}>{port.description}</p>
+                          </div>
+                        </div>
+                        <a 
+                          href={port.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="btn-secondary" 
+                          style={{ padding: '0 16px', height: '36px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          View Project <Globe size={11} />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeProfileTab === 'reviews' && (
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', margin: 0 }}>Reviews</h4>
+                {currentUser && currentUser.id !== user.id && (
+                  <button 
+                    onClick={() => setShowReviewModal(true)} 
+                    className="btn-outline-cyan"
+                    style={{ height: '36px', padding: '0 16px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Plus size={12} /> Post Review
+                  </button>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {!user.reviews || user.reviews.length === 0 ? (
+                  <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', margin: 0 }}>
+                    No reviews recorded yet for this profile.
+                  </p>
+                ) : (
+                  user.reviews.map(rev => (
+                    <div key={rev.id} style={{ padding: '14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700' }}>{rev.businessName}</span>
+                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} size={11} fill={i < rev.rating ? '#eab308' : 'none'} stroke={i < rev.rating ? 'none' : 'var(--text-muted)'} />
+                          ))}
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-gray)', lineHeight: '1.4', margin: 0 }}>{rev.comment}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeProfileTab === 'contact' && (
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '18px' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-white)', marginBottom: '16px' }}>Contact & Socials</h4>
+              <div className="info-grid-2-col">
+                {showBusinessContact && (
+                  <>
+                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                      <span className="info-label">Email Address</span>
+                      <p className="info-val">{user.email || 'N/A'}</p>
+                    </div>
+                    {user.mobileNumber && (
+                      <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                        <span className="info-label">Mobile Number</span>
+                        <p className="info-val">{user.mobileNumber}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {user.socialLinks && Object.values(user.socialLinks).some(v => v && v.trim() !== '') && (
+                  <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
+                    <span className="info-label">Social Connections</span>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                      {Object.entries(user.socialLinks).map(([platform, url]) => {
+                        if (!url || url.trim() === '') return null;
+                        return (
+                          <a 
+                            key={platform} 
+                            href={url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="btn-secondary" 
+                            style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
+                          >
+                            {platform}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="profile-details-grid">
         
         {/* Left column: Bio, Details, Reviews */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -640,6 +963,7 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
         </div>
 
       </div>
+      )}
 
       {/* POST REVIEW MODAL */}
       {showReviewModal && (
@@ -706,6 +1030,8 @@ export const ProfileView = ({ userId, onClose, onNavigate }) => {
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
 
       <style>{`

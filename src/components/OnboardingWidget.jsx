@@ -16,7 +16,7 @@ export const OnboardingWidget = () => {
   const [mobileNumber, setMobileNumber] = useState(currentUser?.mobileNumber || '');
   const [address, setAddress] = useState(currentUser?.address || '');
   const [teamSize, setTeamSize] = useState(currentUser?.teamSize || '1-10');
-  const [monthlyMarketingBudget, setMonthlyMarketingBudget] = useState(currentUser?.monthlyMarketingBudget || '<₹1,000');
+  const [monthlyMarketingBudget, setMonthlyMarketingBudget] = useState(currentUser?.monthlyMarketingBudget || 'Not Specified');
   const [website, setWebsite] = useState(currentUser?.website || '');
 
   // Form States - Influencer
@@ -380,21 +380,35 @@ export const OnboardingWidget = () => {
                     <option value="15-50">15-50 Employees</option>
                     <option value="50-100">50-100 Employees</option>
                     <option value="100+">100+ Employees</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
-                <div>
-                  <label className="form-label">Monthly Marketing Budget</label>
+                 <div>
+                  <label className="form-label">Estimated Collaboration Budget</label>
                   <select 
                     value={monthlyMarketingBudget} 
                     onChange={(e) => setMonthlyMarketingBudget(e.target.value)} 
                     className="form-input"
                     style={{ background: 'var(--bg-dark)' }}
                   >
-                    <option value="<₹1,000">&lt;₹1,000</option>
-                    <option value="₹1,000 - ₹5,000">₹1,000 - ₹5,000</option>
-                    <option value="₹5,000 - ₹10,000">₹5,000 - ₹10,000</option>
-                    <option value="₹10,000 - ₹20,000">₹10,000 - ₹20,000</option>
-                    <option value="₹20,000+">₹20,000+</option>
+                    {[
+                      'Not Specified',
+                      'Under ₹5,000',
+                      '₹5,000 – ₹10,000',
+                      '₹10,000 – ₹25,000',
+                      '₹25,000 – ₹50,000',
+                      '₹50,000 – ₹1,00,000',
+                      '₹1,00,000 – ₹2,50,000',
+                      '₹2,50,000 – ₹5,00,000',
+                      '₹5,00,000 – ₹10,00,000',
+                      '₹10,00,000 – ₹25,00,000',
+                      '₹25,00,000 – ₹50,00,000',
+                      '₹50,00,000 – ₹1 Crore',
+                      '₹1 Crore+',
+                      'Flexible / Discuss Later'
+                    ].map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
                   </select>
                 </div>
                 <button type="submit" className="btn-primary" style={{ marginTop: '8px' }}>Save Preferences</button>
@@ -600,6 +614,7 @@ export const OnboardingWidget = () => {
                     <option value="2 Years">2 Years</option>
                     <option value="3-5 Years">3-5 Years</option>
                     <option value="5+ Years">5+ Years</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>

@@ -56,7 +56,14 @@ const mapUserToDb = (user) => {
     email_visibility: user.emailVisibility || 'Private',
     website_visibility: user.websiteVisibility || 'Private',
     social_links_visibility: user.socialLinksVisibility || 'Private',
-    contact_visibility: user.contactVisibility || 'Private'
+    contact_visibility: user.contactVisibility || 'Private',
+    cover_banner: user.coverBanner || null,
+    whatsapp: user.whatsapp || null,
+    gst: user.gst || null,
+    contact_person: user.contactPerson || null,
+    address: user.address || null,
+    social_links: user.socialLinks ? JSON.stringify(user.socialLinks) : null,
+    field_visibility: user.fieldVisibility ? JSON.stringify(user.fieldVisibility) : null
   };
 };
 
@@ -100,7 +107,14 @@ const mapUserFromDb = (dbUser) => {
     emailVisibility: dbUser.email_visibility || 'Private',
     websiteVisibility: dbUser.website_visibility || 'Private',
     socialLinksVisibility: dbUser.social_links_visibility || 'Private',
-    contactVisibility: dbUser.contact_visibility || 'Private'
+    contactVisibility: dbUser.contact_visibility || 'Private',
+    coverBanner: dbUser.cover_banner || null,
+    whatsapp: dbUser.whatsapp || null,
+    gst: dbUser.gst || null,
+    contactPerson: dbUser.contact_person || null,
+    address: dbUser.address || null,
+    socialLinks: typeof dbUser.social_links === 'string' ? JSON.parse(dbUser.social_links) : (dbUser.social_links || {}),
+    fieldVisibility: typeof dbUser.field_visibility === 'string' ? JSON.parse(dbUser.field_visibility) : (dbUser.field_visibility || {})
   };
 };
 
@@ -187,6 +201,21 @@ export const AppProvider = ({ children }) => {
     return !(hasCachedUser || hasCachedUsers);
   });
 
+  // Notifications state
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem('ch_notifications');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Connections state (accepted collaborators)
+  const [connections, setConnections] = useState(() => {
+    const saved = localStorage.getItem('ch_connections');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Global Active Dashboard Tab
+  const [activeDashboardTab, setActiveDashboardTab] = useState('dashboard');
+
   const [theme] = useState('light');
 
   const toggleTheme = () => {
@@ -211,7 +240,21 @@ export const AppProvider = ({ children }) => {
           const saved = localStorage.getItem('ch_users');
           finalUsers = saved ? JSON.parse(saved) : [];
         } else {
-          finalUsers = dbUsers ? dbUsers.map(mapUserFromDb) : [];
+          const saved = localStorage.getItem('ch_users');
+          const localUsers = saved ? JSON.parse(saved) : [];
+          finalUsers = dbUsers ? dbUsers.map(dbU => {
+            const mapped = mapUserFromDb(dbU);
+            const localU = localUsers.find(lu => lu.id === dbU.id);
+            if (localU) {
+              Object.keys(mapped).forEach(key => {
+                if (mapped[key] === undefined || mapped[key] === null) {
+                  delete mapped[key];
+                }
+              });
+              return { ...localU, ...mapped };
+            }
+            return mapped;
+          }) : [];
         }
         setUsers(finalUsers);
         localStorage.setItem('ch_users', JSON.stringify(finalUsers));
@@ -322,7 +365,13 @@ export const AppProvider = ({ children }) => {
             const parsedUser = JSON.parse(cachedUser);
             const { data: refreshedUser } = await supabase.from('users').select('*').eq('id', parsedUser.id).maybeSingle();
             if (refreshedUser) {
-              activeUser = mapUserFromDb(refreshedUser);
+              const mapped = mapUserFromDb(refreshedUser);
+              Object.keys(mapped).forEach(key => {
+                if (mapped[key] === undefined || mapped[key] === null) {
+                  delete mapped[key];
+                }
+              });
+              activeUser = { ...parsedUser, ...mapped };
             } else {
               activeUser = parsedUser;
             }
@@ -439,10 +488,23 @@ export const AppProvider = ({ children }) => {
         localStorage.setItem('ch_current_user', JSON.stringify(user));
         setSupabaseUserHeader(user.id);
         
-        // Refresh users list from profiles view now that we are logged in and session header is set
         supabase.from('profiles').select('*').then(({ data: refreshedUsers }) => {
           if (refreshedUsers) {
-            const finalUsers = refreshedUsers.map(mapUserFromDb);
+            const saved = localStorage.getItem('ch_users');
+            const localUsers = saved ? JSON.parse(saved) : [];
+            const finalUsers = refreshedUsers.map(dbU => {
+              const mapped = mapUserFromDb(dbU);
+              const localU = localUsers.find(lu => lu.id === dbU.id);
+              if (localU) {
+                Object.keys(mapped).forEach(key => {
+                  if (mapped[key] === undefined || mapped[key] === null) {
+                    delete mapped[key];
+                  }
+                });
+                return { ...localU, ...mapped };
+              }
+              return mapped;
+            });
             setUsers(finalUsers);
             localStorage.setItem('ch_users', JSON.stringify(finalUsers));
           }
@@ -474,26 +536,34 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateProfile = (userId, updatedDetails) => {
-    let merged = null;
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        merged = { ...u, ...updatedDetails };
-        merged.profileStrength = calculateProfileStrength(u.role, merged);
-        if (currentUser && currentUser.id === userId) {
-          setCurrentUser(merged);
+    try {
+      console.log('AppContext: updateProfile triggered for:', userId, updatedDetails);
+      let merged = null;
+      setUsers(prev => prev.map(u => {
+        if (u.id === userId) {
+          merged = { ...u, ...updatedDetails };
+          merged.profileStrength = calculateProfileStrength(u.role, merged);
+          if (currentUser && currentUser.id === userId) {
+            setCurrentUser(merged);
+          }
+          return merged;
         }
-        return merged;
-      }
-      return u;
-    }));
+        return u;
+      }));
 
-    setTimeout(() => {
-      if (merged) {
-        supabase.from('users').update(mapUserToDb(merged)).eq('id', userId).then(({ error }) => {
-          if (error) console.error('Error updating user in Supabase:', error);
-        });
-      }
-    }, 0);
+      setTimeout(() => {
+        if (merged) {
+          console.log('AppContext: Syncing profile changes to Supabase...');
+          supabase.from('users').update(mapUserToDb(merged)).eq('id', userId).then(({ error }) => {
+            if (error) console.error('Error updating user in Supabase:', error);
+            else console.log('AppContext: Supabase profile sync completed.');
+          });
+        }
+      }, 0);
+    } catch (e) {
+      console.error('Error in AppContext: updateProfile:', e);
+      throw e;
+    }
   };
 
   // Helper to calculate profile strength dynamically
@@ -1190,10 +1260,63 @@ export const AppProvider = ({ children }) => {
       .eq('seen', false);
   };
 
+  // === Notification System ===
+  useEffect(() => {
+    localStorage.setItem('ch_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
+    localStorage.setItem('ch_connections', JSON.stringify(connections));
+  }, [connections]);
+
+  const addNotification = (targetUserId, notifData) => {
+    const notif = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      targetUserId,
+      read: false,
+      time: 'Just now',
+      createdAt: new Date().toISOString(),
+      ...notifData,
+    };
+    setNotifications(prev => [notif, ...prev]);
+  };
+
+  const markNotificationRead = (notifId) => {
+    setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, read: true } : n));
+  };
+
+  const clearNotifications = () => {
+    setNotifications([]);
+  };
+
+  // === Connection System ===
+  const isConnected = (userAId, userBId) => {
+    return connections.some(c =>
+      (c.userId1 === userAId && c.userId2 === userBId) ||
+      (c.userId1 === userBId && c.userId2 === userAId)
+    );
+  };
+
+  const getConnections = (userId) => {
+    return connections
+      .filter(c => c.userId1 === userId || c.userId2 === userId)
+      .map(c => c.userId1 === userId ? c.userId2 : c.userId1);
+  };
+
+  const addConnection = (userAId, userBId) => {
+    if (isConnected(userAId, userBId)) return;
+    setConnections(prev => [...prev, {
+      userId1: userAId,
+      userId2: userBId,
+      connectedAt: new Date().toISOString()
+    }]);
+  };
+
   return (
     <AppContext.Provider value={{
       users,
       projects,
+      setProjects,
       currentUser,
       activityFeed,
       savedProfiles,
@@ -1225,7 +1348,17 @@ export const AppProvider = ({ children }) => {
       sendP2PMessage,
       startConversation,
       markMessagesAsSeen,
-      presenceList
+      presenceList,
+      notifications,
+      addNotification,
+      markNotificationRead,
+      clearNotifications,
+      connections,
+      isConnected,
+      getConnections,
+      addConnection,
+      activeDashboardTab,
+      setActiveDashboardTab
     }}>
       {children}
     </AppContext.Provider>

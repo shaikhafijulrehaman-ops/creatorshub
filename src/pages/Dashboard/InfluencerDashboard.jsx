@@ -8,6 +8,9 @@ import {
   Send, ArrowRight, ShieldCheck, CreditCard, Star
 } from 'lucide-react';
 import { VerificationCenter } from './Shared/VerificationCenter';
+import { useToast } from '../../components/SuccessToast';
+import { ApplicationForm } from './Shared/ApplicationForm';
+import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
 
 const BrandIcon = ({ type, size = 16, style = {} }) => {
   const icons = {
@@ -56,11 +59,14 @@ export const InfluencerDashboard = ({ onNavigate }) => {
   const { 
     currentUser, logoutUser, projects, applyToProject, updateProfile, 
     activityFeed, messages, sendMessage, loading,
-    activeTabToRedirect, setActiveTabToRedirect
+    activeTabToRedirect, setActiveTabToRedirect, notifications,
+    activeDashboardTab, setActiveDashboardTab
   } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
+  const [notifOpen, setNotifOpen] = useState(false);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const activeTab = activeDashboardTab;
+  const setActiveTab = setActiveDashboardTab;
   
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -134,7 +140,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
   const handleApplySubmit = (e) => {
     e.preventDefault();
     if (!coverLetter || !bidPrice) {
-      alert('Please fill out proposal pricing and details.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out proposal pricing and details.' });
       return;
     }
 
@@ -149,7 +155,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
     setCoverLetter('');
     setBidPrice('');
     setShowApplyModal(false);
-    alert('Brand Pitch Proposal submitted successfully!');
+    showSuccessToast({ title: '✔ Application Sent', subtitle: 'Your brand pitch proposal has been submitted!', redirectText: 'Redirecting to deals...' });
     setActiveTab('deals');
   };
 
@@ -161,7 +167,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
       YouTube: { url: currentUser.platforms?.YouTube?.url || '', followers: youtubeSubscribers, reach: youtubeReach, engagement: youtubeEngage }
     };
     updateProfile(currentUser.id, { platforms: updatedPlatforms });
-    alert('Media Kit audience metrics updated successfully!');
+    showSuccessToast({ title: '✔ Media Kit Updated', subtitle: 'Audience metrics have been updated successfully!' });
   };
 
   // Handle Workspace Chat Send
@@ -240,7 +246,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
   const handlePortfolioSubmit = (e) => {
     e.preventDefault();
     if (!portTitle || !portDesc) {
-      alert('Please fill out required fields.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out the required fields.' });
       return;
     }
 
@@ -258,7 +264,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
     setPortUrl('');
     setPortDesc('');
     setShowPortfolioModal(false);
-    alert('Portfolio item published!');
+    showSuccessToast({ title: '✔ Portfolio Updated', subtitle: 'Your portfolio item has been published!' });
   };
 
   const getPlatformMetrics = () => {
@@ -508,6 +514,9 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                 </div>
               </div>
             )}
+
+            {/* Notification Bell */}
+            <NotificationBell onClick={() => setNotifOpen(true)} />
 
             {/* Mobile Hamburger menu */}
             <button 
@@ -1011,7 +1020,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                   <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Showcase verified audience metrics and public collaboration highlights.</p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <button onClick={() => alert('PDF Media Kit Download generated!')} className="btn-secondary" style={{ minHeight: '40px', borderRadius: '10px', fontSize: '12.5px' }}>
+                  <button onClick={() => showSuccessToast({ title: '✔ Download Ready', subtitle: 'PDF Media Kit has been generated!' })} className="btn-secondary" style={{ minHeight: '40px', borderRadius: '10px', fontSize: '12.5px' }}>
                     Download PDF
                   </button>
                   <button onClick={() => setShowPortfolioModal(true)} className="btn-primary" style={{ minHeight: '40px', borderRadius: '10px' }}>
@@ -1128,7 +1137,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                             onClick={() => {
                               const updated = currentUser.portfolio.filter((_, i) => i !== idx);
                               updateProfile(currentUser.id, { portfolio: updated });
-                              alert('Project removed.');
+                              showSuccessToast({ title: '✔ Project Removed', subtitle: 'Portfolio project has been removed.' });
                             }} 
                             style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
                           >
@@ -1338,7 +1347,7 @@ export const InfluencerDashboard = ({ onNavigate }) => {
                       bio: e.target.bio.value,
                       contentCategories: e.target.cats.value ? e.target.cats.value.split(',').map(s => s.trim()) : []
                     });
-                    alert('Profile details saved!');
+                    showSuccessToast({ title: '✔ Profile Updated Successfully', subtitle: 'Your latest changes have been saved.', redirectText: 'Redirecting to your dashboard...' });
                   }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div>
                       <label className="form-label">Full Name</label>
@@ -1416,64 +1425,15 @@ export const InfluencerDashboard = ({ onNavigate }) => {
       </div>
 
       {/* ==================== APPLY PITCH MODAL ==================== */}
-      {showApplyModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999
-        }}>
-          <div className="glass-panel animate-scale-up" style={{ width: '92%', maxWidth: '500px', padding: '32px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '14px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Submit Brand Pitch</h3>
-              <button onClick={() => setShowApplyModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleApplySubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label className="form-label">Sponsorship Rate Offer*</label>
-                <input 
-                  type="text" 
-                  value={bidPrice} 
-                  onChange={(e) => setBidPrice(e.target.value)} 
-                  className="form-input" 
-                  placeholder="E.g. ₹750/Post" 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Days to Complete Content Delivery*</label>
-                <input 
-                  type="number" 
-                  value={daysToComplete} 
-                  onChange={(e) => setDaysToComplete(e.target.value)} 
-                  className="form-input" 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label className="form-label">Collaboration Cover Letter / Script Pitch*</label>
-                <textarea 
-                  value={coverLetter} 
-                  onChange={(e) => setCoverLetter(e.target.value)} 
-                  className="form-input" 
-                  rows={4} 
-                  placeholder="Pitch your content concepts, outline video hook ideas, or link past successful collaboration content posts..." 
-                  required 
-                />
-              </div>
-
-              <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Submit Brand Pitch</button>
-            </form>
-          </div>
-        </div>
+      {showApplyModal && selectedProjectId && (
+        <ApplicationForm 
+          project={projects.find(p => p.id === selectedProjectId)} 
+          onClose={() => { setShowApplyModal(false); setSelectedProjectId(''); }}
+        />
       )}
+
+      {/* Slide-in Notifications Center */}
+      <NotificationCenter open={notifOpen} onClose={() => setNotifOpen(false)} />
 
       {/* ==================== PORTFOLIO MODAL ==================== */}
       {showPortfolioModal && (

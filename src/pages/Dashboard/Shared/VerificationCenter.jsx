@@ -1,9 +1,11 @@
 import { useContext, useState } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { Shield, ShieldCheck, Award, CheckCircle, Upload, Info } from 'lucide-react';
+import { useToast } from '../../../components/SuccessToast';
 
 export const VerificationCenter = () => {
   const { currentUser, updateProfile } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
   const [levelStatus, setLevelStatus] = useState({
     level1: currentUser.verificationStatus === 'Basic Verified' || currentUser.verificationStatus === 'Professional Verified' || currentUser.verificationStatus === 'Premium Verified',
     level2: currentUser.verificationStatus === 'Professional Verified' || currentUser.verificationStatus === 'Premium Verified',
@@ -21,7 +23,7 @@ export const VerificationCenter = () => {
   const handleLevel2Verify = (e) => {
     e.preventDefault();
     if (!proInput) {
-      alert('Please fill out verification details.');
+      showSuccessToast({ title: '⚠ Missing Details', subtitle: 'Please fill out verification details.' });
       return;
     }
     setProVerifying(true);
@@ -29,14 +31,14 @@ export const VerificationCenter = () => {
       updateProfile(currentUser.id, { verificationStatus: 'Professional Verified' });
       setLevelStatus(prev => ({ ...prev, level2: true }));
       setProVerifying(false);
-      alert('Professional credentials audited! Status badge upgraded.');
+      showSuccessToast({ title: '✔ Credentials Verified', subtitle: 'Professional status badge upgraded!' });
     }, 500);
   };
 
   const handleLevel3Verify = (e) => {
     e.preventDefault();
     if (!idFile) {
-      alert('Please supply an ID document scan.');
+      showSuccessToast({ title: '⚠ Document Required', subtitle: 'Please supply an ID document scan.' });
       return;
     }
     setPremVerifying(true);
@@ -44,7 +46,7 @@ export const VerificationCenter = () => {
       updateProfile(currentUser.id, { verificationStatus: 'Premium Verified' });
       setLevelStatus(prev => ({ ...prev, level2: true, level3: true }));
       setPremVerifying(false);
-      alert('Government ID approved! Status badge upgraded to Premium.');
+      showSuccessToast({ title: '✔ Premium Verified', subtitle: 'Government ID approved! Badge upgraded to Premium.' });
     }, 600);
   };
 

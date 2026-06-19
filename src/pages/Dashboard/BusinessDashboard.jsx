@@ -7,7 +7,18 @@ import {
   Plus, Search, ArrowRight, X, Check, Briefcase, Send, ExternalLink,
   MapPin, Clock, IndianRupee, CheckSquare
 } from 'lucide-react';
+import { useToast } from '../../components/SuccessToast';
+import { BusinessProfile } from './Business/BusinessProfile';
+import { BusinessRequirements } from './Business/BusinessRequirements';
+import { BusinessApplications } from './Business/BusinessApplications';
+import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
+import { FloatingActions } from '../../components/FloatingActions';
+import { useResponsive } from '../../hooks/useResponsive';
+import { BusinessPublicProfile } from './Business/BusinessPublicProfile';
 import { VerificationCenter } from './Shared/VerificationCenter';
+import { ChevronDown } from 'lucide-react';
+
+
 
 const generateTaskId = () => `t-${Date.now()}`;
 
@@ -15,11 +26,17 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const { 
     currentUser, logoutUser, projects, createProject, users, 
     activityFeed, messages, sendMessage, activateCreatorTeam, updateProfile, loading,
-    activeTabToRedirect, setActiveTabToRedirect
+    activeTabToRedirect, setActiveTabToRedirect, setActiveConversationId, notifications, setProjects,
+    activeDashboardTab, setActiveDashboardTab
   } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
+  const [notifOpen, setNotifOpen] = useState(false);
 
-  // Tab State
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { isMobile, isTablet } = useResponsive();
+  const [expandedAccordion, setExpandedAccordion] = useState(0);
+
+  const activeTab = activeDashboardTab;
+  const setActiveTab = setActiveDashboardTab;
   
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -95,7 +112,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const handlePublishRequirement = (e) => {
     e.preventDefault();
     if (!reqTitle || !reqBudget || !reqDeadline || !reqDesc) {
-      alert('Please fill out all required fields.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out all required fields.' });
       return;
     }
 
@@ -182,7 +199,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     // Auto remove proposal from pending once active workspace starts
     proj.proposals = proj.proposals.filter(p => p.creatorId !== proposal.creatorId);
     
-    alert(`Successfully hired ${proposal.creatorName}! Collaboration workspace is now active.`);
+    showSuccessToast({ title: '✔ Creator Hired!', subtitle: `Successfully hired ${proposal.creatorName}!`, redirectText: 'Opening collaboration workspace...' });
     setSelectedWorkspaceId(projectId);
     setActiveTab('workspace');
   };
@@ -192,7 +209,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     const proj = projects.find(p => p.id === projectId);
     if (proj) {
       proj.proposals = proj.proposals.filter(p => p.creatorId !== creatorId);
-      alert('Application proposal rejected.');
+      showSuccessToast({ title: '✔ Proposal Rejected', subtitle: 'Application proposal has been rejected.' });
       setActiveTab('applications');
     }
   };
@@ -203,11 +220,11 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     if (proj) {
       if (!proj.invitedCreators) proj.invitedCreators = [];
       if (proj.invitedCreators.includes(creatorId)) {
-        alert('This creator has already been invited to this campaign.');
+        showSuccessToast({ title: '⚠ Already Invited', subtitle: 'This creator has already been invited to this campaign.' });
         return;
       }
       proj.invitedCreators.push(creatorId);
-      alert(`Sent campaign invitation to talent!`);
+      showSuccessToast({ title: '✔ Invitation Sent', subtitle: 'Campaign invitation sent to talent!' });
     }
   };
 
@@ -218,9 +235,9 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     { id: 'influencers', label: 'Find Influencers', icon: <Users size={18} /> },
     { id: 'requirements', label: 'Post Project', icon: <FolderKanban size={18} /> },
     { id: 'applications', label: 'Applications', icon: <UserCheck size={18} /> },
-    { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={18} /> },
-    { id: 'billing', label: 'Payments', icon: <CreditCard size={18} /> },
-    { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> }
+    { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
+    { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> },
+    { id: 'billing', label: 'Payments', icon: <CreditCard size={18} /> }
   ];
 
   return (
@@ -411,6 +428,9 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
               </div>
             )}
 
+            {/* Notification Bell */}
+            <NotificationBell onClick={() => setNotifOpen(true)} />
+
             {/* Mobile Hamburger menu */}
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -426,8 +446,94 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
         <main style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
           
           {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
-          {activeTab === 'dashboard' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          {(isMobile || isTablet) && (activeTab === 'dashboard' || activeTab === 'profile') ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Workspace controls</span>
+                <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>Business Portal</h3>
+                <p style={{ color: 'var(--text-gray)', fontSize: '13px', marginTop: '2px' }}>Manage all aspects of your company briefs, applications, and settings below.</p>
+              </div>
+
+              {activeTab === 'dashboard' && (
+                <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '6px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
+                      <FolderKanban size={16} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Briefs</span>
+                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{openRequirements.length}</h4>
+                    </div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '6px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
+                      <CheckSquare size={16} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Collaborations</span>
+                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{activeCollaborations.length}</h4>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {[
+                { title: 'Business Information', component: <BusinessProfile section="info" /> },
+                { title: 'Contact Information', component: <BusinessProfile section="contact" /> },
+                { title: 'Public Profile', component: <BusinessPublicProfile businessId={currentUser.id} viewerId={currentUser.id} /> },
+                { title: 'Private Details & Visibility', component: <BusinessProfile section="visibility" /> },
+                { title: 'Campaign Briefs / Projects', component: <BusinessRequirements /> },
+                { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> },
+                { title: 'Identity Verification Badge', component: <VerificationCenter /> },
+                { title: 'Workspace Checklist Settings', component: (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Escrow Auto-Release Milestones</span>
+                      <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Ecosystem Directory Public Listing</span>
+                      <input type="checkbox" defaultChecked style={{ accentColor: 'var(--accent-cyan)' }} />
+                    </div>
+                  </div>
+                )}
+              ].map((acc, index) => {
+                const isOpen = expandedAccordion === index;
+                return (
+                  <div key={index} className="glass-panel" style={{ borderRadius: '18px', overflow: 'hidden', border: '1px solid ' + (isOpen ? 'var(--accent-cyan)' : 'var(--glass-border)'), background: 'rgba(255,255,255,0.01)', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
+                      style={{
+                        width: '100%',
+                        padding: '16px 20px',
+                        background: isOpen ? 'rgba(255,255,255,0.02)' : 'none',
+                        border: 'none',
+                        color: 'var(--text-white)',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <span>{index + 1}. {acc.title}</span>
+                      <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', color: 'var(--text-muted)' }} />
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: '20px', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                        {acc.component}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            activeTab === 'dashboard' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
               
               {/* Profile strength check card */}
               {profileCompletion < 100 && (
@@ -595,165 +701,20 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
               </div>
             </div>
+          )
           )}
 
           {/* ==================== 2. REQUIREMENTS VIEW ==================== */}
           {activeTab === 'requirements' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Active Campaign Briefs</h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Manage details of requirements published across the platform.</p>
-                </div>
-                <button onClick={() => setShowReqModal(true)} className="btn-primary" style={{ minHeight: '42px', borderRadius: '10px' }}>
-                  <Plus size={16} /> Publish Requirement
-                </button>
-              </div>
-              {businessProjects.length === 0 ? (
-                <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
-                  <FolderKanban size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-                  <h4 style={{ color: 'var(--text-white)', fontSize: '18px', fontWeight: '800' }}>No requirements yet</h4>
-                  <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px', maxWidth: '400px', margin: '6px auto 20px auto' }}>
-                    Create your first requirement to instantly list it on the Freelancer Discover feed, Influencer Campaign feeds, and search directories.
-                  </p>
-                  <button onClick={() => setShowReqModal(true)} className="btn-primary" style={{ borderRadius: '10px', minHeight: '40px' }}>
-                    Publish Now
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }} className="requirements-grid">
-                  {businessProjects.map(proj => (
-                    <div key={proj.id} className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '220px' }}>
-                      <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span className="badge-premium" style={{ fontSize: '10px', textTransform: 'uppercase' }}>{proj.category}</span>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Status: <strong>{proj.status}</strong></span>
-                        </div>
-                        <h4 style={{ fontSize: '16.5px', fontWeight: '800', color: 'var(--text-white)', marginTop: '10px' }}>{proj.title}</h4>
-                        <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '8px', lineHeight: '1.4' }}>
-                          {proj.description.substring(0, 140)}...
-                        </p>
-                      </div>
-
-                      <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Budget:</span>
-                          <h5 style={{ fontSize: '14.5px', color: 'var(--accent-cyan)', fontWeight: '800' }}>{proj.budget}</h5>
-                        </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                          <button 
-                            onClick={() => {
-                              setSelectedWorkspaceId(proj.id);
-                              setActiveTab(proj.status === 'Active Workspace' ? 'workspace' : 'applications');
-                            }} 
-                            className="btn-outline-cyan" 
-                            style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '11.5px', minHeight: '32px' }}
-                          >
-                            {proj.status === 'Active Workspace' ? 'Enter Workspace' : `Proposals (${proj.proposals ? proj.proposals.length : 0})`}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <BusinessRequirements />
           )}
 
           {/* ==================== 3. APPLICATIONS VIEW ==================== */}
           {activeTab === 'applications' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Hiring Applications</h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-gray)' }}>Review and onboard contractors or creators pitching for your campaigns.</p>
-              </div>
-
-              {receivedApplications.length === 0 ? (
-                <div className="glass-panel" style={{ padding: '60px 40px', textAlign: 'center' }}>
-                  <UserCheck size={48} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-                  <h4 style={{ color: 'var(--text-white)', fontSize: '18px', fontWeight: '800' }}>No pending applications</h4>
-                  <p style={{ color: 'var(--text-gray)', fontSize: '13.5px', marginTop: '6px' }}>When freelancers or influencers apply, their proposals will show up here for manual vetting.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {receivedApplications.map((app, index) => {
-                    const creator = users.find(u => u.id === app.creatorId);
-                    return (
-                      <div key={index} className="glass-panel" style={{ padding: '24px' }}>
-                        <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                          
-                          {/* Photo / Avatar */}
-                          <img 
-                            src={creator?.profilePhoto || creator?.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'} 
-                            alt={app.creatorName}
-                            style={{ width: '64px', height: '64px', borderRadius: '16px', objectFit: 'cover', border: '1px solid var(--glass-border)' }}
-                          />
-
-                          {/* Profile Details */}
-                          <div style={{ flex: 1, minWidth: '240px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <h4 
-                                style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-white)', cursor: 'pointer' }}
-                                onClick={() => onOpenProfile(app.creatorId)}
-                              >
-                                {app.creatorName}
-                              </h4>
-                              <span className="badge-pro" style={{ fontSize: '10px' }}>{creator?.verificationStatus || 'Verified'}</span>
-                            </div>
-                            
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                              Applying to: <strong style={{ color: 'var(--accent-cyan)' }}>{app.projectName}</strong>
-                            </p>
-
-                            <p style={{ fontSize: '13.5px', color: 'var(--text-gray-light)', marginTop: '12px', lineHeight: '1.5', background: 'var(--bg-dark)', padding: '12px', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
-                              "{app.coverLetter}"
-                            </p>
-
-                            {/* Skills list */}
-                            {creator?.skills && (
-                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px' }}>
-                                {creator.skills.map(s => (
-                                  <span key={s} style={{ fontSize: '10.5px', background: 'var(--bg-dark)', padding: '2px 8px', borderRadius: '6px', border: '1px solid var(--glass-border)', color: 'var(--text-gray)' }}>
-                                    {s}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Bid & Actions */}
-                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%', minWidth: '160px' }} className="app-bid-actions">
-                            <div>
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Expected Budget:</span>
-                              <h4 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '2px' }}>{app.pricing}</h4>
-                              <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Delivery in {app.daysToComplete} days</span>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '8px', marginTop: '20px', justifyContent: 'flex-end' }}>
-                              <button 
-                                onClick={() => handleRejectProposal(app.projectId, app.creatorId)} 
-                                className="btn-secondary" 
-                                style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '12px', minHeight: '34px', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444' }}
-                              >
-                                Reject
-                              </button>
-                              <button 
-                                onClick={() => handleHireCreator(app.projectId, app)} 
-                                className="btn-primary" 
-                                style={{ padding: '6px 16px', borderRadius: '8px', fontSize: '12px', minHeight: '34px' }}
-                              >
-                                Hire Now
-                              </button>
-                            </div>
-                          </div>
-
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <BusinessApplications onOpenMessages={(convId) => {
+              setActiveConversationId(convId);
+              setActiveTab('messages');
+            }} />
           )}
 
           {/* ==================== 4. TALENT DIRECTORIES (Freelancers / Influencers) ==================== */}
@@ -788,11 +749,11 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 >
                   <option value="All">All Focus Areas</option>
                   {activeTab === 'freelancers' ? (
-                    ['Website Development', 'App Development', 'UI/UX Design', 'Video Editing', 'AI Video Creation'].map(c => (
+                    ['Website Development', 'App Development', 'UI/UX Design', 'Video Editing', 'AI Video Creation', 'Other'].map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))
                   ) : (
-                    ['Travel', 'Lifestyle', 'Fashion', 'Technology', 'Food'].map(c => (
+                    ['Travel', 'Lifestyle', 'Fashion', 'Technology', 'Food', 'Other'].map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))
                   )}
@@ -989,7 +950,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                                         onClick={() => {
                                           p.status = 'Paid';
                                           sendMessage(proj.id, `💸 Escrow Released: "${p.title}" (${p.amount})`, 'system', 'Creators Hub AI');
-                                          alert('Payment released from escrow successfully!');
+                                          showSuccessToast({ title: '✔ Payment Released', subtitle: 'Escrow funds have been released successfully!' });
                                           setSelectedWorkspaceId(proj.id);
                                         }} 
                                         className="btn-primary" 
@@ -1146,81 +1107,8 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
           )}
 
           {/* ==================== 10. COMPANY PROFILE VIEW ==================== */}
-          {activeTab === 'profile' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              {/* Cover & Brand Info */}
-              <div className="glass-panel" style={{ overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                {/* cover banner */}
-                <div style={{ height: '180px', background: 'linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(103, 232, 249, 0.02))', position: 'relative' }}>
-                  <img 
-                    src={currentUser.cover || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'} 
-                    alt="cover" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <span className="badge-premium" style={{ position: 'absolute', top: '16px', right: '16px' }}>
-                    {currentUser.verificationStatus || 'Premium Verified'}
-                  </span>
-                </div>
-
-                {/* Profile detail card footer */}
-                <div style={{ padding: '24px', position: 'relative', marginTop: '-44px', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <img 
-                    src={currentUser.logo || 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150&auto=format&fit=crop&q=80'} 
-                    alt={currentUser.businessName}
-                    style={{ width: '84px', height: '84px', borderRadius: '16px', border: '3px solid var(--bg-dark)', objectFit: 'cover', background: 'var(--bg-dark)' }}
-                  />
-                  <div style={{ flex: 1, minWidth: '220px' }}>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-white)' }}>{currentUser.businessName || currentUser.fullName}</h3>
-                    <div style={{ display: 'flex', gap: '14px', color: 'var(--text-gray)', fontSize: '13px', marginTop: '6px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {currentUser.location || 'San Francisco, CA'}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Building size={13} /> {currentUser.businessCategory || 'Artisan Cafe'}</span>
-                      {currentUser.website && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><ExternalLink size={13} /> <a href={currentUser.website} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-cyan)' }}>Website</a></span>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Edit form & details */}
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr', gap: '24px' }} className="profile-edit-two-col">
-                <div className="glass-panel" style={{ padding: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Update Public Bio</h4>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    updateProfile(currentUser.id, { 
-                      businessName: e.target.brandName.value,
-                      description: e.target.brandDesc.value,
-                      website: e.target.brandWeb.value,
-                      location: e.target.brandLoc.value
-                    });
-                    alert('Profile updated successfully!');
-                  }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div>
-                      <label className="form-label">Business Name</label>
-                      <input type="text" name="brandName" defaultValue={currentUser.businessName || currentUser.fullName} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">Website URL</label>
-                      <input type="text" name="brandWeb" defaultValue={currentUser.website || ''} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">HQ Location</label>
-                      <input type="text" name="brandLoc" defaultValue={currentUser.location || ''} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">Brand Description / About</label>
-                      <textarea name="brandDesc" rows={3} defaultValue={currentUser.description || ''} className="form-input" placeholder="Explain your business..." />
-                    </div>
-                    <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', minHeight: '40px', borderRadius: '10px' }}>Save Profile</button>
-                  </form>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  <VerificationCenter />
-                </div>
-              </div>
-
-            </div>
+          {activeTab === 'profile' && !(isMobile || isTablet) && (
+            <BusinessProfile />
           )}
 
           {/* ==================== 11. BILLING PLACEHOLDER ==================== */}
@@ -1315,6 +1203,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                     <option value="Lifestyle">Lifestyle Campaign</option>
                     <option value="Fashion">Fashion Campaign</option>
                     <option value="Technology">Tech Campaign</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div>
@@ -1419,6 +1308,24 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
           </button>
         ))}
       </nav>
+
+      {/* Floating Actions Menu */}
+      <FloatingActions onAction={(action) => {
+        if (action === 'create-req') {
+          setActiveTab('requirements');
+        } else if (action === 'invite-inf') {
+          setActiveTab('influencers');
+        } else if (action === 'invite-free') {
+          setActiveTab('freelancers');
+        } else if (action === 'upload-port') {
+          setActiveTab('profile');
+        } else if (action === 'schedule') {
+          setActiveTab('dashboard');
+        }
+      }} />
+
+      {/* Slide-in Notifications Center */}
+      <NotificationCenter open={notifOpen} onClose={() => setNotifOpen(false)} />
 
       {/* Styled Responsive Queries */}
       <style>{`

@@ -4,9 +4,11 @@ import {
   ArrowLeft, ArrowRight, Briefcase, Video, Code, Mail, Lock, 
   User, Phone, Eye, EyeOff, Sparkles
 } from 'lucide-react';
+import { useToast } from '../components/SuccessToast';
 
 export const Onboarding = ({ onNavigate, initialParams = {} }) => {
   const { registerUser, loginUser, loginWithGoogle } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
 
   // Flow State
   const [isLogin, setIsLogin] = useState(initialParams.loginOnly || false);
@@ -259,7 +261,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                   <label className="form-label" style={{ margin: 0 }}>Password</label>
                   <button 
                     type="button" 
-                    onClick={() => alert('Demo reset instructions sent to guest email!')}
+                    onClick={() => showSuccessToast({ title: '✔ Reset Email Sent', subtitle: 'Demo reset instructions sent to guest email!' })}
                     style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}
                   >
                     Forgot Password?
@@ -347,7 +349,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
             <div style={{ textAlign: 'center', marginTop: '24px' }}>
               <button 
-                onClick={() => { setIsLogin(false); setSignUpStep(1); setErrorMsg(''); }}
+                onClick={() => { onNavigate('onboarding'); }}
                 style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer' }}
               >
                 Don't have an account? Sign Up
@@ -475,7 +477,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
                 <div style={{ textAlign: 'center', marginTop: '24px' }}>
                   <button 
-                    onClick={() => { setIsLogin(true); setErrorMsg(''); }}
+                    onClick={() => { onNavigate('onboarding', { loginOnly: true }); }}
                     style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
                   >
                     Already registered? Sign In
@@ -679,7 +681,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
                   <button 
-                    onClick={() => { alert('A new OTP has been sent (Mock: 123456).'); }}
+                    onClick={() => { showSuccessToast({ title: '✔ OTP Resent', subtitle: 'A new OTP has been sent (Mock: 123456).' }); }}
                     style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}
                   >
                     Didn't receive code? Resend

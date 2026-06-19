@@ -1,0 +1,245 @@
+.appform-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.appform-modal {
+  background: #ffffff;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.appform-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 28px 28px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  position: sticky;
+  top: 0;
+  background: #ffffff;
+  z-index: 1;
+  border-radius: 24px 24px 0 0;
+}
+
+.appform-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-white);
+}
+
+.appform-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.appform-close {
+  background: rgba(0,0,0,0.06);
+  border: none;
+  color: var(--text-gray);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.appform-close:hover {
+  background: rgba(239,68,68,0.08);
+  color: #ef4444;
+}
+
+/* Step indicator */
+.appform-steps {
+  display: flex;
+  align-items: center;
+  padding: 20px 28px 0;
+  gap: 0;
+}
+
+.appform-step-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appform-step-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.06);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.appform-step-dot.active {
+  background: #000000;
+  color: #ffffff;
+}
+
+.appform-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: color 0.3s ease;
+}
+
+.appform-step-label.active {
+  color: var(--text-white);
+}
+
+.appform-step-line {
+  width: 32px;
+  height: 2px;
+  background: rgba(0,0,0,0.08);
+  margin: 0 8px;
+  transition: background 0.3s ease;
+}
+
+.appform-step-line.done {
+  background: #000000;
+}
+
+/* Body */
+.appform-body {
+  padding: 20px 28px 28px;
+  flex: 1;
+}
+
+.appform-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.appform-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.appform-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.appform-textarea {
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.55;
+}
+
+.appform-char {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.appform-hint {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Summary card */
+.appform-summary {
+  background: rgba(0,0,0,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.appform-summary h5 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-gray);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.appform-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  font-size: 13.5px;
+  color: var(--text-gray);
+}
+
+.appform-summary-row:last-child {
+  border-bottom: none;
+}
+
+.appform-summary-row strong {
+  color: var(--text-white);
+}
+
+/* Buttons */
+.appform-next-btn {
+  align-self: flex-end;
+  min-height: 42px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 13.5px;
+}
+
+.appform-footer-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.appform-back-btn {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 13.5px;
+}
+
+.appform-submit-btn {
+  min-height: 42px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 13.5px;
+}
+
+@media (max-width: 600px) {
+  .appform-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .appform-modal {
+    border-radius: 24px 24px 0 0;
+    max-height: 96vh;
+  }
+}

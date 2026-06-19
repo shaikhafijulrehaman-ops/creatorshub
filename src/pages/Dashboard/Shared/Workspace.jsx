@@ -4,16 +4,24 @@ import {
   MessageSquare, Mic, Paperclip, Send, CheckCircle2, 
   Layers, FileDown, UploadCloud, Play, Pause, X, Check
 } from 'lucide-react';
+import { useToast } from '../../../components/SuccessToast';
 
 const generateAssetId = () => `d-${Date.now()}`;
 
 export const Workspace = ({ projectId, onClose }) => {
   const { projects, currentUser, messages, sendMessage, users } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
   const chatEndRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState('chat');
   const [chatInput, setChatInput] = useState('');
   
+  const tabs = useMemo(() => [
+    { id: 'chat', label: 'Chat Room', icon: <MessageSquare size={16} /> },
+    { id: 'deliverables', label: 'Deliverables & assets', icon: <Layers size={16} /> },
+    { id: 'milestones', label: 'Milestones & Payments', icon: <CheckCircle2 size={16} /> }
+  ], []);
+
   // Voice recording states
   const [voiceNoteRecording, setVoiceNoteRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -72,7 +80,7 @@ export const Workspace = ({ projectId, onClose }) => {
   const handleUploadDeliverable = (e) => {
     e.preventDefault();
     if (!uploadTitle || !uploadUrl) {
-      alert('Please fill out all fields.');
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out all fields.' });
       return;
     }
     

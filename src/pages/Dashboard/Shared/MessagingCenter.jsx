@@ -4,19 +4,25 @@ import {
   Send, Paperclip, Smile, Image as ImageIcon, FileText, Mic, 
   Volume2, Square, User, X, ChevronLeft, Check, CheckCheck, 
   Search, ShieldAlert, Award, Star, MapPin, Globe, ExternalLink,
-  MoreVertical, Ban, Eye
+  MoreVertical, Ban, Eye, Phone, Video, Plus
 } from 'lucide-react';
 import { supabase } from '../../../supabaseClient';
+import { useToast } from '../../../components/SuccessToast';
+import { useResponsive } from '../../../hooks/useResponsive';
 
 export const MessagingCenter = () => {
   const { 
     currentUser, users, conversations, activeConversationId, 
     setActiveConversationId, p2pMessages, sendP2PMessage, 
-    markMessagesAsSeen, presenceList
+    markMessagesAsSeen, presenceList, getConnections, startConversation
   } = useContext(AppContext);
+  const { showSuccessToast } = useToast();
+  const { isDesktop } = useResponsive();
 
   // Search and Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatSearch, setNewChatSearch] = useState('');
   
   // Input and Chat States
   const [inputText, setInputText] = useState('');
@@ -24,6 +30,10 @@ export const MessagingCenter = () => {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [activeTypingUsers, setActiveTypingUsers] = useState({});
+
+  // Refs for click outside closures
+  const emojiContainerRef = useRef(null);
+  const attachmentContainerRef = useRef(null);
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -46,6 +56,20 @@ export const MessagingCenter = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesList]);
+
+  // Close emoji picker or attachments menu when clicked outside
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (showEmojiPicker && emojiContainerRef.current && !emojiContainerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+      if (showAttachmentMenu && attachmentContainerRef.current && !attachmentContainerRef.current.contains(e.target)) {
+        setShowAttachmentMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showEmojiPicker, showAttachmentMenu]);
 
   // Mark messages as seen when chat opens or new messages arrive
   useEffect(() => {
@@ -194,7 +218,7 @@ export const MessagingCenter = () => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
     } catch (err) {
-      alert('Microphone access denied or unavailable. Simulating dynamic voice note...');
+      showSuccessToast({ title: '⚠ Microphone Unavailable', subtitle: 'Simulating dynamic voice note...' });
       // Simulated/Mock voice note fallback
       setIsRecording(true);
       setRecordingDuration(0);
@@ -219,6 +243,17 @@ export const MessagingCenter = () => {
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
+
+  // Filter connections for the New Chat modal
+  const connectedIds = getConnections(currentUser.id);
+  const connectedUsers = users.filter(u => connectedIds.includes(u.id));
+  const filteredConnections = connectedUsers.filter(u => {
+    const term = newChatSearch.toLowerCase();
+    const nameMatch = u.fullName.toLowerCase().includes(term);
+    const userMatch = u.username?.toLowerCase().includes(term) || false;
+    const bizMatch  = u.businessName?.toLowerCase().includes(term) || false;
+    return nameMatch || userMatch || bizMatch;
+  });
 
   // Filter conversations
   const filteredConversations = conversations.filter(c => {
@@ -371,15 +406,15 @@ export const MessagingCenter = () => {
       <aside style={{
         width: '320px',
         borderRight: '1px solid var(--glass-border)',
-        display: (activeConversationId && window.innerWidth < 992) ? 'none' : 'flex',
+        display: (activeConversationId && !isDesktop) ? 'none' : 'flex',
         flexDirection: 'column',
         background: 'rgba(255,255,255,0.02)',
         flexShrink: 0
       }} id="chat-sidebar">
         
         {/* Search Header */}
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--glass-border)' }}>
-          <div style={{ position: 'relative' }}>
+        <div style={{ padding: '16px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
             <input 
               type="text" 
@@ -390,14 +425,31 @@ export const MessagingCenter = () => {
               style={{ height: '38px', minHeight: '38px', paddingLeft: '38px', fontSize: '13px', borderRadius: '12px' }}
             />
           </div>
+          <button 
+            type="button"
+            onClick={() => setShowNewChatModal(true)}
+            className="btn-primary"
+            style={{ width: '38px', height: '38px', borderRadius: '12px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title="New Chat"
+          >
+            <Plus size={18} />
+          </button>
         </div>
 
         {/* List scroll panel */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {sortedConversations.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
-              <User size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
-              <p style={{ fontSize: '13.5px', margin: 0 }}>Start a conversation with a Business, Freelancer or Influencer.</p>
+              <Smile size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
+              <p style={{ fontSize: '13.5px', margin: '0 0 16px 0' }}>Start your conversation.</p>
+              <button 
+                type="button"
+                onClick={() => setShowNewChatModal(true)}
+                className="btn-primary"
+                style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '12.5px', margin: '0 auto', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Plus size={14} /> Start New Conversation
+              </button>
             </div>
           ) : (
             sortedConversations.map(c => {
@@ -483,7 +535,7 @@ export const MessagingCenter = () => {
       {/* ==================== RIGHT PANEL: ACTIVE CHAT ==================== */}
       <section style={{
         flex: 1,
-        display: (!activeConversationId && window.innerWidth < 992) ? 'none' : 'flex',
+        display: (!activeConversationId && !isDesktop) ? 'none' : 'flex',
         flexDirection: 'column',
         position: 'relative'
       }}>
@@ -543,6 +595,25 @@ export const MessagingCenter = () => {
               {/* Header actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button 
+                  type="button"
+                  onClick={() => showSuccessToast({ title: 'Calling Unavailable', subtitle: 'Calling feature coming soon!' })}
+                  className="btn-outline-cyan"
+                  style={{ width: '36px', height: '36px', minHeight: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  title="Voice Call"
+                >
+                  <Phone size={15} />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => showSuccessToast({ title: 'Video Call Unavailable', subtitle: 'Calling feature coming soon!' })}
+                  className="btn-outline-cyan"
+                  style={{ width: '36px', height: '36px', minHeight: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  title="Video Call"
+                >
+                  <Video size={15} />
+                </button>
+                <button 
+                  type="button"
                   onClick={() => setProfileDrawerOpen(!profileDrawerOpen)}
                   className="btn-outline-cyan"
                   style={{ height: '36px', minHeight: '36px', borderRadius: '10px', padding: '0 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -594,12 +665,12 @@ export const MessagingCenter = () => {
               
               {/* Recording panel overlay */}
               {isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '10px 16px', borderRadius: '14px', color: '#ef4444' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifySpace: 'space-between', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '10px 16px', borderRadius: '14px', color: '#ef4444' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span className="rec-pulse" style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
                     <span style={{ fontSize: '13.5px', fontWeight: '700' }}>Recording Voice Note: {recordingDuration}s</span>
                   </div>
-                  <button onClick={() => stopRecording()} className="btn-primary" style={{ padding: '0 14px', minHeight: '32px', borderRadius: '8px', background: '#ef4444', color: '#fff', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button type="button" onClick={() => stopRecording()} className="btn-primary" style={{ padding: '0 14px', minHeight: '32px', borderRadius: '8px', background: '#ef4444', color: '#fff', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <Square size={12} /> Stop & Send
                   </button>
                 </div>
@@ -607,72 +678,85 @@ export const MessagingCenter = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
                   
                   {/* Left accessories */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', position: 'relative' }}>
-                    <button 
-                      onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
-                    >
-                      <Paperclip size={16} />
-                    </button>
-                    {showAttachmentMenu && (
-                      <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '180px', display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px', borderRadius: '12px', zIndex: 100 }}>
-                        {[
-                          { id: 'image', label: 'Image Upload', icon: <ImageIcon size={14} /> },
-                          { id: 'document', label: 'Document File', icon: <FileText size={14} /> }
-                        ].map(act => (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    
+                    {/* Attachment trigger & menu container */}
+                    <div ref={attachmentContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <button 
+                        type="button"
+                        onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                        <Paperclip size={16} />
+                      </button>
+                      {showAttachmentMenu && (
+                        <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '180px', display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px', borderRadius: '12px', zIndex: 100 }}>
+                          {[
+                            { id: 'image', label: 'Image Upload', icon: <ImageIcon size={14} /> },
+                            { id: 'document', label: 'Document File', icon: <FileText size={14} /> }
+                          ].map(act => (
+                            <button 
+                              key={act.id} 
+                              type="button"
+                              onClick={() => triggerAttachment(act.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--text-white)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
+                              className="glass-panel-hover"
+                            >
+                              {act.icon} <span>{act.label}</span>
+                            </button>
+                          ))}
                           <button 
-                            key={act.id} 
-                            onClick={() => triggerAttachment(act.id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--text-white)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
+                            type="button"
+                            onClick={startRecording}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--accent-cyan)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
                             className="glass-panel-hover"
                           >
-                            {act.icon} <span>{act.label}</span>
+                            <Mic size={14} /> <span>Voice Recording</span>
                           </button>
-                        ))}
-                        <button 
-                          onClick={startRecording}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--accent-cyan)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
-                          className="glass-panel-hover"
-                        >
-                          <Mic size={14} /> <span>Voice Recording</span>
-                        </button>
-                      </div>
-                    )}
+                        </div>
+                      )}
+                    </div>
 
-                    <button 
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
-                    >
-                      <Smile size={16} />
-                    </button>
-                    {showEmojiPicker && (
-                      <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: '42px', width: '220px', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', padding: '12px', borderRadius: '16px', zIndex: 100 }}>
-                        {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬'].map(em => (
-                          <span key={em} onClick={() => addEmoji(em)} style={{ fontSize: '18px', cursor: 'pointer', textAlign: 'center', display: 'block', transition: 'transform 0.1s' }} className="emoji-hover">{em}</span>
-                        ))}
-                      </div>
-                    )}
+                    {/* Emoji trigger & picker container */}
+                    <div ref={emojiContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                      <button 
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                        <Smile size={16} />
+                      </button>
+                      {showEmojiPicker && (
+                        <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '220px', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', padding: '12px', borderRadius: '16px', zIndex: 100 }}>
+                          {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬'].map(em => (
+                            <span key={em} onClick={() => addEmoji(em)} style={{ fontSize: '18px', cursor: 'pointer', textAlign: 'center', display: 'block', transition: 'transform 0.1s' }} className="emoji-hover">{em}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                   </div>
-
-                  {/* TextInput */}
-                  <textarea 
-                    value={inputText}
-                    onChange={handleInputChange}
-                    onKeyDown={handleKeyDown}
-                    className="form-input" 
-                    placeholder="Message..." 
-                    rows={1}
-                    style={{ flex: 1, height: '40px', minHeight: '40px', resize: 'none', padding: '10px 16px', fontSize: '13.5px', borderRadius: '20px', background: 'rgba(255,255,255,0.02)' }}
-                  />
-
-                  {/* Send Button */}
-                  <button 
-                    onClick={handleSend}
-                    className="btn-primary" 
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                  >
-                    <Send size={15} style={{ marginLeft: '2px' }} />
-                  </button>
+ 
+                   {/* TextInput */}
+                   <textarea 
+                     value={inputText}
+                     onChange={handleInputChange}
+                     onKeyDown={handleKeyDown}
+                     className="form-input" 
+                     placeholder="Message..." 
+                     rows={1}
+                     style={{ flex: 1, height: '40px', minHeight: '40px', resize: 'none', padding: '10px 16px', fontSize: '13.5px', borderRadius: '20px', background: 'rgba(255,255,255,0.02)' }}
+                   />
+ 
+                   {/* Send Button */}
+                   <button 
+                     type="button"
+                     onClick={handleSend}
+                     className="btn-primary" 
+                     style={{ width: '40px', height: '40px', borderRadius: '50%', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                   >
+                     <Send size={15} style={{ marginLeft: '2px' }} />
+                   </button>
 
                 </div>
               )}
@@ -751,13 +835,13 @@ export const MessagingCenter = () => {
 
             {/* Action buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--glass-border)' }}>
-              <button onClick={() => alert(`Hiring request sent to ${otherUser.fullName}!`)} className="btn-primary" style={{ width: '100%', minHeight: '38px', borderRadius: '10px', fontSize: '12px' }}>
+              <button onClick={() => showSuccessToast({ title: '✔ Hiring Request Sent', subtitle: `Request sent to ${otherUser.fullName}!` })} className="btn-primary" style={{ width: '100%', minHeight: '38px', borderRadius: '10px', fontSize: '12px' }}>
                 Hire Creator
               </button>
               
               <button 
                 onClick={() => {
-                  alert(`User ${otherUser.fullName} has been blocked.`);
+                  showSuccessToast({ title: '✔ User Blocked', subtitle: `${otherUser.fullName} has been blocked.` });
                   setProfileDrawerOpen(false);
                   setActiveConversationId(null);
                 }} 
@@ -768,7 +852,7 @@ export const MessagingCenter = () => {
               </button>
 
               <button 
-                onClick={() => alert(`User ${otherUser.fullName} has been reported to support.`)} 
+                onClick={() => showSuccessToast({ title: '✔ Report Submitted', subtitle: `${otherUser.fullName} has been reported to support.` })} 
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer', textAlign: 'center' }}
               >
                 Report Profile
@@ -779,6 +863,101 @@ export const MessagingCenter = () => {
         )}
 
       </section>
+
+      {/* New Chat Modal */}
+      {showNewChatModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setShowNewChatModal(false)}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '440px',
+            background: 'var(--bg-dark)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: '24px',
+            padding: '24px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '17px', fontWeight: '800', margin: 0, color: 'var(--text-white)' }}>New Chat</h3>
+              <button 
+                type="button"
+                onClick={() => setShowNewChatModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div style={{ position: 'relative' }}>
+              <Search size={15} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Search by name, user or brand..." 
+                value={newChatSearch}
+                onChange={e => setNewChatSearch(e.target.value)}
+                className="form-input" 
+                style={{ height: '38px', minHeight: '38px', paddingLeft: '38px', fontSize: '13px', borderRadius: '12px' }}
+              />
+            </div>
+
+            <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {filteredConnections.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-gray)' }}>
+                  <User size={28} style={{ opacity: 0.2, marginBottom: '8px', marginLeft: 'auto', marginRight: 'auto', display: 'block' }} />
+                  <span style={{ fontSize: '12.5px' }}>No connected collaborators found.</span>
+                </div>
+              ) : (
+                filteredConnections.map(user => (
+                  <div 
+                    key={user.id}
+                    onClick={async () => {
+                      await startConversation(user.id);
+                      setShowNewChatModal(false);
+                      setNewChatSearch('');
+                    }}
+                    className="glass-panel-hover"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 12px',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      border: '1px solid transparent'
+                    }}
+                  >
+                    <img 
+                      src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
+                      alt={user.fullName} 
+                      style={{ width: '36px', height: '36px', borderRadius: user.role === 'Business Holder' ? '6px' : '50%', objectFit: 'cover' }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ fontSize: '13px', color: 'var(--text-white)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{user.fullName}</strong>
+                      <span style={{ fontSize: '11px', color: 'var(--accent-cyan)' }}>{user.businessName || user.role}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Styled Animations CSS */}
       <style>{`
@@ -793,7 +972,7 @@ export const MessagingCenter = () => {
         .emoji-hover:hover {
           transform: scale(1.25);
         }
-        @media (max-width: 992px) {
+        @media (max-width: 1024px) {
           #chat-back-btn {
             display: block !important;
           }

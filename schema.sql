@@ -41,6 +41,13 @@ create table if not exists public.users (
     website_visibility text default 'Private',
     social_links_visibility text default 'Private',
     contact_visibility text default 'Private',
+    cover_banner text,
+    whatsapp text,
+    gst text,
+    contact_person text,
+    address text,
+    social_links text,
+    field_visibility text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -121,6 +128,13 @@ alter table public.users add column if not exists email_visibility text default 
 alter table public.users add column if not exists website_visibility text default 'Private';
 alter table public.users add column if not exists social_links_visibility text default 'Private';
 alter table public.users add column if not exists contact_visibility text default 'Private';
+alter table public.users add column if not exists cover_banner text;
+alter table public.users add column if not exists whatsapp text;
+alter table public.users add column if not exists gst text;
+alter table public.users add column if not exists contact_person text;
+alter table public.users add column if not exists address text;
+alter table public.users add column if not exists social_links text;
+alter table public.users add column if not exists field_visibility text;
 
 -- Helper function to get current user ID (either from JWT claim or custom header)
 create or replace function public.current_user_id()
@@ -279,6 +293,12 @@ returns table (
     website_visibility text,
     social_links_visibility text,
     contact_visibility text,
+    cover_banner text,
+    whatsapp text,
+    gst text,
+    contact_person text,
+    social_links text,
+    field_visibility text,
     email text,
     mobile_number text,
     address text
@@ -321,6 +341,12 @@ begin
         u.website_visibility,
         u.social_links_visibility,
         u.contact_visibility,
+        u.cover_banner,
+        u.whatsapp,
+        u.gst,
+        u.contact_person,
+        u.social_links,
+        u.field_visibility,
         -- Secure conditional exposures: only show to self, or for Business Holders with Public visibility settings
         case 
             when u.id = public.current_user_id() then u.email
