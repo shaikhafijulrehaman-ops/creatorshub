@@ -481,7 +481,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 { title: 'Business Information', component: <BusinessProfile section="info" /> },
                 { title: 'Contact Information', component: <BusinessProfile section="contact" /> },
                 { title: 'Public Profile', component: <BusinessPublicProfile businessId={currentUser.id} viewerId={currentUser.id} /> },
-                { title: 'Private Details & Visibility', component: <BusinessProfile section="visibility" /> },
                 { title: 'Campaign Briefs / Projects', component: <BusinessRequirements /> },
                 { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> },
                 { title: 'Identity Verification Badge', component: <VerificationCenter /> },

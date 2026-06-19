@@ -178,6 +178,10 @@ export const BusinessProfile = ({ section }) => {
         </div>
       </div>
       <div className="biz-field" style={{ marginTop: '12px' }}>
+        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Hash size={13} /> GST Number (Optional)</label>
+        <input className="form-input" value={form.gst} onChange={e => setField('gst', e.target.value)} placeholder="GSTIN (e.g. 27AAAAA1111A1Z1)" />
+      </div>
+      <div className="biz-field" style={{ marginTop: '12px' }}>
         <label className="form-label">About / Description</label>
         <textarea
           className="form-input"
@@ -295,37 +299,7 @@ export const BusinessProfile = ({ section }) => {
     </div>
   );
 
-  const renderPrivateAndVisibility = () => (
-    <div className="biz-section glass-panel">
-      <h4 className="biz-section-title">Private ID & Field Visibility</h4>
-      <p className="biz-section-sub" style={{ marginBottom: '16px' }}>Manage secure private fields and platform visibility preferences.</p>
-      
-      <div className="biz-field" style={{ marginBottom: '20px' }}>
-        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Hash size={13} /> GST Number</label>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <input className="form-input" value={form.gst} onChange={e => setField('gst', e.target.value)} placeholder="GSTIN (e.g. 27AAAAA1111A1Z1)" style={{ flex: 1 }} />
-          <VisibilityToggle value={visibility.gst} onChange={(v) => setVis('gst', v)} />
-        </div>
-      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <h5 style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }}>Global Visibility Toggles</h5>
-        {[
-          { key: 'email', label: 'E-mail Public visibility' },
-          { key: 'mobile', label: 'Mobile Number Public visibility' },
-          { key: 'whatsapp', label: 'WhatsApp Public visibility' },
-          { key: 'website', label: 'Website Public visibility' },
-          { key: 'address', label: 'Office Address Public visibility' },
-          { key: 'contact', label: 'Contact Person Details Public visibility' },
-        ].map(({ key, label }) => (
-          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-            <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>{label}</span>
-            <VisibilityToggle value={visibility[key]} onChange={(v) => setVis(key, v)} />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   const renderReviewStep = () => (
     <div className="biz-section glass-panel">
@@ -362,7 +336,6 @@ export const BusinessProfile = ({ section }) => {
           </>
         )}
         {section === 'contact' && renderContact()}
-        {section === 'visibility' && renderPrivateAndVisibility()}
         <button 
           onClick={handleSave} 
           type="button" 
@@ -425,12 +398,7 @@ export const BusinessProfile = ({ section }) => {
           )}
           {currentStep === 2 && renderContact()}
           {currentStep === 3 && renderSocial()}
-          {currentStep === 4 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {renderDetailsAndBudget()}
-              {renderPrivateAndVisibility()}
-            </div>
-          )}
+          {currentStep === 4 && renderDetailsAndBudget()}
           {currentStep === 5 && renderReviewStep()}
         </div>
 
@@ -479,7 +447,6 @@ export const BusinessProfile = ({ section }) => {
       {renderContact()}
       {renderSocial()}
       {renderDetailsAndBudget()}
-      {renderPrivateAndVisibility()}
 
       <div className="biz-save-row">
         <button type="submit" className="btn-primary biz-save-btn" disabled={saving}>
