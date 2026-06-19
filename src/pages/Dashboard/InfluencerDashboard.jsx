@@ -366,8 +366,8 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '0 8px 20px 8px', borderBottom: '1px solid var(--glass-border)' }}>
             <div 
               style={{ 
-                width: '36px', 
-                height: '36px', 
+                width: '44px', 
+                height: '44px', 
                 borderRadius: '8px', 
                 display: 'flex', 
                 alignItems: 'center', 
