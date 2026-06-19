@@ -346,7 +346,7 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
 };
 
 const AppContent = () => {
-  const { currentUser, users, projects, loading, logoutUser, activeDashboardTab, setActiveDashboardTab } = useContext(AppContext);
+  const { currentUser, users, projects, loading, logoutUser, activeDashboardTab, setActiveDashboardTab, notifications = [] } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   
   const navigate = useNavigate();
@@ -465,7 +465,6 @@ const AppContent = () => {
 
 
 
-      {/* Header bar */}
       {isMobile ? (
         <MobileHeader 
           onOpenDrawer={() => setMobileDrawerOpen(true)} 
