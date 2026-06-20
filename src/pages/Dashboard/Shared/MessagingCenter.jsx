@@ -654,10 +654,16 @@ export const MessagingCenter = ({ onOpenProfile }) => {
         flex: 1,
         display: (!activeConversationId && !isDesktop) ? 'none' : 'flex',
         flexDirection: 'column',
-        position: 'relative',
-        height: '100%',
+        position: !isDesktop ? 'fixed' : 'relative',
+        top: !isDesktop ? 0 : undefined,
+        left: !isDesktop ? 0 : undefined,
+        right: !isDesktop ? 0 : undefined,
+        bottom: !isDesktop ? 'calc(60px + env(safe-area-inset-bottom))' : undefined,
+        zIndex: !isDesktop ? 50 : undefined,
+        height: isDesktop ? '100%' : undefined,
         width: '100%',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        background: !isDesktop ? 'var(--bg-deep)' : undefined
       }}>
         {activeConversationId && otherUser ? (
           <>
@@ -672,19 +678,16 @@ export const MessagingCenter = ({ onOpenProfile }) => {
               backdropFilter: 'none',
               zIndex: 10
             } : {
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
               height: '60px',
+              minHeight: '60px',
               borderBottom: '1px solid var(--glass-border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '0 16px',
               background: 'var(--bg-dark)',
-              backdropFilter: 'blur(16px)',
-              zIndex: 1000,
+              flexShrink: 0,
+              zIndex: 10,
               fontFamily: 'Rubik, sans-serif'
             }}>
               
@@ -852,12 +855,11 @@ export const MessagingCenter = ({ onOpenProfile }) => {
               flex: 1,
               overflowY: 'auto',
               padding: '16px 16px',
-              paddingTop: '72px', 
-              paddingBottom: '140px', 
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              background: 'var(--bg-deep)'
+              background: 'var(--bg-deep)',
+              minHeight: 0
             }}>
               {messagesList.length === 0 ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', opacity: 0.6 }}>
@@ -865,7 +867,9 @@ export const MessagingCenter = ({ onOpenProfile }) => {
                   <p style={{ fontSize: '14px', margin: 0 }}>Start your conversation.</p>
                 </div>
               ) : (
-                renderMessageStream()
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {renderMessageStream()}
+                </div>
               )}
 
               {activeTypingUsers[otherUser.id] && (
@@ -887,16 +891,10 @@ export const MessagingCenter = ({ onOpenProfile }) => {
               background: 'var(--bg-dark)',
               position: 'relative'
             } : {
-              position: 'fixed',
-              bottom: 'calc(60px + env(safe-area-inset-bottom))',
-              left: 0,
-              right: 0,
-              padding: '12px 16px calc(12px + env(safe-area-inset-bottom)) 16px',
+              padding: '12px 16px',
               background: 'var(--bg-dark)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
               borderTop: '1px solid var(--glass-border)',
-              zIndex: 999
+              flexShrink: 0
             }}>
               
               {isRecording ? (
