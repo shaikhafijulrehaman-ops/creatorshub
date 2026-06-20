@@ -1139,6 +1139,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
               onOpenProfile={onOpenProfile} 
               onStartChat={(userId) => {
                 startConversation(userId);
+                setActiveTab('messages');
               }}
             />
           )}

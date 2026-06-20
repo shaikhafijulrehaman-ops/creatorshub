@@ -1186,6 +1186,7 @@ const AppContent = () => {
                                           onClick={() => {
                                             if (currentUser) {
                                               startConversation(u.id);
+                                              handleNavigate('messages');
                                             } else {
                                               handleNavigate('onboarding');
                                             }

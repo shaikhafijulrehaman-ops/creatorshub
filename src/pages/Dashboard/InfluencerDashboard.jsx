@@ -1325,6 +1325,7 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
               onOpenProfile={onOpenProfile} 
               onStartChat={(userId) => {
                 startConversation(userId);
+                setActiveTab('messages');
               }}
             />
           )}
