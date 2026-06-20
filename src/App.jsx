@@ -449,6 +449,11 @@ const AppContent = () => {
   const { isMobile, isTablet, isDesktop } = useResponsive();
 
   const handleLogout = async () => {
+    if (isMobile) {
+      logoutUser();
+      handleNavigate('landing');
+      return;
+    }
     const confirmed = await showConfirmation({
       title: 'Sign Out',
       message: 'Are you sure you want to log out of Creators Hub?',
