@@ -12,10 +12,11 @@ import { BusinessProfile } from './Business/BusinessProfile';
 import { BusinessRequirements } from './Business/BusinessRequirements';
 import { BusinessApplications } from './Business/BusinessApplications';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
-import { useResponsive } from '../../hooks/useResponsive';
 import { BusinessPublicProfile } from './Business/BusinessPublicProfile';
 import { MyConnections } from './Shared/MyConnections';
+import { BlockedProfilesList } from '../../components/BlockedProfilesList';
 import { ChevronDown } from 'lucide-react';
+import { useResponsive } from '../../hooks/useResponsive';
 
 
 
@@ -27,7 +28,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     activityFeed, messages, sendMessage, activateCreatorTeam, updateProfile, loading,
     activeTabToRedirect, setActiveTabToRedirect, setActiveConversationId, notifications, setProjects,
     activeDashboardTab, setActiveDashboardTab, startConversation,
-    applications
+    applications, isBlockedRelation, showConfirmation
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -43,9 +44,24 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
+  const handleLogout = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Sign Out',
+      message: 'Are you sure you want to log out of Creators Hub?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning',
+      isDestructive: true
+    });
+    if (confirmed) {
+      logoutUser();
+      onNavigate('landing');
+    }
+  };
+
   useEffect(() => {
-    if (activeTabToRedirect === 'messages') {
-      setActiveTab('messages');
+    if (activeTabToRedirect) {
+      setActiveTab(activeTabToRedirect);
       setActiveTabToRedirect(null);
     }
   }, [activeTabToRedirect]);
@@ -367,7 +383,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
             )}
           </div>
           <button 
-            onClick={() => { logoutUser(); onNavigate('landing'); }}
+            onClick={handleLogout}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -509,7 +525,8 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 { title: 'Contact Information', component: <BusinessProfile section="contact" /> },
                 { title: 'Public Profile', component: <BusinessPublicProfile businessId={currentUser.id} viewerId={currentUser.id} /> },
                 { title: 'Campaign Briefs / Projects', component: <BusinessRequirements /> },
-                { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> }
+                { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> },
+                { title: 'Blocked Profiles', component: <BlockedProfilesList /> }
               ].map((acc, index) => {
                 const isOpen = expandedAccordion === index;
                 return (
@@ -765,6 +782,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
               {/* Directory Results */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="talent-cards-grid">
                 {users.filter(u => {
+                  if (isBlockedRelation && isBlockedRelation(u.id)) return false;
                   const matchesRole = activeTab === 'freelancers' ? u.role === 'Freelancer' : u.role === 'Influencer';
                   const matchesSearch = u.fullName.toLowerCase().includes(talentSearchQuery.toLowerCase()) || 
                                         (u.bio && u.bio.toLowerCase().includes(talentSearchQuery.toLowerCase())) ||
@@ -1107,7 +1125,12 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
           {/* ==================== 10. COMPANY PROFILE VIEW ==================== */}
           {activeTab === 'profile' && !(isMobile || isTablet) && (
-            <BusinessProfile />
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+              <BusinessProfile />
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <BlockedProfilesList />
+              </div>
+            </div>
           )}
 
           {/* ==================== 11. MY CONNECTIONS ==================== */}

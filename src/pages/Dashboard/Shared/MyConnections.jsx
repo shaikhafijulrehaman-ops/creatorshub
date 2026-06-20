@@ -48,6 +48,30 @@ export const MyConnections = ({ onOpenProfile, onStartChat }) => {
     return u.role;
   };
 
+  // Helper to format relative last active time
+  const formatLastActive = (lastSeen) => {
+    if (!lastSeen) return 'Offline';
+    try {
+      const date = new Date(lastSeen);
+      const now = new Date();
+      const diffMs = now - date;
+      if (isNaN(diffMs) || diffMs < 0) return 'Offline';
+      
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      
+      const diffDays = Math.floor(diffHours / 24);
+      if (diffDays === 1) return 'Yesterday';
+      return `${diffDays}d ago`;
+    } catch (e) {
+      return 'Offline';
+    }
+  };
+
   // Apply sorting
   if (sortBy === 'newest') {
     // Sort by connId string descending
@@ -55,8 +79,8 @@ export const MyConnections = ({ onOpenProfile, onStartChat }) => {
   } else if (sortBy === 'active') {
     // Sort by online status
     connectedPeople.sort((a, b) => {
-      const aOnline = presenceList[a.id] ? 1 : 0;
-      const bOnline = presenceList[b.id] ? 1 : 0;
+      const aOnline = presenceList[a.id]?.isOnline ? 1 : 0;
+      const bOnline = presenceList[b.id]?.isOnline ? 1 : 0;
       return bOnline - aOnline;
     });
   } else if (sortBy === 'business') {
@@ -118,7 +142,8 @@ export const MyConnections = ({ onOpenProfile, onStartChat }) => {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }} className="connections-grid">
           {connectedPeople.map(person => {
-            const isOnline = presenceList[person.id];
+            const isOnline = presenceList[person.id]?.isOnline;
+            const lastActiveStr = isOnline ? 'Online' : `Last active: ${formatLastActive(presenceList[person.id]?.lastSeen)}`;
             return (
               <div key={person.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
                 
@@ -131,7 +156,7 @@ export const MyConnections = ({ onOpenProfile, onStartChat }) => {
                     backgroundColor: isOnline ? '#22c55e' : '#64748b',
                     boxShadow: isOnline ? '0 0 8px #22c55e' : 'none'
                   }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{isOnline ? 'Online' : 'Offline'}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{lastActiveStr}</span>
                 </div>
 
                 <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -160,7 +185,7 @@ export const MyConnections = ({ onOpenProfile, onStartChat }) => {
                       className="btn-secondary" 
                       style={{ padding: '6px 12px', fontSize: '11.5px', minHeight: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
-                      <User size={13} /> Profile
+                      <User size={13} /> View Profile
                     </button>
                     <button 
                       onClick={() => onStartChat(person.id)} 
@@ -188,7 +213,7 @@ export const MyConnections = ({ onOpenProfile, onStartChat }) => {
                       gap: '6px'
                     }}
                   >
-                    <UserX size={13} /> Remove
+                    <UserX size={13} /> Remove Connection
                   </button>
                 </div>
               </div>

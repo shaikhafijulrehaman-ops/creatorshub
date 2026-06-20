@@ -1,6 +1,14 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useRef } from 'react';
 import { supabase, setSupabaseUserHeader } from '../supabaseClient';
+
+const getConvIdFromNotif = (notifId) => {
+  if (!notifId || !notifId.startsWith('notif-msg-')) return null;
+  const withoutPrefix = notifId.substring('notif-msg-'.length);
+  const lastDashIdx = withoutPrefix.lastIndexOf('-');
+  if (lastDashIdx === -1) return withoutPrefix;
+  return withoutPrefix.substring(0, lastDashIdx);
+};
 
 export const AppContext = createContext();
 
@@ -9,12 +17,28 @@ const generateUserId = (role) => {
   return role === 'Business Holder' ? `bh-${now}` : (role === 'Influencer' ? `inf-${now}` : `fl-${now}`);
 };
 
-// Pre-seeded high quality profiles for immersive experience
-const INITIAL_USERS = [];
+// Helper functions for safe JSON parsing and stringifying
+const safeStringify = (val) => {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'string') return val;
+  try {
+    return JSON.stringify(val);
+  } catch (e) {
+    console.error('Error stringifying value:', e);
+    return null;
+  }
+};
 
-const INITIAL_PROJECTS = [];
-
-const INITIAL_ACTIVITIES = [];
+const safeParse = (val, fallback = null) => {
+  if (val === null || val === undefined) return fallback;
+  if (typeof val === 'object') return val;
+  try {
+    return JSON.parse(val);
+  } catch (e) {
+    console.warn('Error parsing JSON field:', e, val);
+    return fallback;
+  }
+};
 
 const mapUserToDb = (user) => {
   if (!user) return null;
@@ -35,21 +59,21 @@ const mapUserToDb = (user) => {
     website: user.website || null,
     team_size: user.teamSize || null,
     monthly_marketing_budget: user.monthlyMarketingBudget || null,
-    content_categories: user.contentCategories || null,
-    platforms: user.platforms || null,
+    content_categories: safeStringify(user.contentCategories),
+    platforms: safeStringify(user.platforms),
     followers_count: user.followersCount || null,
     average_reach: user.averageReach || null,
     engagement_rate: user.engagementRate || null,
-    languages: user.languages || null,
+    languages: safeStringify(user.languages),
     collaboration_pricing: user.collaborationPricing || null,
     verification_status: user.verificationStatus || 'Basic Verified',
     profile_strength: user.profileStrength || 15,
     rating: user.rating || 5.0,
-    reviews: user.reviews || [],
-    fraud_audit: user.fraudAudit || null,
-    services: user.services || [],
-    portfolio: user.portfolio || [],
-    skills: user.skills || [],
+    reviews: safeStringify(user.reviews),
+    fraud_audit: safeStringify(user.fraudAudit),
+    services: safeStringify(user.services),
+    portfolio: safeStringify(user.portfolio),
+    skills: safeStringify(user.skills),
     experience: user.experience || null,
     verification_requested: user.verificationRequested || false,
     phone_visibility: user.phoneVisibility || 'Private',
@@ -62,8 +86,8 @@ const mapUserToDb = (user) => {
     gst: user.gst || null,
     contact_person: user.contactPerson || null,
     address: user.address || null,
-    social_links: user.socialLinks ? JSON.stringify(user.socialLinks) : null,
-    field_visibility: user.fieldVisibility ? JSON.stringify(user.fieldVisibility) : null
+    social_links: safeStringify(user.socialLinks),
+    field_visibility: safeStringify(user.fieldVisibility)
   };
 };
 
@@ -86,21 +110,21 @@ const mapUserFromDb = (dbUser) => {
     website: dbUser.website,
     teamSize: dbUser.team_size,
     monthlyMarketingBudget: dbUser.monthly_marketing_budget,
-    contentCategories: typeof dbUser.content_categories === 'string' ? JSON.parse(dbUser.content_categories) : (dbUser.content_categories || []),
-    platforms: typeof dbUser.platforms === 'string' ? JSON.parse(dbUser.platforms) : (dbUser.platforms || {}),
+    contentCategories: safeParse(dbUser.content_categories, []),
+    platforms: safeParse(dbUser.platforms, {}),
     followersCount: dbUser.followers_count,
     averageReach: dbUser.average_reach,
     engagementRate: dbUser.engagement_rate,
-    languages: typeof dbUser.languages === 'string' ? JSON.parse(dbUser.languages) : (dbUser.languages || []),
+    languages: safeParse(dbUser.languages, []),
     collaborationPricing: dbUser.collaboration_pricing,
     verificationStatus: dbUser.verification_status,
     profileStrength: dbUser.profile_strength,
     rating: dbUser.rating ? parseFloat(dbUser.rating) : 5.0,
-    reviews: typeof dbUser.reviews === 'string' ? JSON.parse(dbUser.reviews) : (dbUser.reviews || []),
-    fraudAudit: typeof dbUser.fraud_audit === 'string' ? JSON.parse(dbUser.fraud_audit) : dbUser.fraud_audit,
-    services: typeof dbUser.services === 'string' ? JSON.parse(dbUser.services) : (dbUser.services || []),
-    portfolio: typeof dbUser.portfolio === 'string' ? JSON.parse(dbUser.portfolio) : (dbUser.portfolio || []),
-    skills: typeof dbUser.skills === 'string' ? JSON.parse(dbUser.skills) : (dbUser.skills || []),
+    reviews: safeParse(dbUser.reviews, []),
+    fraudAudit: safeParse(dbUser.fraud_audit, null),
+    services: safeParse(dbUser.services, []),
+    portfolio: safeParse(dbUser.portfolio, []),
+    skills: safeParse(dbUser.skills, []),
     experience: dbUser.experience,
     verificationRequested: dbUser.verification_requested,
     phoneVisibility: dbUser.phone_visibility || 'Private',
@@ -113,8 +137,8 @@ const mapUserFromDb = (dbUser) => {
     gst: dbUser.gst || null,
     contactPerson: dbUser.contact_person || null,
     address: dbUser.address || null,
-    socialLinks: typeof dbUser.social_links === 'string' ? JSON.parse(dbUser.social_links) : (dbUser.social_links || {}),
-    fieldVisibility: typeof dbUser.field_visibility === 'string' ? JSON.parse(dbUser.field_visibility) : (dbUser.field_visibility || {}),
+    socialLinks: safeParse(dbUser.social_links, {}),
+    fieldVisibility: safeParse(dbUser.field_visibility, {}),
     createdAt: dbUser.created_at || null
   };
 };
@@ -160,47 +184,20 @@ const mapProjectFromDb = (dbProj) => {
 };
 
 export const AppProvider = ({ children }) => {
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem('ch_users');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [projects, setProjects] = useState(() => {
-    const saved = localStorage.getItem('ch_projects');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [users, setUsers] = useState([]);
+  const [projects, setProjects] = useState([]);
 
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem('ch_current_user');
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [activityFeed, setActivityFeed] = useState(() => {
-    const saved = localStorage.getItem('ch_activity');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [activityFeed, setActivityFeed] = useState([]);
+  const [savedProfiles, setSavedProfiles] = useState([]);
+  const [followedProfiles, setFollowedProfiles] = useState([]);
+  const [messages, setMessages] = useState({});
 
-  const [savedProfiles, setSavedProfiles] = useState(() => {
-    const saved = localStorage.getItem('ch_saved');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [followedProfiles, setFollowedProfiles] = useState(() => {
-    const saved = localStorage.getItem('ch_followed');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [messages, setMessages] = useState(() => {
-    const saved = localStorage.getItem('ch_messages');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [loading, setLoading] = useState(() => {
-    // Start with loading=false if we have cached data — render instantly from cache
-    const hasCachedUser = localStorage.getItem('ch_current_user');
-    const hasCachedUsers = localStorage.getItem('ch_users');
-    return !(hasCachedUser || hasCachedUsers);
-  });
+  const [loading, setLoading] = useState(true);
 
   // Notifications state
   const [notifications, setNotifications] = useState([]);
@@ -211,6 +208,7 @@ export const AppProvider = ({ children }) => {
   // Connections & Requests state
   const [connections, setConnections] = useState([]);
   const [connectionRequests, setConnectionRequests] = useState([]);
+  const [blockedUsers, setBlockedUsers] = useState([]);
 
   // Global Active Dashboard Tab
   const [activeDashboardTab, setActiveDashboardTab] = useState('dashboard');
@@ -222,76 +220,79 @@ export const AppProvider = ({ children }) => {
     // Dark mode disabled
   };
 
+  const fetchUserData = async (userId) => {
+    try {
+      console.log('fetchUserData: fetching relationships, notifications and blocks for user:', userId);
+      const [dbConns, dbReqs, dbNotifs, dbBlocked] = await Promise.all([
+        supabase.from('connections').select('*').or(`user_id1.eq.${userId},user_id2.eq.${userId}`),
+        supabase.from('connection_requests').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
+        supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('blocked_users').select('*').or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)
+      ]);
+
+      if (dbConns.data) setConnections(dbConns.data);
+      if (dbReqs.data) setConnectionRequests(dbReqs.data);
+      if (dbNotifs.data) setNotifications(dbNotifs.data);
+      if (dbBlocked.data) setBlockedUsers(dbBlocked.data);
+    } catch (e) {
+      console.error('Error fetching user details:', e);
+    }
+  };
+
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', 'light');
-  }, []);
 
-  // Fetch initial data from Supabase, seed if empty, and sync local state
-  useEffect(() => {
     const initData = async () => {
       try {
-        // Don't set loading=true here — if we have cached data, we're already showing it
+        // Pre-set header for RLS if cached user session exists
+        const cachedUser = localStorage.getItem('ch_current_user');
+        if (cachedUser) {
+          try {
+            const parsedUser = JSON.parse(cachedUser);
+            if (parsedUser && parsedUser.id) {
+              setSupabaseUserHeader(parsedUser.id);
+            }
+          } catch (e) {
+            console.error('Error pre-setting supabase user header:', e);
+          }
+        }
+
         // 1. Fetch Users
         const { data: dbUsers, error: usersErr } = await supabase.from('profiles').select('*');
         let finalUsers = [];
         if (usersErr) {
           console.warn('Error fetching users from Supabase:', usersErr);
-          const saved = localStorage.getItem('ch_users');
-          finalUsers = saved ? JSON.parse(saved) : [];
         } else {
-          const saved = localStorage.getItem('ch_users');
-          const localUsers = saved ? JSON.parse(saved) : [];
-          finalUsers = dbUsers ? dbUsers.map(dbU => {
-            const mapped = mapUserFromDb(dbU);
-            const localU = localUsers.find(lu => lu.id === dbU.id);
-            if (localU) {
-              Object.keys(mapped).forEach(key => {
-                if (mapped[key] === undefined || mapped[key] === null) {
-                  delete mapped[key];
-                }
-              });
-              return { ...localU, ...mapped };
-            }
-            return mapped;
-          }) : [];
+          finalUsers = dbUsers ? dbUsers.map(mapUserFromDb) : [];
         }
         setUsers(finalUsers);
-        localStorage.setItem('ch_users', JSON.stringify(finalUsers));
 
         // 2. Fetch Projects
         const { data: dbProjects, error: projErr } = await supabase.from('projects').select('*');
         let finalProjects = [];
         if (projErr) {
           console.warn('Error fetching projects from Supabase:', projErr);
-          const saved = localStorage.getItem('ch_projects');
-          finalProjects = saved ? JSON.parse(saved) : [];
         } else {
           finalProjects = dbProjects ? dbProjects.map(mapProjectFromDb) : [];
         }
         setProjects(finalProjects);
-        localStorage.setItem('ch_projects', JSON.stringify(finalProjects));
 
         // 3. Fetch Activities
         const { data: dbActivities, error: actErr } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
         let finalActivities = [];
         if (actErr) {
           console.warn('Error fetching activities from Supabase:', actErr);
-          const saved = localStorage.getItem('ch_activity');
-          finalActivities = saved ? JSON.parse(saved) : [];
         } else {
           finalActivities = dbActivities || [];
         }
         setActivityFeed(finalActivities);
-        localStorage.setItem('ch_activity', JSON.stringify(finalActivities));
 
         // 4. Fetch Messages
         const { data: dbMessages, error: msgErr } = await supabase.from('messages').select('*');
         const groupedMessages = {};
         if (msgErr) {
           console.warn('Error fetching messages from Supabase:', msgErr);
-          const saved = localStorage.getItem('ch_messages');
-          if (saved) Object.assign(groupedMessages, JSON.parse(saved));
         } else if (dbMessages && dbMessages.length > 0) {
           dbMessages.forEach(msg => {
             if (!groupedMessages[msg.project_id]) {
@@ -306,20 +307,16 @@ export const AppProvider = ({ children }) => {
           });
         }
         setMessages(groupedMessages);
-        localStorage.setItem('ch_messages', JSON.stringify(groupedMessages));
 
         // 4.5 Fetch Applications
         const { data: dbApps, error: appsErr } = await supabase.from('applications').select('*');
         let finalApps = [];
         if (appsErr) {
           console.warn('Error fetching applications from Supabase:', appsErr);
-          const saved = localStorage.getItem('ch_applications');
-          finalApps = saved ? JSON.parse(saved) : [];
         } else {
           finalApps = dbApps || [];
         }
         setApplications(finalApps);
-        localStorage.setItem('ch_applications', JSON.stringify(finalApps));
 
         // 5. Sync logged in user session & relationships
         let activeUser = null;
@@ -373,20 +370,18 @@ export const AppProvider = ({ children }) => {
             });
           }
         } else {
-          const cachedUser = localStorage.getItem('ch_current_user');
           if (cachedUser) {
             const parsedUser = JSON.parse(cachedUser);
-            const { data: refreshedUser } = await supabase.from('users').select('*').eq('id', parsedUser.id).maybeSingle();
+            const { data: refreshedUser, error: refreshErr } = await supabase.from('users').select('*').eq('id', parsedUser.id).maybeSingle();
             if (refreshedUser) {
-              const mapped = mapUserFromDb(refreshedUser);
-              Object.keys(mapped).forEach(key => {
-                if (mapped[key] === undefined || mapped[key] === null) {
-                  delete mapped[key];
-                }
-              });
-              activeUser = { ...parsedUser, ...mapped };
-            } else {
+              activeUser = mapUserFromDb(refreshedUser);
+            } else if (refreshErr) {
+              console.warn('Network or database error refreshing user session. Restoring cached session:', refreshErr);
               activeUser = parsedUser;
+            } else {
+              console.warn('Current user session invalid/deleted from database. Logging out.');
+              localStorage.removeItem('ch_current_user');
+              activeUser = null;
             }
           }
         }
@@ -395,14 +390,9 @@ export const AppProvider = ({ children }) => {
           setCurrentUser(activeUser);
           localStorage.setItem('ch_current_user', JSON.stringify(activeUser));
 
-          const { data: dbConns } = await supabase.from('connections').select('*').or(`user_id1.eq.${activeUser.id},user_id2.eq.${activeUser.id}`);
-          if (dbConns) setConnections(dbConns);
-
-          const { data: dbReqs } = await supabase.from('connection_requests').select('*').or(`sender_id.eq.${activeUser.id},receiver_id.eq.${activeUser.id}`);
-          if (dbReqs) setConnectionRequests(dbReqs);
-
-          const { data: dbNotifs } = await supabase.from('notifications').select('*').eq('user_id', activeUser.id).order('created_at', { ascending: false });
-          if (dbNotifs) setNotifications(dbNotifs);
+          await fetchUserData(activeUser.id);
+        } else {
+          setCurrentUser(null);
         }
       } catch (err) {
         console.error('Error loading Supabase data:', err);
@@ -411,15 +401,78 @@ export const AppProvider = ({ children }) => {
         setInitialized(true);
       }
     };
+
     initData();
   }, []);
 
-  // Realtime database subscription for connections, requests, notifications, and profile broadcasts
+  // Realtime global subscription for users and projects
   useEffect(() => {
+    const usersSub = supabase
+      .channel('users-realtime-global')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
+        console.log('Realtime database change on users table:', payload);
+        if (payload.eventType === 'INSERT') {
+          const mapped = mapUserFromDb(payload.new);
+          setUsers(prev => {
+            if (prev.some(u => u.id === mapped.id)) return prev;
+            return [...prev, mapped];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const mapped = mapUserFromDb(payload.new);
+          setUsers(prev => prev.map(u => u.id === mapped.id ? { ...u, ...mapped } : u));
+          
+          // Sync current logged-in user state if they are updated
+          setCurrentUser(curr => {
+            if (curr && curr.id === mapped.id) {
+              const updatedSession = { ...curr, ...mapped };
+              localStorage.setItem('ch_current_user', JSON.stringify(updatedSession));
+              return updatedSession;
+            }
+            return curr;
+          });
+        } else if (payload.eventType === 'DELETE') {
+          const oldUser = payload.old;
+          setUsers(prev => prev.filter(u => u.id !== oldUser.id));
+        }
+      })
+      .subscribe();
+
+    const projectsSub = supabase
+      .channel('projects-realtime-global')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, payload => {
+        console.log('Realtime database change on projects table:', payload);
+        const proj = payload.new;
+        if (payload.eventType === 'INSERT') {
+          const mapped = mapProjectFromDb(proj);
+          setProjects(prev => {
+            if (prev.some(p => p.id === mapped.id)) return prev;
+            return [...prev, mapped];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const mapped = mapProjectFromDb(proj);
+          setProjects(prev => prev.map(p => p.id === mapped.id ? mapped : p));
+        } else if (payload.eventType === 'DELETE') {
+          const oldProj = payload.old;
+          setProjects(prev => prev.filter(p => p.id !== oldProj.id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(usersSub);
+      supabase.removeChannel(projectsSub);
+    };
+  }, []);
+
+  // Realtime database subscription for connections, requests, notifications
+  useEffect(() => {
+    setSupabaseUserHeader(currentUser?.id || null);
+
     if (!currentUser) {
       setConnections([]);
       setConnectionRequests([]);
       setNotifications([]);
+      setBlockedUsers([]);
       return;
     }
 
@@ -473,6 +526,12 @@ export const AppProvider = ({ children }) => {
               if (prev.some(n => n.id === notif.id)) return prev;
               return [notif, ...prev];
             });
+            if (notif.type === 'message') {
+              const convId = getConvIdFromNotif(notif.id);
+              if (convId) {
+                syncConversationIfNeeded(convId);
+              }
+            }
           }
         } else if (payload.eventType === 'UPDATE') {
           if (notif.user_id === currentUser.id) {
@@ -518,65 +577,103 @@ export const AppProvider = ({ children }) => {
       })
       .subscribe();
 
+    const membersSub = supabase
+      .channel('members-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_members' }, async (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newMember = payload.new;
+          if (newMember.user_id === currentUser.id) {
+            const { data: convMembers } = await supabase
+              .from('conversation_members')
+              .select('conversation_id, user_id')
+              .eq('conversation_id', newMember.conversation_id);
+            
+            if (convMembers) {
+              const members = convMembers.map(m => m.user_id);
+              const otherUserId = members.find(mId => mId !== currentUser.id);
+              setConversations(prev => {
+                if (prev.some(c => c.id === newMember.conversation_id)) return prev;
+                return [...prev, {
+                  id: newMember.conversation_id,
+                  members,
+                  otherUserId
+                }];
+              });
+            }
+          } else {
+            setConversations(prev => {
+              return prev.map(c => {
+                if (c.id === newMember.conversation_id && !c.members.includes(newMember.user_id)) {
+                  return {
+                    ...c,
+                    members: [...c.members, newMember.user_id],
+                    otherUserId: newMember.user_id === currentUser.id ? c.otherUserId : newMember.user_id
+                  };
+                }
+                return c;
+              });
+            });
+          }
+        }
+      })
+      .subscribe();
+
+    const blockedSub = supabase
+      .channel('blocked-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'blocked_users' }, payload => {
+        const block = payload.new;
+        if (payload.eventType === 'INSERT') {
+          if (block.blocker_id === currentUser.id || block.blocked_id === currentUser.id) {
+            setBlockedUsers(prev => {
+              if (prev.some(b => b.id === block.id)) return prev;
+              return [...prev, block];
+            });
+          }
+        } else if (payload.eventType === 'DELETE') {
+          const oldBlock = payload.old;
+          setBlockedUsers(prev => prev.filter(b => b.id !== oldBlock.id));
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(connectionsSub);
       supabase.removeChannel(requestsSub);
       supabase.removeChannel(notificationsSub);
-      supabase.removeChannel(profileChannel);
       supabase.removeChannel(applicationsSub);
+      supabase.removeChannel(membersSub);
+      supabase.removeChannel(blockedSub);
     };
   }, [currentUser]);
 
-  const broadcastProfileChange = (userObject) => {
-    const sanitized = {
-      id: userObject.id,
-      role: userObject.role,
-      full_name: userObject.fullName || userObject.full_name,
-      location: userObject.location,
-      description: userObject.description,
-      business_name: userObject.businessName,
-      business_category: userObject.businessCategory,
-      logo: userObject.logo,
-      profile_photo: userObject.profilePhoto,
-      bio: userObject.bio,
-      website: userObject.website,
-      team_size: userObject.teamSize,
-      monthly_marketing_budget: userObject.monthlyMarketingBudget,
-      content_categories: JSON.stringify(userObject.contentCategories || []),
-      platforms: JSON.stringify(userObject.platforms || {}),
-      followers_count: userObject.followersCount,
-      average_reach: userObject.averageReach,
-      engagement_rate: userObject.engagementRate,
-      languages: JSON.stringify(userObject.languages || []),
-      collaboration_pricing: userObject.collaborationPricing,
-      verification_status: userObject.verificationStatus,
-      profile_strength: userObject.profileStrength,
-      rating: userObject.rating?.toString(),
-      reviews: JSON.stringify(userObject.reviews || []),
-      services: JSON.stringify(userObject.services || []),
-      portfolio: JSON.stringify(userObject.portfolio || []),
-      skills: JSON.stringify(userObject.skills || []),
-      experience: userObject.experience,
-      cover_banner: userObject.coverBanner,
-      whatsapp: userObject.whatsapp,
-      contact_person: userObject.contactPerson,
-      social_links: JSON.stringify(userObject.socialLinks || {}),
-      field_visibility: JSON.stringify(userObject.fieldVisibility || {}),
-      email: (userObject.role === 'Business Holder' && userObject.contactVisibility === 'Public') ? userObject.email : null,
-      mobile_number: (userObject.role === 'Business Holder' && userObject.contactVisibility === 'Public') ? userObject.mobileNumber : null,
-      address: (userObject.role === 'Business Holder' && userObject.contactVisibility === 'Public') ? userObject.address : null
-    };
 
-    const channel = supabase.channel('profile-updates');
-    channel.send({
-      type: 'broadcast',
-      event: 'profile_changed',
-      payload: { user: sanitized }
-    }).then(() => console.log('Profile change broadcasted.'));
-  };
 
   // Auth Operations
-  const registerUser = (role, basicDetails, profileDetails = {}, verificationLevel = 'Basic Verified') => {
+  const checkEmailExists = async (email) => {
+    try {
+      const { data, error } = await supabase.from('users').select('id').eq('email', email.trim().toLowerCase()).maybeSingle();
+      if (error) {
+        console.error('Error checking duplicate email:', error);
+        return false;
+      }
+      return !!data;
+    } catch (e) {
+      console.error('Exception checking duplicate email:', e);
+      return false;
+    }
+  };
+
+  const registerUser = async (role, basicDetails, profileDetails = {}, verificationLevel = 'Basic Verified') => {
+    const { email } = basicDetails;
+    if (!email) {
+      throw new Error('Email is required.');
+    }
+
+    const emailExists = await checkEmailExists(email);
+    if (emailExists) {
+      throw new Error('This email is already registered. Please sign in to continue.');
+    }
+
     const newId = generateUserId(role);
     let fraudAudit = null;
     if (role === 'Influencer') {
@@ -622,13 +719,18 @@ export const AppProvider = ({ children }) => {
 
     setUsers(prev => [...prev, newUser]);
     setCurrentUser(newUser);
-    addActivity(`${newUser.fullName} (${newUser.businessName || newUser.role}) joined Creators Hub!`);
+    localStorage.setItem('ch_current_user', JSON.stringify(newUser));
+    setSupabaseUserHeader(newId);
 
     // Supabase Insert
-    supabase.from('users').insert([mapUserToDb(newUser)]).then(({ error }) => {
-      if (error) console.error('Error inserting user to Supabase:', error);
-      else broadcastProfileChange(newUser);
-    });
+    const { error } = await supabase.from('users').insert([mapUserToDb(newUser)]);
+    if (error) {
+      console.error('Error inserting user to Supabase:', error);
+      throw error;
+    }
+
+    // Fetch user relationships after registration
+    fetchUserData(newId);
 
     return newUser;
   };
@@ -646,25 +748,13 @@ export const AppProvider = ({ children }) => {
         
         supabase.from('profiles').select('*').then(({ data: refreshedUsers }) => {
           if (refreshedUsers) {
-            const saved = localStorage.getItem('ch_users');
-            const localUsers = saved ? JSON.parse(saved) : [];
-            const finalUsers = refreshedUsers.map(dbU => {
-              const mapped = mapUserFromDb(dbU);
-              const localU = localUsers.find(lu => lu.id === dbU.id);
-              if (localU) {
-                Object.keys(mapped).forEach(key => {
-                  if (mapped[key] === undefined || mapped[key] === null) {
-                    delete mapped[key];
-                  }
-                });
-                return { ...localU, ...mapped };
-              }
-              return mapped;
-            });
+            const finalUsers = refreshedUsers.map(mapUserFromDb);
             setUsers(finalUsers);
-            localStorage.setItem('ch_users', JSON.stringify(finalUsers));
           }
         });
+
+        // Fetch user relationships after login
+        fetchUserData(user.id);
 
         return { success: true, user };
       }
@@ -677,6 +767,8 @@ export const AppProvider = ({ children }) => {
 
   const logoutUser = () => {
     setCurrentUser(null);
+    localStorage.removeItem('ch_current_user');
+    setSupabaseUserHeader(null);
     supabase.auth.signOut().catch(err => console.error('Error signing out of Supabase:', err));
   };
 
@@ -712,10 +804,7 @@ export const AppProvider = ({ children }) => {
           console.log('AppContext: Syncing profile changes to Supabase...');
           supabase.from('users').update(mapUserToDb(merged)).eq('id', userId).then(({ error }) => {
             if (error) console.error('Error updating user in Supabase:', error);
-            else {
-              console.log('AppContext: Supabase profile sync completed.');
-              broadcastProfileChange(merged);
-            }
+            else console.log('AppContext: Supabase profile sync completed.');
           });
         }
       }, 0);
@@ -1194,6 +1283,77 @@ export const AppProvider = ({ children }) => {
   const [p2pMessages, setP2pMessages] = useState({});
   const [presenceList, setPresenceList] = useState({});
 
+  // Custom Confirmation Modal state
+  const [confirmationModal, setConfirmationModal] = useState(null);
+
+  const showConfirmation = (config) => {
+    return new Promise((resolve) => {
+      setConfirmationModal({
+        ...config,
+        resolve
+      });
+    });
+  };
+
+  // Refs to prevent stale closures in realtime subscriptions
+  const conversationsRef = useRef([]);
+  const activeConversationIdRef = useRef(null);
+
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
+  useEffect(() => { activeConversationIdRef.current = activeConversationId; }, [activeConversationId]);
+
+  const syncConversationIfNeeded = async (conversationId) => {
+    if (!currentUser || !conversationId) return;
+    const exists = conversationsRef.current.some(c => c.id === conversationId);
+    if (exists) return;
+
+    console.log('syncConversationIfNeeded: fetching conversation details from DB for:', conversationId);
+    try {
+      const { data: membersData } = await supabase
+        .from('conversation_members')
+        .select('user_id')
+        .eq('conversation_id', conversationId);
+
+      if (membersData && membersData.length > 0) {
+        const members = membersData.map(m => m.user_id);
+        if (members.includes(currentUser.id)) {
+          const otherUserId = members.find(mId => mId !== currentUser.id);
+          const conv = { id: conversationId, members, otherUserId };
+          setConversations(prev => {
+            if (prev.some(c => c.id === conversationId)) return prev;
+            return [...prev, conv];
+          });
+
+          // Fetch messages for this conversation as well
+          const { data: convMsgs } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+          
+          if (convMsgs && convMsgs.length > 0) {
+            const formatted = convMsgs.map(m => ({
+              id: m.id,
+              conversationId: m.conversation_id,
+              senderId: m.sender_id,
+              text: m.message,
+              attachmentUrl: m.attachment_url,
+              messageType: m.message_type,
+              seen: m.seen,
+              timestamp: m.created_at
+            }));
+            setP2pMessages(prev => ({
+              ...prev,
+              [conversationId]: formatted
+            }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error syncing conversation dynamically:', e);
+    }
+  };
+
   // Sync P2P conversations and messages on load/currentUser change
   useEffect(() => {
     if (!currentUser) {
@@ -1283,38 +1443,21 @@ export const AppProvider = ({ children }) => {
   }, [currentUser, users]);
 
   // Sync P2P LocalStorage
-  useEffect(() => {
-    if (conversations.length > 0) {
-      localStorage.setItem('ch_p2p_conversations', JSON.stringify(conversations));
-    }
-  }, [conversations]);
 
-  useEffect(() => {
-    if (Object.keys(p2pMessages).length > 0) {
-      localStorage.setItem('ch_p2p_messages', JSON.stringify(p2pMessages));
-    }
-  }, [p2pMessages]);
 
-  useEffect(() => {
-    if (initialized) {
-      localStorage.setItem('ch_applications', JSON.stringify(applications));
-    }
-  }, [applications, initialized]);
-
-  // Realtime Messages Subscription
+  // Realtime Messages Subscription (uses refs to avoid stale closures)
   useEffect(() => {
     if (!currentUser) return;
 
     const messagesSubscription = supabase
-      .channel('public:messages')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, payload => {
+      .channel('messages-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, async (payload) => {
         const msg = payload.new;
         if (!msg) return;
 
-        const conv = conversations.find(c => c.id === msg.conversation_id);
-        if (!conv) return;
-
         if (payload.eventType === 'INSERT') {
+          await syncConversationIfNeeded(msg.conversation_id);
+
           const formattedMsg = {
             id: msg.id,
             conversationId: msg.conversation_id,
@@ -1335,7 +1478,7 @@ export const AppProvider = ({ children }) => {
             };
           });
 
-          if (activeConversationId === msg.conversation_id && msg.sender_id !== currentUser.id) {
+          if (activeConversationIdRef.current === msg.conversation_id && msg.sender_id !== currentUser.id) {
             supabase
               .from('messages')
               .update({ seen: true })
@@ -1358,7 +1501,7 @@ export const AppProvider = ({ children }) => {
     return () => {
       supabase.removeChannel(messagesSubscription);
     };
-  }, [currentUser, conversations, activeConversationId]);
+  }, [currentUser]);
 
   // Presence Synchronization
   useEffect(() => {
@@ -1511,6 +1654,25 @@ export const AppProvider = ({ children }) => {
     if (error) {
       console.error('Error sending P2P message to Supabase:', error.message);
     }
+
+    // Send in-app notification to the receiver
+    const conv = conversationsRef.current.find(c => c.id === conversationId);
+    if (conv) {
+      const receiverId = conv.members.find(mId => mId !== currentUser.id);
+      if (receiverId) {
+        const notifId = `notif-msg-${conversationId}-${Date.now()}`;
+        const senderName = currentUser.fullName || currentUser.businessName || 'Someone';
+        await supabase.from('notifications').insert([{
+          id: notifId,
+          user_id: receiverId,
+          sender_id: currentUser.id,
+          type: 'message',
+          title: `${senderName} sent you a message`,
+          message: text.length > 80 ? text.substring(0, 80) + '...' : text,
+          read: false
+        }]);
+      }
+    }
   };
 
   // markMessagesAsSeen handler
@@ -1556,6 +1718,26 @@ export const AppProvider = ({ children }) => {
     await supabase.from('notifications').delete().eq('user_id', currentUser.id);
   };
 
+  const markMessageNotificationsAsRead = async (conversationId) => {
+    if (!currentUser || !conversationId) return;
+    const prefix = `notif-msg-${conversationId}`;
+    // Update local state
+    setNotifications(prev => prev.map(n => 
+      n.id && n.id.startsWith(prefix) && !n.read ? { ...n, read: true } : n
+    ));
+    // Update in database - fetch matching IDs and update them
+    const { data: matchingNotifs } = await supabase
+      .from('notifications')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .eq('read', false)
+      .like('id', `${prefix}%`);
+    if (matchingNotifs && matchingNotifs.length > 0) {
+      const ids = matchingNotifs.map(n => n.id);
+      await supabase.from('notifications').update({ read: true }).in('id', ids);
+    }
+  };
+
   const isConnected = (userAId, userBId) => {
     return connections.some(c =>
       (c.user_id1 === userAId && c.user_id2 === userBId) ||
@@ -1577,42 +1759,169 @@ export const AppProvider = ({ children }) => {
       receiver_id: targetUserId,
       status: 'Pending'
     };
+    // Optimistic update
+    setConnectionRequests(prev => [...prev, newReq]);
     const { error } = await supabase.from('connection_requests').insert([newReq]);
-    if (!error) {
+    if (error) {
+      // Revert on failure
+      setConnectionRequests(prev => prev.filter(r => r.id !== reqId));
+      console.error('Error sending connection request:', error.message);
+    } else {
+      const displayName = currentUser.fullName || currentUser.businessName || 'Someone';
       await addNotification(targetUserId, {
         type: 'connection_request',
-        title: 'New Connection Request',
-        message: `${currentUser.fullName} sent you a connection request.`
+        title: `🤝 ${displayName} sent you a connection request.`,
+        message: ''
       });
     }
   };
 
   const acceptConnectionRequest = async (requestId, senderId) => {
-    await supabase.from('connection_requests').delete().eq('id', requestId);
+    // Optimistic: remove the request and add the connection
+    setConnectionRequests(prev => prev.filter(r => r.id !== requestId));
     const connId = `conn-${Date.now()}`;
     const newConn = {
       id: connId,
       user_id1: currentUser.id < senderId ? currentUser.id : senderId,
       user_id2: currentUser.id < senderId ? senderId : currentUser.id
     };
+    setConnections(prev => [...prev, newConn]);
+
+    // Optimistically remove the notification
+    setNotifications(prev => prev.filter(n => 
+      !(n.user_id === currentUser.id && n.sender_id === senderId && n.type === 'connection_request')
+    ));
+
+    await supabase.from('connection_requests').delete().eq('id', requestId);
+    await supabase.from('notifications')
+      .delete()
+      .eq('user_id', currentUser.id)
+      .eq('sender_id', senderId)
+      .eq('type', 'connection_request');
+
     const { error } = await supabase.from('connections').insert([newConn]);
     if (!error) {
+      const sender = users.find(u => u.id === senderId);
+      const senderName = sender?.fullName || sender?.businessName || 'Someone';
+      const displayName = currentUser.fullName || currentUser.businessName || 'Someone';
+      
       await addNotification(senderId, {
         type: 'connection_accepted',
-        title: 'Connection Accepted',
-        message: `${currentUser.fullName} accepted your connection request.`
+        title: `You are now connected with ${displayName}.`,
+        message: ''
+      });
+      await addNotification(currentUser.id, {
+        type: 'connection_accepted',
+        title: `You are now connected with ${senderName}.`,
+        message: ''
       });
     }
   };
 
-  const declineConnectionRequest = async (requestId) => {
+  const declineConnectionRequest = async (requestId, senderId = null) => {
+    let resolvedSenderId = senderId;
+    if (!resolvedSenderId) {
+      const req = connectionRequests.find(r => r.id === requestId);
+      resolvedSenderId = req ? req.sender_id : null;
+    }
+
+    setConnectionRequests(prev => prev.filter(r => r.id !== requestId));
+    if (resolvedSenderId) {
+      setNotifications(prev => prev.filter(n => 
+        !(n.user_id === currentUser.id && n.sender_id === resolvedSenderId && n.type === 'connection_request')
+      ));
+    }
+
     await supabase.from('connection_requests').delete().eq('id', requestId);
+
+    if (resolvedSenderId) {
+      await supabase.from('notifications')
+        .delete()
+        .eq('user_id', currentUser.id)
+        .eq('sender_id', resolvedSenderId)
+        .eq('type', 'connection_request');
+    }
   };
 
   const removeConnection = async (targetUserId) => {
+    setConnections(prev => prev.filter(c => 
+      !(c.user_id1 === currentUser.id && c.user_id2 === targetUserId) &&
+      !(c.user_id1 === targetUserId && c.user_id2 === currentUser.id)
+    ));
     await supabase.from('connections')
       .delete()
       .or(`and(user_id1.eq.${currentUser.id},user_id2.eq.${targetUserId}),and(user_id1.eq.${targetUserId},user_id2.eq.${currentUser.id})`);
+  };
+
+  const isBlockedRelation = (targetUserId) => {
+    return (blockedUsers || []).some(b => 
+      (b.blocker_id === currentUser?.id && b.blocked_id === targetUserId) ||
+      (b.blocker_id === targetUserId && b.blocked_id === currentUser?.id)
+    );
+  };
+
+  const blockUser = async (targetUserId) => {
+    if (!currentUser) return;
+    const blockId = `block-${Date.now()}`;
+    const newBlock = { id: blockId, blocker_id: currentUser.id, blocked_id: targetUserId };
+    
+    // Optimistic state updates
+    setBlockedUsers(prev => [...prev, newBlock]);
+    setConnections(prev => prev.filter(c => 
+      !(c.user_id1 === currentUser.id && c.user_id2 === targetUserId) &&
+      !(c.user_id1 === targetUserId && c.user_id2 === currentUser.id)
+    ));
+    setConnectionRequests(prev => prev.filter(r => 
+      !(r.sender_id === currentUser.id && r.receiver_id === targetUserId) &&
+      !(r.sender_id === targetUserId && r.receiver_id === currentUser.id)
+    ));
+
+    const conv = conversations.find(c => c.members.includes(targetUserId));
+    if (conv) {
+      setConversations(prev => prev.filter(c => c.id !== conv.id));
+      setP2pMessages(prev => {
+        const copy = { ...prev };
+        delete copy[conv.id];
+        return copy;
+      });
+      if (activeConversationId === conv.id) {
+        setActiveConversationId(null);
+      }
+    }
+
+    // Database updates
+    await supabase.from('blocked_users').insert([newBlock]);
+    await supabase.from('connections')
+      .delete()
+      .or(`and(user_id1.eq.${currentUser.id},user_id2.eq.${targetUserId}),and(user_id1.eq.${targetUserId},user_id2.eq.${currentUser.id})`);
+    await supabase.from('connection_requests')
+      .delete()
+      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`);
+    if (conv) {
+      await supabase.from('conversations').delete().eq('id', conv.id);
+    }
+  };
+
+  const unblockUser = async (targetUserId) => {
+    if (!currentUser) return;
+    setBlockedUsers(prev => prev.filter(b => !(b.blocker_id === currentUser.id && b.blocked_id === targetUserId)));
+    await supabase.from('blocked_users')
+      .delete()
+      .eq('blocker_id', currentUser.id)
+      .eq('blocked_id', targetUserId);
+  };
+
+  const deleteConversation = async (conversationId) => {
+    setConversations(prev => prev.filter(c => c.id !== conversationId));
+    setP2pMessages(prev => {
+      const copy = { ...prev };
+      delete copy[conversationId];
+      return copy;
+    });
+    if (activeConversationId === conversationId) {
+      setActiveConversationId(null);
+    }
+    await supabase.from('conversations').delete().eq('id', conversationId);
   };
 
   return (
@@ -1629,6 +1938,7 @@ export const AppProvider = ({ children }) => {
       registerUser,
       loginUser,
       logoutUser,
+      checkEmailExists,
       loginWithGoogle,
       updateProfile,
       createProject,
@@ -1670,7 +1980,16 @@ export const AppProvider = ({ children }) => {
       declineConnectionRequest,
       removeConnection,
       activeDashboardTab,
-      setActiveDashboardTab
+      setActiveDashboardTab,
+      markMessageNotificationsAsRead,
+      blockedUsers,
+      blockUser,
+      unblockUser,
+      deleteConversation,
+      isBlockedRelation,
+      confirmationModal,
+      setConfirmationModal,
+      showConfirmation
     }}>
       {children}
     </AppContext.Provider>

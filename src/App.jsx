@@ -2,6 +2,7 @@ import { useState, useContext, useEffect } from 'react';
 import { AppContext, AppProvider } from './context/AppContext';
 import { Header } from './components/Header';
 import { Particles } from './components/Particles';
+import { ConfirmationModal } from './components/ConfirmationModal';
 import { Landing } from './pages/Landing';
 import { Onboarding } from './pages/Onboarding';
 import { BusinessDashboard } from './pages/Dashboard/BusinessDashboard';
@@ -401,7 +402,7 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         {currentUser && (
           <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)', paddingTop: '16px', marginTop: 'auto' }}>
             <button 
-              onClick={() => { onClose(); onLogout(); onNavigate('landing'); }}
+              onClick={() => { onClose(); onLogout(); }}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -435,12 +436,32 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
 };
 
 const AppContent = () => {
-  const { currentUser, users, projects, loading, initialized, logoutUser, activeDashboardTab, setActiveDashboardTab, notifications = [] } = useContext(AppContext);
+  const { 
+    currentUser, users, projects, loading, initialized, logoutUser, 
+    activeDashboardTab, setActiveDashboardTab, notifications = [], 
+    connectionRequests = [], acceptConnectionRequest, sendConnectionRequest, 
+    startConversation, isConnected, isBlockedRelation, activeConversationId
+  } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   
   const navigate = useNavigate();
   const location = useLocation();
   const { isMobile, isTablet, isDesktop } = useResponsive();
+
+  const handleLogout = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Sign Out',
+      message: 'Are you sure you want to log out of Creators Hub?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning',
+      isDestructive: true
+    });
+    if (confirmed) {
+      logoutUser();
+      handleNavigate('landing');
+    }
+  };
 
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
@@ -471,6 +492,16 @@ const AppContent = () => {
     return () => document.removeEventListener('focusin', handleFocus);
   }, []);
 
+  // Redirect logged in users away from guest pages
+  useEffect(() => {
+    if (initialized && currentUser) {
+      const guestPaths = ['/', '/login', '/register'];
+      if (guestPaths.includes(location.pathname)) {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [initialized, currentUser, location.pathname, navigate]);
+
   // Determine the active page based on the path
   const { pathname } = location;
   let currentPage = 'landing';
@@ -498,6 +529,7 @@ const AppContent = () => {
   // Explore page states
   const [exploreQuery, setExploreQuery] = useState('');
   const [exploreActiveTab, setExploreActiveTab] = useState('feed');
+  const [usersFilter, setUsersFilter] = useState('All');
 
   const handleNavigate = (page, params = {}) => {
     setActiveWorkspaceId(null);
@@ -578,19 +610,31 @@ const AppContent = () => {
 
 
       {isMobile ? (
-        <MobileHeader 
-          onOpenDrawer={() => setMobileDrawerOpen(true)} 
-          onOpenNotifications={() => setMobileNotificationsOpen(true)} 
-          notificationCount={notifications.filter(n => !n.read).length} 
-          currentUser={currentUser} 
-          onNavigate={handleNavigate}
-        />
+        !(activeConversationId && (currentPage === 'messages' || activeDashboardTab === 'messages')) && (
+          <MobileHeader 
+            onOpenDrawer={() => setMobileDrawerOpen(true)} 
+            onOpenNotifications={() => setMobileNotificationsOpen(true)} 
+            notificationCount={notifications.filter(n => !n.read).length} 
+            currentUser={currentUser} 
+            onNavigate={handleNavigate}
+          />
+        )
       ) : (
         <Header onNavigate={handleNavigate} currentPage={currentPage} />
       )}
 
       {/* Main Pages router */}
-      <main style={{ flex: 1, padding: 'var(--container-padding) var(--container-padding) 0 var(--container-padding)', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
+      <main style={{ 
+        flex: 1, 
+        padding: (isMobile && activeConversationId && (currentPage === 'messages' || activeDashboardTab === 'messages'))
+          ? '0' 
+          : 'var(--container-padding) var(--container-padding) 0 var(--container-padding)', 
+        maxWidth: '1200px', 
+        width: '100%', 
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         <Routes>
           <Route path="/" element={<Landing onNavigate={handleNavigate} />} />
           <Route path="/login" element={<Onboarding key="login" onNavigate={handleNavigate} initialParams={{ loginOnly: true }} />} />
@@ -601,9 +645,10 @@ const AppContent = () => {
               const openProjects = projects.filter(p => p.status === 'Open');
               
               // Filter creators/roles
-              const freelancers = users.filter(u => u.role === 'Freelancer');
-              const influencers = users.filter(u => u.role === 'Influencer');
-              const businessOwners = users.filter(u => u.role === 'Business Holder');
+              const displayUsers = users.filter(u => u.id !== currentUser?.id && (!isBlockedRelation || !isBlockedRelation(u.id)));
+              const freelancers = displayUsers.filter(u => u.role === 'Freelancer');
+              const influencers = displayUsers.filter(u => u.role === 'Influencer');
+              const businessOwners = displayUsers.filter(u => u.role === 'Business Holder');
 
               // Helper function to get profession or role display
               const getRoleProfession = (u) => {
@@ -614,7 +659,7 @@ const AppContent = () => {
               };
 
               // Filter recently joined (top 4 sorted by createdAt descending)
-              const recentlyJoined = [...users]
+              const recentlyJoined = [...displayUsers]
                 .sort((a, b) => {
                   const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                   const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -706,6 +751,7 @@ const AppContent = () => {
                     <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '12px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       {[
                         { id: 'feed', label: 'Ecosystem Feed' },
+                        { id: 'users', label: 'View Users' },
                         { id: 'freelancer', label: 'Freelancers' },
                         { id: 'business', label: 'Businesses' },
                         { id: 'influencer', label: 'Influencers' }
@@ -932,6 +978,191 @@ const AppContent = () => {
                           </>
                         )}
                       </>
+                    )}
+
+                    {exploreActiveTab === 'users' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Users Filter Pills Selector */}
+                        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                          {[
+                            { id: 'All', label: 'All' },
+                            { id: 'Freelancers', label: 'Freelancers' },
+                            { id: 'Business Holders', label: 'Business Holders' },
+                            { id: 'Influencers', label: 'Influencers' },
+                            { id: 'Verified Users', label: 'Verified' },
+                            { id: 'Recently Joined', label: 'Recently Joined' }
+                          ].map(f => {
+                            const active = usersFilter === f.id;
+                            return (
+                              <button
+                                key={f.id}
+                                onClick={() => setUsersFilter(f.id)}
+                                style={{
+                                  background: active ? 'rgba(0, 217, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                                  border: '1px solid ' + (active ? 'var(--accent-cyan)' : 'rgba(255, 255, 255, 0.08)'),
+                                  color: active ? 'var(--accent-cyan)' : 'var(--text-gray-light)',
+                                  padding: '6px 12px',
+                                  borderRadius: '14px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  minHeight: '28px'
+                                }}
+                              >
+                                {f.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {(() => {
+                          const displayUsers = users
+                            .filter(u => u.id !== currentUser?.id)
+                            .filter(u => !isBlockedRelation || !isBlockedRelation(u.id))
+                            .filter(matchesQuery);
+
+                          let filteredUsers = [...displayUsers];
+                          if (usersFilter === 'Freelancers') {
+                            filteredUsers = displayUsers.filter(u => u.role === 'Freelancer');
+                          } else if (usersFilter === 'Business Holders') {
+                            filteredUsers = displayUsers.filter(u => u.role === 'Business Holder');
+                          } else if (usersFilter === 'Influencers') {
+                            filteredUsers = displayUsers.filter(u => u.role === 'Influencer');
+                          } else if (usersFilter === 'Verified Users') {
+                            filteredUsers = displayUsers.filter(u => u.verificationStatus && u.verificationStatus !== 'Not Verified' && u.verificationStatus !== 'Unverified');
+                          } else if (usersFilter === 'Recently Joined') {
+                            filteredUsers = [...displayUsers].sort((a, b) => {
+                              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                              return timeB - timeA;
+                            });
+                          }
+
+                          if (filteredUsers.length === 0) {
+                            return (
+                              <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-gray)' }}>
+                                No users found matching the selected filter.
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }} className="explore-directory-grid">
+                              {filteredUsers.map(u => {
+                                const isConn = isConnected ? isConnected(currentUser?.id, u.id) : false;
+                                const pendingReq = (connectionRequests || []).find(r => 
+                                  (r.sender_id === currentUser?.id && r.receiver_id === u.id) ||
+                                  (r.sender_id === u.id && r.receiver_id === currentUser?.id)
+                                );
+                                const isSent = pendingReq && pendingReq.sender_id === currentUser?.id;
+                                const isRecv = pendingReq && pendingReq.sender_id === u.id;
+
+                                return (
+                                  <div key={u.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
+                                      <img 
+                                        src={u.profilePhoto || u.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
+                                        alt={u.fullName || u.businessName} 
+                                        style={{ width: '44px', height: '44px', borderRadius: u.role === 'Business Holder' ? '8px' : '50%', objectFit: 'cover' }} 
+                                      />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                          <h4 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-white)', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                                            {u.fullName || u.businessName}
+                                          </h4>
+                                          {u.verificationStatus && u.verificationStatus !== 'Not Verified' && u.verificationStatus !== 'Unverified' && (
+                                            <Award size={14} style={{ color: 'var(--accent-cyan)' }} />
+                                          )}
+                                        </div>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>{u.location || 'Global'}</span>
+                                      </div>
+                                    </div>
+                                    <span style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: '600', marginBottom: '10px', display: 'block' }}>
+                                      {u.role === 'Business Holder' ? u.businessCategory || 'Business Holder' : 
+                                       u.role === 'Freelancer' ? u.experience || 'Professional Freelancer' : 
+                                       u.contentCategories && u.contentCategories.length > 0 ? u.contentCategories.join(', ') : 'Influencer'}
+                                    </span>
+                                    <p style={{ fontSize: '12.5px', color: 'var(--text-gray)', lineHeight: '1.4', marginBottom: '16px', flex: 1 }}>
+                                      {u.bio || 'Premium member eager to collaborate in the Creators Hub ecosystem.'}
+                                    </p>
+                                    
+                                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                      <button 
+                                        onClick={() => handleOpenProfile(u.id)} 
+                                        className="btn-secondary" 
+                                        style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
+                                      >
+                                        View Profile
+                                      </button>
+                                      
+                                      <div style={{ display: 'flex', gap: '6px' }}>
+                                        {/* Connect Button */}
+                                        {!currentUser ? (
+                                          <button 
+                                            onClick={() => handleNavigate('onboarding')}
+                                            className="btn-outline-cyan" 
+                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
+                                          >
+                                            Connect
+                                          </button>
+                                        ) : isConn ? (
+                                          <button 
+                                            disabled
+                                            className="btn-secondary" 
+                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px', opacity: 0.6, cursor: 'default' }}
+                                          >
+                                            Connected
+                                          </button>
+                                        ) : isSent ? (
+                                          <button 
+                                            disabled
+                                            className="btn-secondary" 
+                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px', opacity: 0.8, cursor: 'default' }}
+                                          >
+                                            Requested
+                                          </button>
+                                        ) : isRecv ? (
+                                          <button 
+                                            onClick={() => acceptConnectionRequest(pendingReq.id, u.id)}
+                                            className="btn-primary" 
+                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px', background: '#22c55e', borderColor: '#22c55e' }}
+                                          >
+                                            Accept
+                                          </button>
+                                        ) : (
+                                          <button 
+                                            onClick={() => sendConnectionRequest(u.id)}
+                                            className="btn-outline-cyan" 
+                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
+                                          >
+                                            Connect
+                                          </button>
+                                        )}
+
+                                        {/* Message Button */}
+                                        <button 
+                                          onClick={() => {
+                                            if (currentUser) {
+                                              startConversation(u.id);
+                                            } else {
+                                              handleNavigate('onboarding');
+                                            }
+                                          }} 
+                                          className="btn-primary" 
+                                          style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
+                                        >
+                                          Message
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
                     )}
 
                     {exploreActiveTab === 'freelancer' && (
@@ -1203,6 +1434,7 @@ const AppContent = () => {
       {/* Global Floating Action Button */}
       {currentUser && 
        currentPage !== 'messages' && 
+       !(activeDashboardTab === 'messages' && activeConversationId && isMobile) &&
        !activeProfileId && 
        !activeWorkspaceId && 
        !mobileDrawerOpen && 
@@ -1254,7 +1486,7 @@ const AppContent = () => {
           onClose={() => setMobileDrawerOpen(false)} 
           currentUser={currentUser} 
           onNavigate={handleNavigate} 
-          onLogout={logoutUser} 
+          onLogout={handleLogout} 
           activeDashboardTab={activeDashboardTab} 
           setActiveDashboardTab={setActiveDashboardTab} 
         />
@@ -1311,6 +1543,8 @@ const AppContent = () => {
           </div>
         </div>
       )}
+      {/* Global Confirmation Modal */}
+      <ConfirmationModal />
     </div>
   );
 };

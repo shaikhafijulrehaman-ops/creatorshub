@@ -1,43 +1,42 @@
-.visibility-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 20px;
-  border: 1px solid;
-  font-size: 11.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  white-space: nowrap;
-  user-select: none;
+/* Visibility Selector wrapper */
+.vis-selector-wrapper {
+  position: relative;
+  width: 100%;
 }
 
-.visibility-toggle:hover {
-  transform: translateY(-1px);
-  filter: brightness(0.95);
+/* Bounding trigger styling transitions */
+.vis-trigger-row:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-.visibility-toggle:active {
-  transform: translateY(0);
+.vis-trigger-row:active {
+  transform: scale(0.99) !important;
 }
 
-.visibility-toggle--compact {
-  padding: 4px 6px;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  justify-content: center;
+.vis-trigger-row.active {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.25) !important;
 }
 
-.visibility-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+/* Fade + Slide-down scale animation (180ms) */
+@keyframes visDropdownScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-.visibility-toggle--compact .visibility-dot {
-  width: 8px;
-  height: 8px;
+.vis-dropdown-enter {
+  animation: visDropdownScaleIn 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top right;
+}
+
+.vis-dropdown-enter-left {
+  animation: visDropdownScaleIn 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top left;
 }

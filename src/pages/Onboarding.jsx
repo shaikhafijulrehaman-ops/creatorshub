@@ -7,7 +7,7 @@ import {
 import { useToast } from '../components/SuccessToast';
 
 export const Onboarding = ({ onNavigate, initialParams = {} }) => {
-  const { registerUser, loginUser, loginWithGoogle } = useContext(AppContext);
+  const { registerUser, loginUser, loginWithGoogle, checkEmailExists } = useContext(AppContext);
   const { showSuccessToast } = useToast();
 
   // Flow State
@@ -33,6 +33,8 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [duplicateEmailError, setDuplicateEmailError] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   // Step 4 Welcome Animation Stage
   const [successAnimationActive, setSuccessAnimationActive] = useState(false);
@@ -70,71 +72,84 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
       setErrorMsg('');
       await loginWithGoogle();
     } catch (err) {
-      console.error('Google login failed, running demo fallback:', err);
-      const mockGoogleEmail = 'google.user@creatorshub.com';
-      const res = await loginUser(mockGoogleEmail, 'googlepassword123');
-      if (res.success) {
-        onNavigate('dashboard');
-      } else {
-        registerUser('Influencer', {
-          email: mockGoogleEmail,
-          fullName: 'Google User',
-          password: 'googlepassword123',
-          location: 'San Francisco, CA'
-        }, {
-          bio: 'Influencer logging in via Google SSO demo.',
-          contentCategories: ['Lifestyle', 'Tech'],
-          followersCount: '50K'
-        });
-        onNavigate('dashboard');
-      }
+      console.error('Google login failed:', err);
+      setErrorMsg('Google login failed: ' + (err.message || 'Please try again.'));
     }
   };
 
   // Submit Registration Account Details (Step 2)
-  const handleSignUpDetailsSubmit = (e) => {
-    e.preventDefault();
+  const handleSignUpDetailsSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setErrorMsg('');
+    setDuplicateEmailError(false);
+    console.log('handleSignUpDetailsSubmit triggered', { fullName, email, password, confirmPassword, mobileNumber });
 
-    if (!fullName || !email || !password || !confirmPassword || !mobileNumber) {
-      setErrorMsg('Please fill out all fields.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setErrorMsg('Passwords do not match.');
-      return;
-    }
-    if (password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters.');
-      return;
-    }
+    try {
+      if (!fullName || !email || !password || !confirmPassword || !mobileNumber) {
+        setErrorMsg('Please fill out all fields.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setErrorMsg('Passwords do not match.');
+        return;
+      }
+      if (password.length < 6) {
+        setErrorMsg('Password must be at least 6 characters.');
+        return;
+      }
 
-    // Go to OTP
-    setSignUpStep(3);
+      setIsCheckingEmail(true);
+      const exists = await checkEmailExists(email);
+      setIsCheckingEmail(false);
+
+      if (exists) {
+        setDuplicateEmailError(true);
+        return;
+      }
+
+      // Go to OTP
+      setSignUpStep(3);
+    } catch (err) {
+      console.error('Registration step 2 submit failed:', err);
+      setErrorMsg('Error: ' + err.message);
+      setIsCheckingEmail(false);
+    }
   };
 
   // Verify OTP (Step 3)
-  const handleVerifyOtp = (e) => {
-    e.preventDefault();
+  const handleVerifyOtp = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setErrorMsg('');
+    setDuplicateEmailError(false);
+    console.log('handleVerifyOtp triggered', { otpCode, mockOtp });
 
-    if (otpCode !== mockOtp) {
-      setErrorMsg('Invalid verification code. Please try using 123456.');
-      return;
+    try {
+      if (otpCode !== mockOtp) {
+        setErrorMsg('Invalid verification code. Please try using 123456.');
+        return;
+      }
+
+      // Successfully verified!
+      await registerUser(role, { 
+        fullName, 
+        email, 
+        password, 
+        mobileNumber 
+      });
+      
+      setSignUpStep(4);
+      setTimeout(() => {
+        setSuccessAnimationActive(true);
+      }, 100);
+    } catch (err) {
+      console.error('OTP verification failed:', err);
+      if (err.message && err.message.includes('already registered')) {
+        setDuplicateEmailError(true);
+        setSignUpStep(2);
+      } else {
+        setErrorMsg('Error: ' + err.message);
+      }
     }
-
-    // Successfully verified!
-    registerUser(role, { 
-      fullName, 
-      email, 
-      password, 
-      mobileNumber 
-    });
-    
-    setSignUpStep(4);
-    setTimeout(() => {
-      setSuccessAnimationActive(true);
-    }, 100);
   };
 
   // Helper values for Success screen (Step 4)
@@ -290,6 +305,14 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
               <button 
                 type="submit" 
+                onClick={(e) => {
+                  const form = e.currentTarget.form;
+                  if (form && !form.checkValidity()) {
+                    return;
+                  }
+                  e.preventDefault();
+                  handleLoginSubmit(e);
+                }}
                 className="btn-primary" 
                 style={{ 
                   marginTop: '8px', 
@@ -488,7 +511,38 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
             {/* STEP 2: CREATE ACCOUNT FORM */}
             {signUpStep === 2 && (
-              <div className="animate-fade-in">
+              duplicateEmailError ? (
+                <div className="animate-scale-up" style={{ textAlign: 'center', padding: '10px 0' }}>
+                  <div style={{
+                    padding: '24px',
+                    borderColor: 'rgba(239, 68, 68, 0.3)',
+                    background: 'rgba(239, 68, 68, 0.06)',
+                    color: '#ef4444',
+                    fontSize: '15.5px',
+                    fontWeight: '600',
+                    borderRadius: '16px',
+                    marginBottom: '28px',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    textAlign: 'center',
+                    lineHeight: '1.6'
+                  }}>
+                    This email is already registered. Please sign in to continue.
+                  </div>
+                  <button
+                    onClick={() => {
+                      setDuplicateEmailError(false);
+                      setIsLogin(true);
+                      setSignUpStep(1);
+                      setLoginEmail(email);
+                    }}
+                    className="btn-primary"
+                    style={{ width: '100%', borderRadius: '12px' }}
+                  >
+                    → Go to Login
+                  </button>
+                </div>
+              ) : (
+                <div className="animate-fade-in">
                 <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
                   <button 
                     onClick={() => setSignUpStep(1)} 
@@ -590,6 +644,14 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
                   <button 
                     type="submit" 
+                    onClick={(e) => {
+                      const form = e.currentTarget.form;
+                      if (form && !form.checkValidity()) {
+                        return; // Let the browser handle standard HTML5 tooltips
+                      }
+                      e.preventDefault();
+                      handleSignUpDetailsSubmit(e);
+                    }}
                     className="btn-primary" 
                     style={{ 
                       marginTop: '12px',
@@ -601,7 +663,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                   </button>
                 </form>
               </div>
-            )}
+            ))}
 
             {/* STEP 3: OTP EMAIL VERIFICATION */}
             {signUpStep === 3 && (
@@ -668,6 +730,14 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
                   <button 
                     type="submit" 
+                    onClick={(e) => {
+                      const form = e.currentTarget.form;
+                      if (form && !form.checkValidity()) {
+                        return;
+                      }
+                      e.preventDefault();
+                      handleVerifyOtp(e);
+                    }}
                     className="btn-primary" 
                     style={{ 
                       marginTop: '8px',

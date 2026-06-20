@@ -181,7 +181,7 @@ end;
 $$ language plpgsql security definer;
 
 -- Configure RLS Policies
-create policy "Users can select their own user row" on public.users for select using (id = public.current_user_id());
+create policy "Allow select users for all" on public.users for select using (true);
 create policy "Anyone can insert user row" on public.users for insert with check (true);
 create policy "Users can update their own user row" on public.users for update using (id = public.current_user_id());
 
@@ -209,53 +209,46 @@ create policy "Update/Delete applications" on public.applications
         )
     );
 
+-- Security definer helper to check conversation membership without triggering RLS recursively
+create or replace function public.is_conversation_member(p_conv_id text, p_user_id text)
+returns boolean as $$
+begin
+    return exists (
+        select 1 from public.conversation_members
+        where conversation_id = p_conv_id and user_id = p_user_id
+    );
+end;
+$$ language plpgsql security definer set row_security = off;
+
 -- Conversations Policies
 create policy "View conversations" on public.conversations
     for select using (
-        exists (
-            select 1 from public.conversation_members
-            where conversation_members.conversation_id = conversations.id
-            and conversation_members.user_id = public.current_user_id()
-        )
+        current_setting('request.headers', true) is null
+        or
+        public.is_conversation_member(id, public.current_user_id())
     );
 create policy "Insert conversations" on public.conversations for insert with check (true);
 
 -- Conversation Members Policies
 create policy "View conversation members" on public.conversation_members
-    for select using (
-        exists (
-            select 1 from public.conversation_members m
-            where m.conversation_id = conversation_members.conversation_id
-            and m.user_id = public.current_user_id()
-        )
-    );
+    for select using (true);
 create policy "Insert conversation members" on public.conversation_members for insert with check (true);
 
 -- Messages Policies
 create policy "View messages" on public.messages
     for select using (
-        exists (
-            select 1 from public.conversation_members
-            where conversation_members.conversation_id = messages.conversation_id
-            and conversation_members.user_id = public.current_user_id()
-        )
+        current_setting('request.headers', true) is null
+        or
+        public.is_conversation_member(conversation_id, public.current_user_id())
     );
 create policy "Insert messages" on public.messages
     for insert with check (
         sender_id = public.current_user_id()
-        and exists (
-            select 1 from public.conversation_members
-            where conversation_members.conversation_id = messages.conversation_id
-            and conversation_members.user_id = public.current_user_id()
-        )
+        and public.is_conversation_member(conversation_id, public.current_user_id())
     );
 create policy "Update messages" on public.messages
     for update using (
-        exists (
-            select 1 from public.conversation_members
-            where conversation_members.conversation_id = messages.conversation_id
-            and conversation_members.user_id = public.current_user_id()
-        )
+        public.is_conversation_member(conversation_id, public.current_user_id())
     );
 
 -- User Presence Policies
@@ -268,13 +261,25 @@ create policy "Insert connections" on public.connections for insert with check (
 create policy "Delete connections" on public.connections for delete using (user_id1 = public.current_user_id() or user_id2 = public.current_user_id());
 
 -- Connection Requests Policies
-create policy "View connection requests" on public.connection_requests for select using (sender_id = public.current_user_id() or receiver_id = public.current_user_id());
+create policy "View connection requests" on public.connection_requests 
+    for select using (
+        current_setting('request.headers', true) is null
+        or
+        sender_id = public.current_user_id() 
+        or 
+        receiver_id = public.current_user_id()
+    );
 create policy "Insert connection requests" on public.connection_requests for insert with check (sender_id = public.current_user_id());
 create policy "Update connection requests" on public.connection_requests for update using (sender_id = public.current_user_id() or receiver_id = public.current_user_id());
 create policy "Delete connection requests" on public.connection_requests for delete using (sender_id = public.current_user_id() or receiver_id = public.current_user_id());
 
 -- Notifications Policies
-create policy "View notifications" on public.notifications for select using (user_id = public.current_user_id());
+create policy "View notifications" on public.notifications 
+    for select using (
+        current_setting('request.headers', true) is null
+        or
+        user_id = public.current_user_id()
+    );
 create policy "Insert notifications" on public.notifications for insert with check (true);
 create policy "Update notifications" on public.notifications for update using (user_id = public.current_user_id());
 create policy "Delete notifications" on public.notifications for delete using (user_id = public.current_user_id());
@@ -419,3 +424,35 @@ alter publication supabase_realtime add table public.notifications;
 alter publication supabase_realtime add table public.applications;
 alter publication supabase_realtime add table public.projects;
 alter publication supabase_realtime add table public.users;
+
+-- 12. Create blocked_users table
+create table if not exists public.blocked_users (
+    id text primary key,
+    blocker_id text references public.users(id) on delete cascade not null,
+    blocked_id text references public.users(id) on delete cascade not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    unique(blocker_id, blocked_id)
+);
+
+-- Enable RLS
+alter table public.blocked_users enable row level security;
+
+-- Configure RLS policies
+create policy "View blocked users" on public.blocked_users 
+    for select using (
+        current_setting('request.headers', true) is null
+        or
+        blocker_id = public.current_user_id()
+        or
+        blocked_id = public.current_user_id()
+    );
+    
+create policy "Insert blocked users" on public.blocked_users 
+    for insert with check (blocker_id = public.current_user_id());
+    
+create policy "Delete blocked users" on public.blocked_users 
+    for delete using (blocker_id = public.current_user_id());
+
+-- Add to Realtime publication
+alter publication supabase_realtime add table public.blocked_users;
+

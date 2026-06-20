@@ -4,14 +4,24 @@ import { Bell, Menu, X } from 'lucide-react';
 import { AnimatedLogo } from './AnimatedLogo';
 
 export const Header = ({ onNavigate, currentPage }) => {
-  const { currentUser, logoutUser, activityFeed } = useContext(AppContext);
+  const { currentUser, logoutUser, activityFeed, showConfirmation } = useContext(AppContext);
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleLogout = () => {
-    logoutUser();
-    onNavigate('landing');
-    setMobileMenuOpen(false);
+  const handleLogout = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Sign Out',
+      message: 'Are you sure you want to log out of Creators Hub?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning',
+      isDestructive: true
+    });
+    if (confirmed) {
+      logoutUser();
+      onNavigate('landing');
+      setMobileMenuOpen(false);
+    }
   };
 
   const handleLinkClick = (page, params = {}, anchor = null) => {

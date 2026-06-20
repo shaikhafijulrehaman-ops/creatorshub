@@ -3,9 +3,9 @@ import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
 import { PhotoUploader } from '../../../components/PhotoUploader';
 import { VisibilityToggle } from '../../../components/VisibilityToggle';
-import { Save, Building, Globe, MapPin, Phone, Mail, MessageSquare, User, Hash, Link, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Save, User, Globe, MapPin, Phone, Mail, MessageSquare, Briefcase, Link, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useResponsive } from '../../../hooks/useResponsive';
-import './Business.css';
+import '../Business/Business.css';
 
 const Instagram = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
@@ -24,7 +24,7 @@ const Youtube = ({ size = 16 }) => (
 
 
 
-export const BusinessProfile = ({ section }) => {
+export const FreelancerProfile = ({ section }) => {
   const { currentUser, updateProfile } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const { isMobile, isTablet } = useResponsive();
@@ -32,37 +32,33 @@ export const BusinessProfile = ({ section }) => {
   const u = currentUser;
 
   const [form, setForm] = useState({
-    businessName:    u.businessName  || '',
-    businessCategory:u.businessCategory || '',
-    description:     u.description   || '',
-    website:         u.website       || '',
-    location:        u.location      || '',
-    address:         u.address       || '',
-    gst:             u.gst           || '',
-    contactPerson:   u.contactPerson || '',
-    mobileNumber:    u.mobileNumber  || '',
-    whatsapp:        u.whatsapp      || '',
-    teamSize:        u.teamSize      || '',
-    monthlyMarketingBudget: u.monthlyMarketingBudget || '',
+    fullName:        u.fullName       || '',
+    category:        u.freelancerCategory || '',
+    description:     u.description    || '',
+    website:         u.website        || '',
+    location:        u.location       || '',
+    portfolioLink:   u.portfolioLink  || '',
+    mobileNumber:    u.mobileNumber   || '',
+    whatsapp:        u.whatsapp       || '',
+    contactPerson:   u.contactPerson  || '',
+    experience:      u.experience     || '',
+    availability:    u.availability   || '',
+    hourlyRate:      u.hourlyRate     || '',
     instagram:       u.socialLinks?.instagram || '',
-    facebook:        u.socialLinks?.facebook || '',
-    youtube:         u.socialLinks?.youtube  || '',
-    whatsappChannel: u.socialLinks?.whatsappChannel || '',
-    telegramChannel: u.socialLinks?.telegramChannel || '',
+    youtube:         u.socialLinks?.youtube   || '',
   });
 
   const [visibility, setVisibility] = useState({
-    email:   u.fieldVisibility?.email   || 'Private',
-    mobile:  u.fieldVisibility?.mobile  || 'Private',
-    whatsapp:u.fieldVisibility?.whatsapp|| 'Private',
-    website: u.fieldVisibility?.website || 'Public',
-    address: u.fieldVisibility?.address || 'Private',
-    gst:     u.fieldVisibility?.gst     || 'Private',
-    contact: u.fieldVisibility?.contact || 'Private',
-    social:  u.fieldVisibility?.social  || 'Public',
+    email:     u.fieldVisibility?.email     || 'Private',
+    mobile:    u.fieldVisibility?.mobile    || 'Private',
+    whatsapp:  u.fieldVisibility?.whatsapp  || 'Private',
+    website:   u.fieldVisibility?.website   || 'Public',
+    portfolio: u.fieldVisibility?.portfolio || 'Public',
+    contact:   u.fieldVisibility?.contact   || 'Private',
+    social:    u.fieldVisibility?.social    || 'Public',
   });
 
-  const [logo, setLogo]     = useState(u.logo || null);
+  const [logo, setLogo]     = useState(u.logo || u.profilePhoto || null);
   const [cover, setCover]   = useState(u.coverBanner || null);
   const [saving, setSaving] = useState(false);
   
@@ -87,32 +83,29 @@ export const BusinessProfile = ({ section }) => {
       await new Promise(r => setTimeout(r, 400));
       console.log('Calling updateProfile...');
       updateProfile(u.id, {
-        businessName:   form.businessName,
-        businessCategory: form.businessCategory,
-        description:    form.description,
-        website:        form.website,
-        location:       form.location,
-        address:        form.address,
-        gst:            form.gst,
-        contactPerson:  form.contactPerson,
-        mobileNumber:   form.mobileNumber,
-        whatsapp:       form.whatsapp,
-        teamSize:       form.teamSize,
-        monthlyMarketingBudget: form.monthlyMarketingBudget,
-        logo:           logo,
-        coverBanner:    cover,
+        fullName:           form.fullName,
+        freelancerCategory: form.category,
+        description:        form.description,
+        website:            form.website,
+        location:           form.location,
+        portfolioLink:      form.portfolioLink,
+        mobileNumber:       form.mobileNumber,
+        whatsapp:           form.whatsapp,
+        contactPerson:      form.contactPerson,
+        experience:         form.experience,
+        availability:       form.availability,
+        hourlyRate:         form.hourlyRate,
+        profilePhoto:       logo,
+        coverBanner:        cover,
         socialLinks: {
           instagram: form.instagram,
-          facebook:  form.facebook,
           youtube:   form.youtube,
-          whatsappChannel: form.whatsappChannel,
-          telegramChannel: form.telegramChannel,
           website:   form.website,
         },
         fieldVisibility: visibility,
       });
       console.log('updateProfile finished successfully.');
-      showSuccessToast({ title: 'Profile Saved', subtitle: 'Your business profile has been updated.' });
+      showSuccessToast({ title: 'Profile Saved', subtitle: 'Your freelancer profile has been updated.' });
     } catch (err) {
       console.error('Error inside handleSave:', err);
       showSuccessToast({ title: '⚠ Save Failed', subtitle: err.message });
@@ -123,7 +116,7 @@ export const BusinessProfile = ({ section }) => {
 
   const renderPhotos = () => (
     <div className="biz-section glass-panel">
-      <h4 className="biz-section-title">Brand Photos</h4>
+      <h4 className="biz-section-title">Profile Photos</h4>
       <div className="biz-cover-wrap">
         <label className="form-label">Cover Banner <span className="biz-recommended">Recommended: 1600 x 500</span></label>
         <PhotoUploader
@@ -135,13 +128,13 @@ export const BusinessProfile = ({ section }) => {
         />
       </div>
       <div className="biz-logo-wrap" style={{ marginTop: '16px' }}>
-        <label className="form-label">Business Logo <span className="biz-recommended">Recommended: 500 x 500</span></label>
+        <label className="form-label">Profile Photo <span className="biz-recommended">Recommended: 500 x 500</span></label>
         <div style={{ maxWidth: '180px' }}>
           <PhotoUploader
             value={logo}
             onChange={setLogo}
             aspectRatio={1}
-            label="Logo"
+            label="Profile Photo"
             recommendedSize="500x500"
           />
         </div>
@@ -151,33 +144,37 @@ export const BusinessProfile = ({ section }) => {
 
   const renderIdentity = () => (
     <div className="biz-section glass-panel">
-      <h4 className="biz-section-title">Business Identity</h4>
+      <h4 className="biz-section-title">Freelancer Identity</h4>
       <div className="biz-field-row">
         <div className="biz-field">
-          <label className="form-label"><Building size={13} /> Business Name</label>
-          <input className="form-input" value={form.businessName} onChange={e => setField('businessName', e.target.value)} placeholder="Your company name" />
+          <label className="form-label"><User size={13} /> Full Name</label>
+          <input className="form-input" value={form.fullName} onChange={e => setField('fullName', e.target.value)} placeholder="Your full name" />
         </div>
         <div className="biz-field">
-          <label className="form-label">Category</label>
-          <select className="form-input" value={form.businessCategory} onChange={e => setField('businessCategory', e.target.value)}>
-            {['E-Commerce', 'Startup', 'Agency', 'Fashion', 'Food & Beverage', 'Technology', 'Real Estate', 'Healthcare', 'Education', 'Entertainment', 'Retail', 'Other'].map(c => (
+          <label className="form-label">Category / Skill</label>
+          <select className="form-input" value={form.category} onChange={e => setField('category', e.target.value)}>
+            {['Content Writer', 'Graphic Designer', 'Web Developer', 'App Developer', 'Photographer', 'Videographer', 'Social Media Manager', 'SEO Expert', 'Copywriter', 'UI/UX Designer', 'Other'].map(c => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>
       </div>
       <div className="biz-field" style={{ marginTop: '12px' }}>
-        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Hash size={13} /> GST Number (Optional)</label>
-        <input className="form-input" value={form.gst} onChange={e => setField('gst', e.target.value)} placeholder="GSTIN (e.g. 27AAAAA1111A1Z1)" />
+        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Briefcase size={13} /> Experience</label>
+        <select className="form-input" value={form.experience} onChange={e => setField('experience', e.target.value)}>
+          {['0-1 Year', '1-3 Years', '3-5 Years', '5-10 Years', '10+ Years'].map(exp => (
+            <option key={exp} value={exp}>{exp}</option>
+          ))}
+        </select>
       </div>
       <div className="biz-field" style={{ marginTop: '12px' }}>
-        <label className="form-label">About / Description</label>
+        <label className="form-label">About / Bio</label>
         <textarea
           className="form-input"
           rows={4}
           value={form.description}
           onChange={e => setField('description', e.target.value)}
-          placeholder="Describe your business, brand story, and what makes you stand out..."
+          placeholder="Describe your skills, expertise, and what makes you stand out as a freelancer..."
         />
       </div>
     </div>
@@ -189,12 +186,13 @@ export const BusinessProfile = ({ section }) => {
       <p className="biz-section-sub">Control who can see each field using the visibility toggle.</p>
 
       {[
-        { key: 'email',   label: 'Business Email',   icon: Mail,          val: u.email,          visKey: 'email',   disabled: true },
-        { key: 'mobile',  label: 'Mobile Number',     icon: Phone,         val: form.mobileNumber, visKey: 'mobile',  field: 'mobileNumber' },
-        { key: 'whatsapp',label: 'WhatsApp',          icon: MessageSquare, val: form.whatsapp,    visKey: 'whatsapp', field: 'whatsapp' },
-        { key: 'website', label: 'Website',           icon: Globe,         val: form.website,     visKey: 'website',  field: 'website' },
-        { key: 'address', label: 'Business Address',  icon: MapPin,        val: form.address,     visKey: 'address',  field: 'address' },
-        { key: 'contact', label: 'Contact Person',    icon: User,          val: form.contactPerson, visKey: 'contact', field: 'contactPerson' },
+        { key: 'email',     label: 'Email Address',    icon: Mail,          val: u.email,              visKey: 'email',     disabled: true },
+        { key: 'mobile',    label: 'Mobile Number',    icon: Phone,         val: form.mobileNumber,    visKey: 'mobile',    field: 'mobileNumber' },
+        { key: 'whatsapp',  label: 'WhatsApp',         icon: MessageSquare, val: form.whatsapp,        visKey: 'whatsapp',  field: 'whatsapp' },
+        { key: 'website',   label: 'Website',          icon: Globe,         val: form.website,         visKey: 'website',   field: 'website' },
+        { key: 'portfolio', label: 'Portfolio Link',   icon: Link,          val: form.portfolioLink,   visKey: 'portfolio', field: 'portfolioLink' },
+        { key: 'location',  label: 'Location',         icon: MapPin,        val: form.location,        visKey: 'contact',   field: 'location' },
+        { key: 'contact',   label: 'Contact Person',   icon: User,          val: form.contactPerson,   visKey: 'contact',   field: 'contactPerson' },
       ].map(({ key, label, icon: Icon, val, visKey, field, disabled }) => (
         <div key={key} className="biz-contact-row" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '18px' }}>
           <label className="form-label biz-contact-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
@@ -239,43 +237,37 @@ export const BusinessProfile = ({ section }) => {
     </div>
   );
 
-  const renderDetailsAndBudget = () => (
+  const renderSkillsAndRates = () => (
     <div className="biz-section glass-panel">
-      <h4 className="biz-section-title">Collaboration Details & Budget</h4>
+      <h4 className="biz-section-title">Availability & Rates</h4>
       <div className="biz-field-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="biz-field">
           <label className="form-label"><MapPin size={13} /> City / Location</label>
           <input className="form-input" value={form.location} onChange={e => setField('location', e.target.value)} placeholder="Mumbai, India" />
         </div>
         <div className="biz-field">
-          <label className="form-label">Team Size</label>
-          <select className="form-input" value={form.teamSize} onChange={e => setField('teamSize', e.target.value)}>
-            {['1-5', '6-15', '16-50', '51-200', '200+', 'Other'].map(s => <option key={s} value={s}>{s === 'Other' ? 'Other' : `${s} people`}</option>)}
+          <label className="form-label">Availability</label>
+          <select className="form-input" value={form.availability} onChange={e => setField('availability', e.target.value)}>
+            {['Full-time', 'Part-time', 'Weekends Only', 'Project Based', 'Not Available'].map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
         <div className="biz-field">
-          <label className="form-label">Estimated Collaboration Budget</label>
+          <label className="form-label">Hourly Rate</label>
           <p className="biz-section-sub" style={{ fontSize: '11px', margin: '2px 0 6px 0', color: 'var(--text-muted)' }}>
-            This budget helps creators understand the expected collaboration value. It is optional and can be changed later.
+            This helps brands understand your pricing expectations. It is optional and can be changed later.
           </p>
-          <select className="form-input" value={form.monthlyMarketingBudget} onChange={e => setField('monthlyMarketingBudget', e.target.value)}>
+          <select className="form-input" value={form.hourlyRate} onChange={e => setField('hourlyRate', e.target.value)}>
             {[
               'Not Specified',
-              'Under ₹5,000',
-              '₹5,000 – ₹10,000',
-              '₹10,000 – ₹25,000',
-              '₹25,000 – ₹50,000',
-              '₹50,000 – ₹1,00,000',
-              '₹1,00,000 – ₹2,50,000',
-              '₹2,50,000 – ₹5,00,000',
-              '₹5,00,000 – ₹10,0,000',
-              '₹10,00,000 – ₹25,00,000',
-              '₹25,00,000 – ₹50,00,000',
-              '₹50,00,000 – ₹1 Crore',
-              '₹1 Crore+',
-              'Flexible / Discuss Later'
-            ].map(b => (
-              <option key={b} value={b}>{b}</option>
+              'Under ₹500/hr',
+              '₹500 - ₹1,000/hr',
+              '₹1,000 - ₹2,500/hr',
+              '₹2,500 - ₹5,000/hr',
+              '₹5,000 - ₹10,000/hr',
+              '₹10,000+/hr',
+              'Flexible / Discuss'
+            ].map(r => (
+              <option key={r} value={r}>{r}</option>
             ))}
           </select>
         </div>
@@ -288,18 +280,18 @@ export const BusinessProfile = ({ section }) => {
   const renderReviewStep = () => (
     <div className="biz-section glass-panel">
       <h4 className="biz-section-title">Review Details</h4>
-      <p className="biz-section-sub" style={{ marginBottom: '16px' }}>Verify your business settings summary before saving changes.</p>
+      <p className="biz-section-sub" style={{ marginBottom: '16px' }}>Verify your freelancer profile summary before saving changes.</p>
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Company Info</span>
-          <h5 style={{ fontSize: '14px', fontWeight: '700', margin: '4px 0 0 0', color: 'var(--text-white)' }}>{form.businessName || 'Name Not Provided'} ({form.businessCategory})</h5>
-          <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '4px', margin: 0 }}>{form.description ? form.description.substring(0, 100) + '...' : 'No description added yet.'}</p>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Freelancer Info</span>
+          <h5 style={{ fontSize: '14px', fontWeight: '700', margin: '4px 0 0 0', color: 'var(--text-white)' }}>{form.fullName || 'Name Not Provided'} ({form.category || 'No Category'})</h5>
+          <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '4px', margin: 0 }}>{form.description ? form.description.substring(0, 100) + '...' : 'No bio added yet.'}</p>
         </div>
         <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Location & Collaboration Budget</span>
-          <p style={{ fontSize: '13px', color: 'var(--text-white)', fontWeight: '600', margin: '4px 0 0 0' }}>📍 {form.location || 'Global'} • {form.teamSize || '1-5'} Team Size</p>
-          <p style={{ fontSize: '13px', color: 'var(--accent-cyan)', fontWeight: '700', margin: '2px 0 0 0' }}>💰 Budget: {form.monthlyMarketingBudget || 'Not Specified'}</p>
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Location, Availability & Rate</span>
+          <p style={{ fontSize: '13px', color: 'var(--text-white)', fontWeight: '600', margin: '4px 0 0 0' }}>📍 {form.location || 'Global'} • {form.experience || 'Not Specified'} Experience</p>
+          <p style={{ fontSize: '13px', color: 'var(--accent-cyan)', fontWeight: '700', margin: '2px 0 0 0' }}>💰 Rate: {form.hourlyRate || 'Not Specified'} • {form.availability || 'Not Specified'}</p>
         </div>
         <div style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Contact Person</span>
@@ -382,7 +374,7 @@ export const BusinessProfile = ({ section }) => {
           )}
           {currentStep === 2 && renderContact()}
           {currentStep === 3 && renderSocial()}
-          {currentStep === 4 && renderDetailsAndBudget()}
+          {currentStep === 4 && renderSkillsAndRates()}
           {currentStep === 5 && renderReviewStep()}
         </div>
 
@@ -430,7 +422,7 @@ export const BusinessProfile = ({ section }) => {
       {renderIdentity()}
       {renderContact()}
       {renderSocial()}
-      {renderDetailsAndBudget()}
+      {renderSkillsAndRates()}
 
       <div className="biz-save-row">
         <button type="submit" className="btn-primary biz-save-btn" disabled={saving}>
@@ -445,4 +437,4 @@ export const BusinessProfile = ({ section }) => {
   );
 };
 
-export default BusinessProfile;
+export default FreelancerProfile;

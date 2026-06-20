@@ -5,13 +5,16 @@ import {
   LayoutDashboard, Search, Briefcase, FileText, CheckSquare, 
   Award, MessageSquare, Star, BarChart3, User, Settings, LogOut,
   SlidersHorizontal, IndianRupee, Bookmark, Upload, X, Plus, 
-  MapPin, Clock, ArrowRight, Send, ExternalLink, CreditCard, Users
+  MapPin, Clock, ArrowRight, Send, ExternalLink, CreditCard, Users,
+  ChevronDown
 } from 'lucide-react';
 import { MyConnections } from './Shared/MyConnections';
+import { FreelancerProfile } from './Freelancer/FreelancerProfile';
 import { useToast } from '../../components/SuccessToast';
 import { ApplicationForm } from './Shared/ApplicationForm';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
 import { useResponsive } from '../../hooks/useResponsive';
+import { BlockedProfilesList } from '../../components/BlockedProfilesList';
 
 const generateTaskId = () => `t-${Date.now()}`;
 
@@ -22,7 +25,7 @@ export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
     users, activityFeed, messages, sendMessage, loading,
     activeTabToRedirect, setActiveTabToRedirect, notifications,
     activeDashboardTab, setActiveDashboardTab, startConversation,
-    applications
+    applications, isBlockedRelation, showConfirmation
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -33,11 +36,27 @@ export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    const confirmed = await showConfirmation({
+      title: 'Sign Out',
+      message: 'Are you sure you want to log out of Creators Hub?',
+      confirmText: 'Sign Out',
+      cancelText: 'Cancel',
+      type: 'warning',
+      isDestructive: true
+    });
+    if (confirmed) {
+      logoutUser();
+      onNavigate('landing');
+    }
+  };
   const [logoFailed, setLogoFailed] = useState(false);
+  const [expandedAccordion, setExpandedAccordion] = useState(0);
 
   useEffect(() => {
-    if (activeTabToRedirect === 'messages') {
-      setActiveTab('messages');
+    if (activeTabToRedirect) {
+      setActiveTab(activeTabToRedirect);
       setActiveTabToRedirect(null);
     }
   }, [activeTabToRedirect]);
@@ -405,7 +424,7 @@ export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
             )}
           </div>
           <button 
-            onClick={() => { logoutUser(); onNavigate('landing'); }}
+            onClick={handleLogout}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -511,7 +530,77 @@ export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
         <main style={{ padding: 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
           
           {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
-          {activeTab === 'dashboard' && (
+          {((isMobile || isTablet) && (activeTab === 'dashboard' || activeTab === 'profile')) ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Workspace controls</span>
+                <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>Freelancer Portal</h3>
+                <p style={{ color: 'var(--text-gray)', fontSize: '13px', marginTop: '2px' }}>Manage all aspects of your freelancer profile, projects, and connections below.</p>
+              </div>
+
+              {activeTab === 'dashboard' && (
+                <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '6px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
+                      <Briefcase size={16} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Active Contracts</span>
+                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{activeWorkspaces.length}</h4>
+                    </div>
+                  </div>
+                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ padding: '6px', background: 'rgba(126, 197, 180, 0.08)', color: 'var(--accent-cyan-light)', borderRadius: '8px' }}>
+                      <FileText size={16} />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Submitted Bids</span>
+                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{sentApplications.length}</h4>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {[
+                { title: 'Freelancer Information', component: <FreelancerProfile section="info" /> },
+                { title: 'Contact Information', component: <FreelancerProfile section="contact" /> },
+                { title: 'My Connections', component: <MyConnections onOpenProfile={onOpenProfile} onStartChat={(userId) => { startConversation(userId); setActiveTab('messages'); }} /> },
+                { title: 'Blocked Profiles', component: <BlockedProfilesList /> }
+              ].map((acc, index) => {
+                const isOpen = expandedAccordion === index;
+                return (
+                  <div key={index} className="glass-panel" style={{ borderRadius: '18px', overflow: 'hidden', border: '1px solid ' + (isOpen ? 'var(--accent-cyan)' : 'var(--glass-border)'), background: 'rgba(255,255,255,0.01)', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
+                      style={{
+                        width: '100%',
+                        padding: '16px 20px',
+                        background: isOpen ? 'rgba(255,255,255,0.02)' : 'none',
+                        border: 'none',
+                        color: 'var(--text-white)',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        textAlign: 'left',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <span>{index + 1}. {acc.title}</span>
+                      <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', color: 'var(--text-muted)' }} />
+                    </button>
+                    {isOpen && (
+                      <div style={{ padding: '20px', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                        {acc.component}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : activeTab === 'dashboard' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
               
               {/* Profile strength check card */}
@@ -1254,79 +1343,13 @@ export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
             </div>
           )}
 
-          {/* ==================== 10. PUBLIC PROFILE VIEW ==================== */}
-          {activeTab === 'profile' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              {/* Cover Banner */}
-              <div className="glass-panel" style={{ overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                <div style={{ height: '180px', background: 'linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(103, 232, 249, 0.02))', position: 'relative' }}>
-                  <img 
-                    src={currentUser.cover || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80'} 
-                    alt="cover" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <span className="badge-premium" style={{ position: 'absolute', top: '16px', right: '16px' }}>
-                    {currentUser.verificationStatus}
-                  </span>
-                </div>
-
-                <div style={{ padding: '24px', position: 'relative', marginTop: '-44px', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                  <img 
-                    src={currentUser.profilePhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'} 
-                    alt={currentUser.fullName}
-                    style={{ width: '84px', height: '84px', borderRadius: '50%', border: '3px solid var(--bg-dark)', objectFit: 'cover' }}
-                  />
-                  <div style={{ flex: 1, minWidth: '220px' }}>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--text-white)' }}>{currentUser.fullName}</h3>
-                    <div style={{ display: 'flex', gap: '14px', color: 'var(--text-gray)', fontSize: '13px', marginTop: '6px' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {currentUser.location || 'New York, NY'}</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} /> {currentUser.experience || '4+ Years Experience'}</span>
-                    </div>
-                  </div>
-                </div>
+          {/* ==================== 10. PROFILE VIEW ==================== */}
+          {activeTab === 'profile' && !(isMobile || isTablet) && (
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+              <FreelancerProfile />
+              <div className="glass-panel" style={{ padding: '24px' }}>
+                <BlockedProfilesList />
               </div>
-
-              {/* Edit Form */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-                <div className="glass-panel" style={{ padding: '24px' }}>
-                  <h4 style={{ fontSize: '16px', fontWeight: '800', marginBottom: '16px' }}>Update Bio & Skills</h4>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    updateProfile(currentUser.id, {
-                      fullName: e.target.fullName.value,
-                      location: e.target.location.value,
-                      experience: e.target.experience.value,
-                      bio: e.target.bio.value,
-                      skills: e.target.skills.value ? e.target.skills.value.split(',').map(s => s.trim()) : []
-                    });
-                    showSuccessToast({ title: '✔ Profile Updated Successfully', subtitle: 'Your latest changes have been saved.', redirectText: 'Redirecting to your dashboard...' });
-                  }} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div>
-                      <label className="form-label">Full Name</label>
-                      <input type="text" name="fullName" defaultValue={currentUser.fullName || ''} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">Location</label>
-                      <input type="text" name="location" defaultValue={currentUser.location || ''} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">Experience Tier</label>
-                      <input type="text" name="experience" defaultValue={currentUser.experience || ''} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">Skills (Comma separated)</label>
-                      <input type="text" name="skills" defaultValue={currentUser.skills ? currentUser.skills.join(', ') : ''} className="form-input" />
-                    </div>
-                    <div>
-                      <label className="form-label">Public Bio</label>
-                      <textarea name="bio" rows={3} defaultValue={currentUser.bio || ''} className="form-input" />
-                    </div>
-                    <button type="submit" className="btn-primary" style={{ alignSelf: 'flex-start', minHeight: '38px', borderRadius: '10px' }}>Save Profile</button>
-                  </form>
-                </div>
-              </div>
-
             </div>
           )}
 

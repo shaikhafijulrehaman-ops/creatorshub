@@ -360,8 +360,39 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
     return mutualFollow || hasConversation;
   })();
 
-  const showBusinessContact = isOwner || (user.role === 'Business Holder' && user.contactVisibility === 'Public');
-  const showSocialLinks = isOwner || (user.role === 'Influencer' && user.socialLinksVisibility === 'Public');
+  const canViewField = (key, legacyProperty) => {
+    if (isOwner) return true;
+    
+    // First try the fieldVisibility object
+    let setting = user.fieldVisibility?.[key];
+    
+    // Fallback to separate property if not defined in object
+    if (!setting) {
+      setting = legacyProperty;
+    }
+    
+    // Default to 'Private' if completely missing
+    if (!setting) {
+      setting = 'Private';
+    }
+
+    if (setting === 'Public') return true;
+    if (setting === 'Connections Only') {
+      return currentUser && isDbConnected(currentUser.id, user.id);
+    }
+    return false; // Private
+  };
+
+  const canViewEmail = canViewField('email', user.emailVisibility);
+  const canViewPhone = canViewField('mobile', user.phoneVisibility) || canViewField('phone', user.phoneVisibility);
+  const canViewWhatsApp = canViewField('whatsapp', user.contactVisibility);
+  const canViewWebsite = canViewField('website', user.websiteVisibility);
+  const canViewContact = canViewField('contact', user.contactVisibility) || canViewField('address', user.contactVisibility);
+  const canViewSocialLinks = canViewField('social', user.socialLinksVisibility);
+
+  // Keep these for backward compatibility where needed
+  const showBusinessContact = canViewContact || canViewEmail || canViewPhone;
+  const showSocialLinks = canViewSocialLinks;
 
   const handlePostReview = (e) => {
     e.preventDefault();
@@ -426,14 +457,37 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
         </div>
       ) : (
         <>
+          {/* Cover Banner for Freelancers / Influencers */}
+          <div style={{ 
+            height: '180px', 
+            borderRadius: '16px', 
+            overflow: 'hidden', 
+            position: 'relative', 
+            marginBottom: '16px',
+            border: '1px solid var(--glass-border)'
+          }}>
+            <img 
+              src={user.coverBanner || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80'} 
+              alt="Cover Banner" 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          </div>
+
           {/* Header Profile Meta */}
-          <div className="profile-header-meta">
-        <img 
-          src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'} 
-          alt={user.fullName}
-          className="profile-avatar"
-          style={{ borderRadius: user.role === 'Business Holder' ? '16px' : '50%' }}
-        />
+          <div className="profile-header-meta" style={{ marginTop: '-54px', position: 'relative', zIndex: 2, paddingLeft: '16px' }}>
+            <img 
+              src={user.profilePhoto || user.logo || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'} 
+              alt={user.fullName}
+              className="profile-avatar"
+              style={{ 
+                borderRadius: '50%', 
+                border: '4px solid var(--bg-deep)', 
+                width: '96px', 
+                height: '96px',
+                objectFit: 'cover',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+              }}
+            />
 
         <div className="profile-info-main">
           <div className="profile-name-row">
@@ -451,12 +505,12 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
             <span>
               <MapPin size={14} /> {user.location}
             </span>
-            {showBusinessContact && user.email && (
+            {canViewEmail && user.email && (
               <span>
                 <Mail size={14} /> {user.email}
               </span>
             )}
-            {showBusinessContact && user.mobileNumber && (
+            {canViewPhone && user.mobileNumber && (
               <span>
                 <Phone size={14} /> {user.mobileNumber}
               </span>
@@ -708,18 +762,34 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
               <div>
                 <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Email:</span>
-                <span style={{ color: 'var(--text-white)' }}>{showBusinessContact || showSocialLinks ? (user.email || 'N/A') : 'Protected'}</span>
+                <span style={{ color: 'var(--text-white)' }}>{canViewEmail ? (user.email || 'N/A') : 'Protected'}</span>
               </div>
               {user.mobileNumber && (
                 <div>
                   <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Phone:</span>
-                  <span style={{ color: 'var(--text-white)' }}>{showBusinessContact || showSocialLinks ? user.mobileNumber : 'Protected'}</span>
+                  <span style={{ color: 'var(--text-white)' }}>{canViewPhone ? user.mobileNumber : 'Protected'}</span>
+                </div>
+              )}
+              {user.contactPerson && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Contact Person:</span>
+                  <span style={{ color: 'var(--text-white)' }}>{canViewContact ? user.contactPerson : 'Protected'}</span>
+                </div>
+              )}
+              {user.address && (
+                <div>
+                  <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Address:</span>
+                  <span style={{ color: 'var(--text-white)' }}>{canViewContact ? user.address : 'Protected'}</span>
                 </div>
               )}
               {user.website && (
                 <div>
                   <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>Website:</span>
-                  <a href={user.website} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>{user.website}</a>
+                  {canViewWebsite ? (
+                    <a href={user.website} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-cyan)' }}>{user.website}</a>
+                  ) : (
+                    <span style={{ color: 'var(--text-white)' }}>Protected</span>
+                  )}
                 </div>
               )}
             </div>
@@ -800,7 +870,7 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
                   <span className="info-label">Business Category</span>
                   <p className="info-val">{user.businessCategory || 'N/A'}</p>
                 </div>
-                {user.website && showBusinessContact && (
+                {user.website && canViewWebsite && (
                   <div className="info-item">
                     <span className="info-label">Website</span>
                     <p className="info-val">
@@ -1055,8 +1125,6 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
           {/* Contact Details Card */}
           {(() => {
             const hasSocialLinks = user.socialLinks && Object.values(user.socialLinks).some(val => val && val.trim() !== '');
-            const showContactSection = showBusinessContact || (user.role === 'Influencer' && showSocialLinks && hasSocialLinks);
-            if (!showContactSection) return null;
             return (
               <CollapsibleSection 
                 title="Contact & Connections" 
@@ -1065,62 +1133,72 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
                 onToggle={() => toggleSection('contactInfo')}
               >
                 <div className="info-grid-2-col">
-                  {showBusinessContact && (
-                    <>
-                      <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                        <span className="info-label">Email Address</span>
-                        <p className="info-val">{user.email || 'N/A'}</p>
-                      </div>
-                      {user.mobileNumber && (
-                        <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                          <span className="info-label">Mobile Number</span>
-                          <p className="info-val">{user.mobileNumber}</p>
-                        </div>
-                      )}
-                      {user.address && (
-                        <div className="info-item" style={{ gridColumn: 'span 2' }}>
-                          <span className="info-label">Business Address</span>
-                          <p className="info-val" style={{ fontSize: '13px' }}>{user.address}</p>
-                        </div>
-                      )}
-                      {user.role === 'Business Holder' && user.mobileNumber && (
-                        <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '4px' }}>
-                          <span className="info-label">WhatsApp Contact</span>
-                          <p className="info-val">
-                            <a 
-                              href={`https://wa.me/${user.mobileNumber.replace(/\D/g, '')}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              style={{ color: '#25D366', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '700' }}
-                            >
-                              Chat on WhatsApp
-                            </a>
-                          </p>
-                        </div>
-                      )}
-                    </>
+                  <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                    <span className="info-label">Email Address</span>
+                    <p className="info-val">{canViewEmail ? (user.email || 'N/A') : 'Protected'}</p>
+                  </div>
+                  {user.mobileNumber && (
+                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                      <span className="info-label">Mobile Number</span>
+                      <p className="info-val">{canViewPhone ? user.mobileNumber : 'Protected'}</p>
+                    </div>
+                  )}
+                  {user.contactPerson && (
+                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                      <span className="info-label">Contact Person</span>
+                      <p className="info-val">{canViewContact ? user.contactPerson : 'Protected'}</p>
+                    </div>
+                  )}
+                  {user.address && (
+                    <div className="info-item" style={{ gridColumn: 'span 2' }}>
+                      <span className="info-label">Business Address</span>
+                      <p className="info-val" style={{ fontSize: '13px' }}>{canViewContact ? user.address : 'Protected'}</p>
+                    </div>
+                  )}
+                  {user.mobileNumber && (
+                    <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '4px' }}>
+                      <span className="info-label">WhatsApp Contact</span>
+                      <p className="info-val">
+                        {canViewWhatsApp && canViewPhone ? (
+                          <a 
+                            href={`https://wa.me/${user.mobileNumber.replace(/\D/g, '')}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={{ color: '#25D366', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: '700' }}
+                          >
+                            Chat on WhatsApp
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Protected</span>
+                        )}
+                      </p>
+                    </div>
                   )}
 
-                  {user.role === 'Influencer' && showSocialLinks && hasSocialLinks && (
+                  {user.role === 'Influencer' && hasSocialLinks && (
                     <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
                       <span className="info-label">Social Connections</span>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                        {Object.entries(user.socialLinks).map(([platform, url]) => {
-                          if (!url || url.trim() === '') return null;
-                          return (
-                            <a 
-                              key={platform} 
-                              href={url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="btn-secondary" 
-                              style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
-                            >
-                              {platform}
-                            </a>
-                          );
-                        })}
-                      </div>
+                      {canViewSocialLinks ? (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                          {Object.entries(user.socialLinks).map(([platform, url]) => {
+                            if (!url || url.trim() === '') return null;
+                            return (
+                              <a 
+                                key={platform} 
+                                href={url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="btn-secondary" 
+                                style={{ height: '36px', padding: '0 12px', borderRadius: '6px', fontSize: '11px', display: 'inline-flex', alignItems: 'center', textTransform: 'capitalize' }}
+                              >
+                                {platform}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Protected</span>
+                      )}
                     </div>
                   )}
                 </div>
