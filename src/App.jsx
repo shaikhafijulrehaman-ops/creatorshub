@@ -15,7 +15,7 @@ import {
   Search, Briefcase, Sparkles, Home, MessageSquare, User, Bell, Menu, X, 
   CreditCard, BarChart2, ShieldCheck, LogOut, ChevronLeft, Calendar,
   Star, Award, BarChart3, LayoutDashboard, FileText, Users, CheckSquare, Upload,
-  FolderKanban, UserCheck, Settings
+  FolderKanban, UserCheck, Settings, Layers
 } from 'lucide-react';
 import { useToast } from './components/SuccessToast';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
@@ -25,9 +25,10 @@ import { FloatingActions } from './components/FloatingActions';
 
 const RedirectToLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   useEffect(() => {
-    navigate('/login', { replace: true });
-  }, [navigate]);
+    navigate('/login', { replace: true, state: { from: location.pathname + location.search } });
+  }, [navigate, location]);
   return null;
 };
 
@@ -139,45 +140,56 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        {currentUser && (
+        {currentUser ? (
+          <>
+            <button 
+              onClick={onOpenNotifications}
+              style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+            >
+              <Bell size={20} />
+              {notificationCount > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '2px',
+                  right: '2px',
+                  width: '8px',
+                  height: '8px',
+                  background: '#ef4444',
+                  borderRadius: '50%'
+                }} />
+              )}
+            </button>
+
+            <button 
+              onClick={() => onNavigate('dashboard')}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <img 
+                src={currentUser.profilePhoto || currentUser.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
+                alt={currentUser.fullName} 
+                style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--accent-cyan)' }}
+              />
+            </button>
+          </>
+        ) : (
           <button 
-            onClick={onOpenNotifications}
-            style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+            onClick={() => onNavigate('onboarding', { loginOnly: true })}
+            style={{
+              background: 'none',
+              border: '1.5px solid var(--accent-cyan)',
+              color: 'var(--accent-cyan)',
+              padding: '6px 14px',
+              fontSize: '12.5px',
+              borderRadius: '8px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              minHeight: '32px',
+              transition: 'var(--transition-fast)'
+            }}
           >
-            <Bell size={20} />
-            {notificationCount > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '2px',
-                right: '2px',
-                width: '8px',
-                height: '8px',
-                background: '#ef4444',
-                borderRadius: '50%'
-              }} />
-            )}
+            Sign In
           </button>
         )}
-
-        {currentUser && (
-          <button 
-            onClick={() => onNavigate('profile')}
-            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-          >
-            <img 
-              src={currentUser.profilePhoto || currentUser.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
-              alt={currentUser.fullName} 
-              style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--accent-cyan)' }}
-            />
-          </button>
-        )}
-
-        <button 
-          onClick={onOpenDrawer}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-gray)' }}
-        >
-          <Menu size={20} />
-        </button>
       </div>
     </header>
   );
@@ -185,11 +197,9 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
 
 const MobileBottomNav = ({ currentPage, onNavigate, currentUser }) => {
   const navItems = [
-    { id: 'landing', label: 'Home', icon: <Home size={20} /> },
     { id: 'explore', label: 'Explore', icon: <Search size={20} /> },
-    { id: 'messages', label: 'Messages', icon: <MessageSquare size={20} /> },
-    { id: 'dashboard', label: 'Dashboard', icon: <Briefcase size={20} /> },
-    { id: 'profile', label: 'Profile', icon: <User size={20} /> }
+    { id: 'how-it-works', label: 'How It Works', icon: <Layers size={20} /> },
+    { id: 'dashboard', label: 'Dashboard', icon: <Briefcase size={20} /> }
   ];
 
   return (
@@ -209,18 +219,30 @@ const MobileBottomNav = ({ currentPage, onNavigate, currentUser }) => {
       paddingBottom: 'env(safe-area-inset-bottom)'
     }}>
       {navItems.map(item => {
-        const isActive = currentPage === item.id;
+        const isActive = (item.id === 'explore' && (currentPage === 'landing' || currentPage === 'explore')) ||
+                         (item.id === 'dashboard' && currentPage === 'dashboard');
         return (
           <button
             key={item.id}
             onClick={() => {
-              if (item.id === 'messages' || item.id === 'dashboard' || item.id === 'profile') {
+              if (item.id === 'explore') {
+                onNavigate('landing');
+              } else if (item.id === 'how-it-works') {
+                if (window.location.pathname !== '/') {
+                  onNavigate('landing');
+                  setTimeout(() => {
+                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                  }, 300);
+                } else {
+                  document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                }
+              } else if (item.id === 'dashboard') {
                 if (!currentUser) {
                   onNavigate('onboarding', { loginOnly: true });
-                  return;
+                } else {
+                  onNavigate('dashboard');
                 }
               }
-              onNavigate(item.id);
             }}
             style={{
               background: 'none',
@@ -500,12 +522,26 @@ const AppContent = () => {
   // Redirect logged in users away from guest pages
   useEffect(() => {
     if (initialized && currentUser) {
-      const guestPaths = ['/', '/login', '/register'];
-      if (guestPaths.includes(location.pathname)) {
-        navigate('/dashboard', { replace: true });
+      if (isMobile) {
+        // On mobile, only redirect logged in users away from guest auth pages (like /login, /register)
+        const guestAuthPaths = ['/login', '/register'];
+        if (guestAuthPaths.includes(location.pathname)) {
+          const fromPath = location.state?.from;
+          if (fromPath) {
+            navigate(fromPath, { replace: true });
+          } else {
+            navigate('/', { replace: true }); // after login/joining must open website
+          }
+        }
+      } else {
+        // Desktop: keep unchanged, redirect away from /, /login, /register to /dashboard
+        const guestPaths = ['/', '/login', '/register'];
+        if (guestPaths.includes(location.pathname)) {
+          navigate('/dashboard', { replace: true });
+        }
       }
     }
-  }, [initialized, currentUser, location.pathname, navigate]);
+  }, [initialized, currentUser, location.pathname, navigate, isMobile]);
 
   // Determine the active page based on the path
   const { pathname } = location;
@@ -1365,7 +1401,17 @@ const AppContent = () => {
             !initialized ? (
               showSkeletons ? <ProfileSkeleton /> : null
             ) : (
-              !currentUser ? <RedirectToLogin /> : <ProfileView userId={currentUser.id} />
+              (() => {
+                const params = new URLSearchParams(location.search);
+                const queryId = params.get('id');
+                if (queryId) {
+                  return <ProfileView userId={queryId} />;
+                }
+                if (!currentUser) {
+                  return <RedirectToLogin />;
+                }
+                return <ProfileView userId={currentUser.id} />;
+              })()
             )
           } />
           <Route path="/dashboard" element={
@@ -1428,7 +1474,7 @@ const AppContent = () => {
         </div>
       )}
       {/* Persistent Bottom Mobile Navigation Bar */}
-      {isMobile && (
+      {isMobile && currentUser && (
         <MobileBottomNav 
           currentPage={currentPage} 
           onNavigate={handleNavigate} 

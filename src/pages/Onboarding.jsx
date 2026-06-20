@@ -1,5 +1,6 @@
 import { useState, useContext, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Briefcase, Video, Code, Mail, Lock, 
   User, Phone, Eye, EyeOff, Sparkles
@@ -9,6 +10,8 @@ import { useToast } from '../components/SuccessToast';
 export const Onboarding = ({ onNavigate, initialParams = {} }) => {
   const { registerUser, loginUser, loginWithGoogle, checkEmailExists } = useContext(AppContext);
   const { showSuccessToast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // Flow State
   const [isLogin, setIsLogin] = useState(initialParams.loginOnly || false);
@@ -43,7 +46,11 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
   useEffect(() => {
     if (signUpStep === 4) {
       const timer = setTimeout(() => {
-        onNavigate('dashboard');
+        if (window.innerWidth < 768) {
+          onNavigate('landing'); // Redirect to website Home on mobile
+        } else {
+          onNavigate('dashboard');
+        }
       }, 1200); // Quick success → dashboard
       return () => clearTimeout(timer);
     }
@@ -61,7 +68,16 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
 
     const res = await loginUser(loginEmail, loginPassword);
     if (res.success) {
-      onNavigate('dashboard');
+      if (window.innerWidth < 768) {
+        const fromPath = location.state?.from;
+        if (fromPath) {
+          navigate(fromPath);
+        } else {
+          onNavigate('landing'); // Redirect to website Home on mobile
+        }
+      } else {
+        onNavigate('dashboard');
+      }
     } else {
       setErrorMsg(res.message);
     }
@@ -295,6 +311,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                   />
                   <button 
                     type="button"
+                    className="eye-toggle-btn"
                     onClick={() => setShowPassword(!showPassword)}
                     style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >

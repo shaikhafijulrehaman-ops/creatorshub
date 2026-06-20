@@ -454,7 +454,7 @@ html, body {
   }
   
   /* Buttons inside cards become full-width */
-  .glass-panel button:not(.close-button):not(.sidebar-tab-link):not(.sidebar-footer button),
+  .glass-panel button:not(.close-button):not(.sidebar-tab-link):not(.sidebar-footer button):not(.eye-toggle-btn),
   .glass-panel .btn-primary,
   .glass-panel .btn-secondary,
   .glass-panel .btn-outline-cyan {
