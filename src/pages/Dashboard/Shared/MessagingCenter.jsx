@@ -319,7 +319,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
         return (
           <div 
             key={msg.id || index} 
-            className="msg-animate"
+            className={index === messagesList.length - 1 ? 'msg-animate' : undefined}
             style={{ 
               display: 'flex', 
               flexDirection: 'column', 
@@ -1361,7 +1361,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
           to { opacity: 1; transform: translateY(0); }
         }
         .msg-animate {
-          animation: messageFadeSlide 200ms ease-out forwards;
+          animation: messageFadeSlide 200ms ease-out both;
         }
         .emoji-hover:hover {
           transform: scale(1.25);
