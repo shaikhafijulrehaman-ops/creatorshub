@@ -226,7 +226,7 @@ const MobileBottomNav = ({ currentPage, onNavigate, currentUser }) => {
             key={item.id}
             onClick={() => {
               if (item.id === 'explore') {
-                onNavigate('landing');
+                onNavigate('explore');
               } else if (item.id === 'how-it-works') {
                 if (window.location.pathname !== '/') {
                   onNavigate('landing');
@@ -534,8 +534,8 @@ const AppContent = () => {
           }
         }
       } else {
-        // Desktop: keep unchanged, redirect away from /, /login, /register to /dashboard
-        const guestPaths = ['/', '/login', '/register'];
+        // Desktop: redirect away from /login, /register to /dashboard
+        const guestPaths = ['/login', '/register'];
         if (guestPaths.includes(location.pathname)) {
           navigate('/dashboard', { replace: true });
         }
@@ -641,7 +641,7 @@ const AppContent = () => {
 
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: isMobile ? '64px' : '0' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', paddingBottom: (isMobile && !(activeConversationId && (currentPage === 'messages' || activeDashboardTab === 'messages'))) ? '64px' : '0' }}>
       
       {/* Global Particle Background */}
       <Particles />
@@ -699,8 +699,18 @@ const AppContent = () => {
                 return u.role;
               };
 
-              // Filter recently joined (top 4 sorted by createdAt descending)
-              const recentlyJoined = [...displayUsers]
+              // Filter recently joined (registered today, under 24 hours, sorted descending, max 4)
+              const recentlyJoined = displayUsers
+                .filter(u => {
+                  if (!u.createdAt) return false;
+                  const userDate = new Date(u.createdAt);
+                  const now = new Date();
+                  const isToday = userDate.getDate() === now.getDate() &&
+                                  userDate.getMonth() === now.getMonth() &&
+                                  userDate.getFullYear() === now.getFullYear();
+                  const isUnder24h = (now.getTime() - userDate.getTime()) < 24 * 60 * 60 * 1000;
+                  return isToday && isUnder24h;
+                })
                 .sort((a, b) => {
                   const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
                   const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -1073,11 +1083,22 @@ const AppContent = () => {
                           } else if (usersFilter === 'Verified Users') {
                             filteredUsers = displayUsers.filter(u => u.verificationStatus && u.verificationStatus !== 'Not Verified' && u.verificationStatus !== 'Unverified');
                           } else if (usersFilter === 'Recently Joined') {
-                            filteredUsers = [...displayUsers].sort((a, b) => {
-                              const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                              const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                              return timeB - timeA;
-                            });
+                            filteredUsers = displayUsers
+                              .filter(u => {
+                                if (!u.createdAt) return false;
+                                const userDate = new Date(u.createdAt);
+                                const now = new Date();
+                                const isToday = userDate.getDate() === now.getDate() &&
+                                                userDate.getMonth() === now.getMonth() &&
+                                                userDate.getFullYear() === now.getFullYear();
+                                const isUnder24h = (now.getTime() - userDate.getTime()) < 24 * 60 * 60 * 1000;
+                                return isToday && isUnder24h;
+                              })
+                              .sort((a, b) => {
+                                const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                                const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                                return timeB - timeA;
+                              });
                           }
 
                           if (filteredUsers.length === 0) {
@@ -1475,7 +1496,7 @@ const AppContent = () => {
         </div>
       )}
       {/* Persistent Bottom Mobile Navigation Bar */}
-      {isMobile && currentUser && (
+      {isMobile && currentUser && !(activeConversationId && (currentPage === 'messages' || activeDashboardTab === 'messages')) && (
         <MobileBottomNav 
           currentPage={currentPage} 
           onNavigate={handleNavigate} 

@@ -215,6 +215,12 @@ export const AppProvider = ({ children }) => {
 
   const [theme] = useState('light');
   const [initialized, setInitialized] = useState(false);
+  const [clientVersion, setClientVersion] = useState(0);
+
+  const updateSupabaseClient = (userId) => {
+    setSupabaseUserHeader(userId);
+    setClientVersion(prev => prev + 1);
+  };
 
   const toggleTheme = () => {
     // Dark mode disabled
@@ -251,7 +257,7 @@ export const AppProvider = ({ children }) => {
           try {
             const parsedUser = JSON.parse(cachedUser);
             if (parsedUser && parsedUser.id) {
-              setSupabaseUserHeader(parsedUser.id);
+              updateSupabaseClient(parsedUser.id);
             }
           } catch (e) {
             console.error('Error pre-setting supabase user header:', e);
@@ -462,12 +468,10 @@ export const AppProvider = ({ children }) => {
       supabase.removeChannel(usersSub);
       supabase.removeChannel(projectsSub);
     };
-  }, []);
+  }, [clientVersion]);
 
   // Realtime database subscription for connections, requests, notifications
   useEffect(() => {
-    setSupabaseUserHeader(currentUser?.id || null);
-
     if (!currentUser) {
       setConnections([]);
       setConnectionRequests([]);
@@ -644,7 +648,7 @@ export const AppProvider = ({ children }) => {
       supabase.removeChannel(membersSub);
       supabase.removeChannel(blockedSub);
     };
-  }, [currentUser]);
+  }, [currentUser, clientVersion]);
 
 
 
@@ -671,7 +675,7 @@ export const AppProvider = ({ children }) => {
 
     const emailExists = await checkEmailExists(email);
     if (emailExists) {
-      throw new Error('This email is already registered. Please sign in to continue.');
+      throw new Error('This email is already registered. Please sign in.');
     }
 
     const newId = generateUserId(role);
@@ -717,17 +721,17 @@ export const AppProvider = ({ children }) => {
 
     newUser.profileStrength = calculateProfileStrength(role, newUser);
 
-    setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    localStorage.setItem('ch_current_user', JSON.stringify(newUser));
-    setSupabaseUserHeader(newId);
-
-    // Supabase Insert
+    // Save immediately to Supabase database first!
     const { error } = await supabase.from('users').insert([mapUserToDb(newUser)]);
     if (error) {
       console.error('Error inserting user to Supabase:', error);
       throw error;
     }
+
+    setUsers(prev => [...prev, newUser]);
+    setCurrentUser(newUser);
+    localStorage.setItem('ch_current_user', JSON.stringify(newUser));
+    updateSupabaseClient(newId);
 
     // Fetch user relationships after registration
     fetchUserData(newId);
@@ -744,7 +748,7 @@ export const AppProvider = ({ children }) => {
         const user = mapUserFromDb(data[0]);
         setCurrentUser(user);
         localStorage.setItem('ch_current_user', JSON.stringify(user));
-        setSupabaseUserHeader(user.id);
+        updateSupabaseClient(user.id);
         
         supabase.from('profiles').select('*').then(({ data: refreshedUsers }) => {
           if (refreshedUsers) {
@@ -768,7 +772,7 @@ export const AppProvider = ({ children }) => {
   const logoutUser = () => {
     setCurrentUser(null);
     localStorage.removeItem('ch_current_user');
-    setSupabaseUserHeader(null);
+    updateSupabaseClient(null);
     supabase.auth.signOut().catch(err => console.error('Error signing out of Supabase:', err));
   };
 
@@ -1378,7 +1382,11 @@ export const AppProvider = ({ children }) => {
         return;
       }
 
-      if (!myMemberships || myMemberships.length === 0) return;
+      if (!myMemberships || myMemberships.length === 0) {
+        setConversations([]);
+        setP2pMessages({});
+        return;
+      }
 
       const conversationIds = myMemberships.map(m => m.conversation_id);
 
@@ -1392,6 +1400,12 @@ export const AppProvider = ({ children }) => {
         console.warn('Error fetching all conversation members:', allMemErr.message);
         return;
       }
+
+      // Fetch conversations to get updated_at
+      const { data: dbConvs } = await supabase
+        .from('conversations')
+        .select('id, updated_at')
+        .in('id', conversationIds);
 
       // 3. Fetch all messages for these conversations
       const { data: allMsgs, error: msgsErr } = await supabase
@@ -1429,10 +1443,12 @@ export const AppProvider = ({ children }) => {
       const convList = conversationIds.map(cId => {
         const members = allMembers.filter(m => m.conversation_id === cId).map(m => m.user_id);
         const otherUserId = members.find(mId => mId !== currentUser.id);
+        const dbConv = dbConvs ? dbConvs.find(dc => dc.id === cId) : null;
         return {
           id: cId,
           members,
-          otherUserId
+          otherUserId,
+          updatedAt: dbConv ? dbConv.updated_at : null
         };
       });
 
@@ -1478,6 +1494,15 @@ export const AppProvider = ({ children }) => {
             };
           });
 
+          setConversations(prev => {
+            return prev.map(c => {
+              if (c.id === msg.conversation_id) {
+                return { ...c, updatedAt: msg.created_at };
+              }
+              return c;
+            });
+          });
+
           if (activeConversationIdRef.current === msg.conversation_id && msg.sender_id !== currentUser.id) {
             supabase
               .from('messages')
@@ -1501,7 +1526,7 @@ export const AppProvider = ({ children }) => {
     return () => {
       supabase.removeChannel(messagesSubscription);
     };
-  }, [currentUser]);
+  }, [currentUser, clientVersion]);
 
   // Presence Synchronization
   useEffect(() => {
@@ -1544,7 +1569,7 @@ export const AppProvider = ({ children }) => {
     return () => {
       supabase.removeChannel(presenceSubscription);
     };
-  }, []);
+  }, [clientVersion]);
 
   // Update Presence for Online Statuses
   useEffect(() => {
@@ -1595,7 +1620,8 @@ export const AppProvider = ({ children }) => {
     const newConv = {
       id: newConvId,
       members: [currentUser.id, targetUserId],
-      otherUserId: targetUserId
+      otherUserId: targetUserId,
+      updatedAt: new Date().toISOString()
     };
 
     setConversations(prev => [...prev, newConv]);
@@ -1639,6 +1665,15 @@ export const AppProvider = ({ children }) => {
       };
     });
 
+    setConversations(prev => {
+      return prev.map(c => {
+        if (c.id === conversationId) {
+          return { ...c, updatedAt: new Date().toISOString() };
+        }
+        return c;
+      });
+    });
+
     const { error } = await supabase
       .from('messages')
       .insert([{
@@ -1653,6 +1688,12 @@ export const AppProvider = ({ children }) => {
 
     if (error) {
       console.error('Error sending P2P message to Supabase:', error.message);
+    } else {
+      // Touch conversation updated_at in database
+      await supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
     }
 
     // Send in-app notification to the receiver

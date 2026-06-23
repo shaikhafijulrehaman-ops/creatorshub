@@ -543,7 +543,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                     textAlign: 'center',
                     lineHeight: '1.6'
                   }}>
-                    This email is already registered. Please sign in to continue.
+                    This email is already registered. Please sign in.
                   </div>
                   <button
                     onClick={() => {

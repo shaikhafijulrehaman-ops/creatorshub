@@ -3,7 +3,8 @@ import { AppContext } from '../../../context/AppContext';
 import { 
   Star, Heart, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
   MapPin, Phone, Plus, X, Code, CheckCircle, FileText,
-  Briefcase, ChevronDown, ChevronUp, MessageSquare, RefreshCw
+  Briefcase, ChevronDown, ChevronUp, MessageSquare, RefreshCw,
+  Award, Settings
 } from 'lucide-react';
 import { useToast } from '../../../components/SuccessToast';
 import { useResponsive } from '../../../hooks/useResponsive';
@@ -349,14 +350,14 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
 
 
 
-  const isSaved = savedProfiles.includes(user.id);
-  const isFollowing = followedProfiles.includes(user.id);
+  const isSaved = savedProfiles ? savedProfiles.includes(user.id) : false;
+  const isFollowing = followedProfiles ? followedProfiles.includes(user.id) : false;
 
   const isConnected = (() => {
     if (!currentUser || !user) return false;
     const myFollows = followedProfiles || [];
     const mutualFollow = myFollows.includes(user.id);
-    const hasConversation = (conversations || []).some(c => c.members.includes(user.id));
+    const hasConversation = (conversations || []).some(c => c && c.members && Array.isArray(c.members) && c.members.includes(user.id));
     return mutualFollow || hasConversation;
   })();
 

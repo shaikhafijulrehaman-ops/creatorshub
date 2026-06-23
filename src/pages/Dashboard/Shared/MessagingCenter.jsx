@@ -10,6 +10,284 @@ import { supabase } from '../../../supabaseClient';
 import { useToast } from '../../../components/SuccessToast';
 import { useResponsive } from '../../../hooks/useResponsive';
 
+const MessageInputBar = ({
+  activeConversationId,
+  currentUser,
+  onSend,
+  isDesktop,
+  isRecording,
+  recordingDuration,
+  startRecording,
+  stopRecording,
+  triggerAttachment
+}) => {
+  const [inputText, setInputText] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+
+  const emojiContainerRef = useRef(null);
+  const attachmentContainerRef = useRef(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (showEmojiPicker && emojiContainerRef.current && !emojiContainerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+      if (showAttachmentMenu && attachmentContainerRef.current && !attachmentContainerRef.current.contains(e.target)) {
+        setShowAttachmentMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [showEmojiPicker, showAttachmentMenu]);
+
+  const handleInputChange = (e) => {
+    setInputText(e.target.value);
+    if (activeConversationId && currentUser) {
+      const channel = supabase.channel(`typing:${activeConversationId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: { userId: currentUser.id, isTyping: true }
+      });
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleSend = () => {
+    if (!inputText.trim()) return;
+    onSend(inputText);
+    setInputText('');
+  };
+
+  const addEmoji = (emoji) => {
+    setInputText(prev => prev + emoji);
+  };
+
+  const handleAttachmentClick = (type) => {
+    setShowAttachmentMenu(false);
+    triggerAttachment(type);
+  };
+
+  const handleInputFocus = () => {
+    setTimeout(() => {
+      document.getElementById('chat-end-ref-element')?.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
+  };
+
+  if (isRecording) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '10px 16px', borderRadius: '14px', color: '#ef4444', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="rec-pulse" style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
+          <span style={{ fontSize: '13.5px', fontWeight: '700' }}>Recording Voice Note: {recordingDuration}s</span>
+        </div>
+        <button type="button" onClick={() => stopRecording()} className="btn-primary" style={{ padding: '0 14px', minHeight: '32px', borderRadius: '8px', background: '#ef4444', color: '#fff', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Square size={12} /> Stop & Send
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', width: '100%' }}>
+      {isDesktop ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div ref={attachmentContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button 
+              type="button"
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              style={{ background: 'var(--bg-deep)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              <Paperclip size={16} />
+            </button>
+            {showAttachmentMenu && (
+              <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '180px', display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px', borderRadius: '12px', zIndex: 100 }}>
+                {[
+                  { id: 'image', label: 'Image Upload', icon: <ImageIcon size={14} /> },
+                  { id: 'document', label: 'Document File', icon: <FileText size={14} /> }
+                ].map(act => (
+                  <button 
+                    key={act.id} 
+                    type="button"
+                    onClick={() => handleAttachmentClick(act.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--text-white)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
+                    className="glass-panel-hover"
+                  >
+                    {act.icon} <span>{act.label}</span>
+                  </button>
+                ))}
+                <button 
+                  type="button"
+                  onClick={() => { setShowAttachmentMenu(false); startRecording(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--accent-cyan)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
+                  className="glass-panel-hover"
+                >
+                  <Mic size={14} /> <span>Voice Recording</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div ref={emojiContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button 
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              style={{ background: 'var(--bg-deep)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
+            >
+              <Smile size={16} />
+            </button>
+            {showEmojiPicker && (
+              <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '220px', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', padding: '12px', borderRadius: '16px', zIndex: 100 }}>
+                {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬'].map(em => (
+                  <span key={em} onClick={() => addEmoji(em)} style={{ fontSize: '18px', cursor: 'pointer', textAlign: 'center', display: 'block', transition: 'transform 0.1s' }} className="emoji-hover">{em}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {isDesktop ? (
+        <textarea 
+          value={inputText}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
+          onFocus={handleInputFocus}
+          className="form-input" 
+          placeholder="Message..." 
+          rows={1}
+          style={{ flex: 1, height: '40px', minHeight: '40px', resize: 'none', padding: '10px 16px', fontSize: '13.5px', borderRadius: '20px', background: 'var(--bg-deep)' }}
+        />
+      ) : (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          background: 'var(--bg-deep)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '28px',
+          padding: '0 8px 0 12px',
+          minHeight: '48px',
+          maxHeight: '120px',
+          overflow: 'hidden'
+        }}>
+          <div ref={attachmentContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <button 
+              type="button"
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              style={{ background: 'none', border: 'none', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <Paperclip size={22} />
+            </button>
+            {showAttachmentMenu && (
+              <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '180px', display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px', borderRadius: '12px', zIndex: 100, background: 'var(--bg-dark)', border: '1px solid var(--glass-border)' }}>
+                {[
+                  { id: 'image', label: 'Image Upload', icon: <ImageIcon size={14} /> },
+                  { id: 'document', label: 'Document File', icon: <FileText size={14} /> }
+                ].map(act => (
+                  <button 
+                    key={act.id} 
+                    type="button"
+                    onClick={() => handleAttachmentClick(act.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--text-white)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
+                    className="glass-panel-hover"
+                  >
+                    {act.icon} <span>{act.label}</span>
+                  </button>
+                ))}
+                <button 
+                  type="button"
+                  onClick={() => { setShowAttachmentMenu(false); startRecording(); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--accent-cyan)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
+                  className="glass-panel-hover"
+                >
+                  <Mic size={14} /> <span>Voice Recording</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div ref={emojiContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', marginLeft: '6px' }}>
+            <button 
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              style={{ background: 'none', border: 'none', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <Smile size={22} />
+            </button>
+            {showEmojiPicker && (
+              <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '220px', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', padding: '12px', borderRadius: '16px', zIndex: 100, background: 'var(--bg-dark)', border: '1px solid var(--glass-border)' }}>
+                {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬'].map(em => (
+                  <span key={em} onClick={() => addEmoji(em)} style={{ fontSize: '18px', cursor: 'pointer', textAlign: 'center', display: 'block', transition: 'transform 0.1s' }} className="emoji-hover">{em}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <textarea
+            value={inputText}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
+            placeholder="Message..."
+            rows={1}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: 'var(--text-white)',
+              padding: '12px 8px',
+              fontSize: '14px',
+              height: '40px',
+              minHeight: '40px',
+              resize: 'none',
+              fontFamily: 'Rubik, sans-serif'
+            }}
+          />
+        </div>
+      )}
+
+      <button 
+        type="button"
+        onClick={handleSend}
+        className={isDesktop ? "btn-primary" : ""} 
+        style={isDesktop ? { 
+          width: '40px', 
+          height: '40px', 
+          borderRadius: '50%', 
+          minHeight: '40px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          padding: 0 
+        } : {
+          width: '48px',
+          height: '48px',
+          borderRadius: '50%',
+          background: 'var(--btn-primary-bg)',
+          color: 'var(--btn-primary-text)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: 'none',
+          cursor: 'pointer',
+          flexShrink: 0
+        }}
+      >
+        <Send size={isDesktop ? 15 : 18} style={isDesktop ? { marginLeft: '2px' } : { marginLeft: '3px' }} />
+      </button>
+    </div>
+  );
+};
+
 export const MessagingCenter = ({ onOpenProfile }) => {
   const { 
     currentUser, users, conversations, activeConversationId, 
@@ -27,15 +305,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
   const [newChatSearch, setNewChatSearch] = useState('');
   
   // Input and Chat States
-  const [inputText, setInputText] = useState('');
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [activeTypingUsers, setActiveTypingUsers] = useState({});
-
-  // Refs for click outside closures
-  const emojiContainerRef = useRef(null);
-  const attachmentContainerRef = useRef(null);
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -61,22 +331,16 @@ export const MessagingCenter = ({ onOpenProfile }) => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messagesList]);
 
-  // Close emoji picker or attachments menu when clicked outside
+  // Close actions dropdown when clicked outside
   useEffect(() => {
     const handleOutsideClick = (e) => {
-      if (showEmojiPicker && emojiContainerRef.current && !emojiContainerRef.current.contains(e.target)) {
-        setShowEmojiPicker(false);
-      }
-      if (showAttachmentMenu && attachmentContainerRef.current && !attachmentContainerRef.current.contains(e.target)) {
-        setShowAttachmentMenu(false);
-      }
       if (showActionsDropdown && actionsDropdownRef.current && !actionsDropdownRef.current.contains(e.target)) {
         setShowActionsDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [showEmojiPicker, showAttachmentMenu, showActionsDropdown]);
+  }, [showActionsDropdown]);
 
   // Mark messages as seen when chat opens or new messages arrive
   useEffect(() => {
@@ -108,55 +372,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
     };
   }, [activeConversationId, currentUser]);
 
-  // Broadcast typing status when typing
-  const handleInputChange = (e) => {
-    setInputText(e.target.value);
-    
-    if (!isTyping && activeConversationId) {
-      setIsTyping(true);
-      const channel = supabase.channel(`typing:${activeConversationId}`);
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          channel.send({
-            type: 'broadcast',
-            event: 'typing',
-            payload: { userId: currentUser.id, isTyping: true }
-          });
-        }
-      });
 
-      // Reset typing status after 2 seconds of inactivity
-      setTimeout(() => {
-        setIsTyping(false);
-        channel.send({
-          type: 'broadcast',
-          event: 'typing',
-          payload: { userId: currentUser.id, isTyping: false }
-        });
-      }, 2000);
-    }
-  };
-
-  // Send message
-  const handleSend = () => {
-    if (!inputText.trim() || !activeConversationId) return;
-    sendP2PMessage(activeConversationId, inputText, null, 'text');
-    setInputText('');
-    setShowEmojiPicker(false);
-  };
-
-  // Keyboard controls
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  // Add Emojis
-  const addEmoji = (emoji) => {
-    setInputText(prev => prev + emoji);
-  };
 
   // Attachment uploads
   const triggerAttachment = (type) => {
@@ -273,22 +489,18 @@ export const MessagingCenter = ({ onOpenProfile }) => {
     if (!member) return false;
     if (isBlockedRelation && isBlockedRelation(member.id)) return false;
     
-    const msgs = p2pMessages[c.id] || [];
-    const hasMessages = msgs.length > 0 || c.id === activeConversationId;
-    if (!hasMessages) return false;
-
     const nameMatch = member.fullName.toLowerCase().includes(searchTerm.toLowerCase());
     const roleMatch = member.role.toLowerCase().includes(searchTerm.toLowerCase());
     const bizMatch = member.businessName?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     return nameMatch || roleMatch || bizMatch;
   });
 
-  // Sort conversations by latest message timestamp
+  // Sort conversations by latest message timestamp or conversation update time
   const sortedConversations = [...filteredConversations].sort((a, b) => {
     const aMsgs = p2pMessages[a.id] || [];
     const bMsgs = p2pMessages[b.id] || [];
-    const aTime = aMsgs.length > 0 ? new Date(aMsgs[aMsgs.length - 1].timestamp) : new Date(0);
-    const bTime = bMsgs.length > 0 ? new Date(bMsgs[bMsgs.length - 1].timestamp) : new Date(0);
+    const aTime = aMsgs.length > 0 ? new Date(aMsgs[aMsgs.length - 1].timestamp) : (a.updatedAt ? new Date(a.updatedAt) : new Date(0));
+    const bTime = bMsgs.length > 0 ? new Date(bMsgs[bMsgs.length - 1].timestamp) : (b.updatedAt ? new Date(b.updatedAt) : new Date(0));
     return bTime - aTime;
   });
 
@@ -658,9 +870,9 @@ export const MessagingCenter = ({ onOpenProfile }) => {
         top: !isDesktop ? 0 : undefined,
         left: !isDesktop ? 0 : undefined,
         right: !isDesktop ? 0 : undefined,
-        bottom: !isDesktop ? 'calc(60px + env(safe-area-inset-bottom))' : undefined,
-        zIndex: !isDesktop ? 50 : undefined,
-        height: isDesktop ? '100%' : undefined,
+        bottom: !isDesktop ? 0 : undefined,
+        zIndex: !isDesktop ? 9999 : undefined,
+        height: !isDesktop ? '100dvh' : '100%',
         width: '100%',
         overflow: 'hidden',
         background: !isDesktop ? 'var(--bg-deep)' : undefined
@@ -854,6 +1066,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
             } : {
               flex: 1,
               overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
               padding: '16px 16px',
               display: 'flex',
               flexDirection: 'column',
@@ -882,7 +1095,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
                   </div>
                 </div>
               )}
-              <div ref={chatEndRef} />
+              <div ref={chatEndRef} id="chat-end-ref-element" />
             </div>
 
             <div style={isDesktop ? {
@@ -896,209 +1109,17 @@ export const MessagingCenter = ({ onOpenProfile }) => {
               borderTop: '1px solid var(--glass-border)',
               flexShrink: 0
             }}>
-              
-              {isRecording ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '10px 16px', borderRadius: '14px', color: '#ef4444' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span className="rec-pulse" style={{ width: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', animation: 'pulse 1s infinite' }} />
-                    <span style={{ fontSize: '13.5px', fontWeight: '700' }}>Recording Voice Note: {recordingDuration}s</span>
-                  </div>
-                  <button type="button" onClick={() => stopRecording()} className="btn-primary" style={{ padding: '0 14px', minHeight: '32px', borderRadius: '8px', background: '#ef4444', color: '#fff', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Square size={12} /> Stop & Send
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative', width: '100%' }}>
-                  
-                  {isDesktop ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div ref={attachmentContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <button 
-                          type="button"
-                          onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                          style={{ background: 'var(--bg-deep)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
-                        >
-                          <Paperclip size={16} />
-                        </button>
-                        {showAttachmentMenu && (
-                          <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '180px', display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px', borderRadius: '12px', zIndex: 100 }}>
-                            {[
-                              { id: 'image', label: 'Image Upload', icon: <ImageIcon size={14} /> },
-                              { id: 'document', label: 'Document File', icon: <FileText size={14} /> }
-                            ].map(act => (
-                              <button 
-                                key={act.id} 
-                                type="button"
-                                onClick={() => triggerAttachment(act.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--text-white)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
-                                className="glass-panel-hover"
-                              >
-                                {act.icon} <span>{act.label}</span>
-                              </button>
-                            ))}
-                            <button 
-                              type="button"
-                              onClick={startRecording}
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--accent-cyan)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
-                              className="glass-panel-hover"
-                            >
-                              <Mic size={14} /> <span>Voice Recording</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div ref={emojiContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <button 
-                          type="button"
-                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          style={{ background: 'var(--bg-deep)', border: '1px solid var(--glass-border)', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-gray)', cursor: 'pointer', transition: 'all 0.2s' }}
-                        >
-                          <Smile size={16} />
-                        </button>
-                        {showEmojiPicker && (
-                          <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '220px', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', padding: '12px', borderRadius: '16px', zIndex: 100 }}>
-                            {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬'].map(em => (
-                              <span key={em} onClick={() => addEmoji(em)} style={{ fontSize: '18px', cursor: 'pointer', textAlign: 'center', display: 'block', transition: 'transform 0.1s' }} className="emoji-hover">{em}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {isDesktop ? (
-                    <textarea 
-                      value={inputText}
-                      onChange={handleInputChange}
-                      onKeyDown={handleKeyDown}
-                      className="form-input" 
-                      placeholder="Message..." 
-                      rows={1}
-                      style={{ flex: 1, height: '40px', minHeight: '40px', resize: 'none', padding: '10px 16px', fontSize: '13.5px', borderRadius: '20px', background: 'var(--bg-deep)' }}
-                    />
-                  ) : (
-                    <div style={{
-                      flex: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      background: 'var(--bg-deep)',
-                      border: '1px solid var(--glass-border)',
-                      borderRadius: '28px',
-                      padding: '0 8px 0 12px',
-                      minHeight: '48px',
-                      maxHeight: '120px',
-                      overflow: 'hidden'
-                    }}>
-                      <div ref={attachmentContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <button 
-                          type="button"
-                          onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                          style={{ background: 'none', border: 'none', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
-                        >
-                          <Paperclip size={22} />
-                        </button>
-                        {showAttachmentMenu && (
-                          <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '180px', display: 'flex', flexDirection: 'column', padding: '6px', gap: '2px', borderRadius: '12px', zIndex: 100, background: 'var(--bg-dark)', border: '1px solid var(--glass-border)' }}>
-                            {[
-                              { id: 'image', label: 'Image Upload', icon: <ImageIcon size={14} /> },
-                              { id: 'document', label: 'Document File', icon: <FileText size={14} /> }
-                            ].map(act => (
-                              <button 
-                                key={act.id} 
-                                type="button"
-                                onClick={() => triggerAttachment(act.id)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--text-white)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
-                                className="glass-panel-hover"
-                              >
-                                {act.icon} <span>{act.label}</span>
-                              </button>
-                            ))}
-                            <button 
-                              type="button"
-                              onClick={startRecording}
-                              style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', background: 'none', border: 'none', color: 'var(--accent-cyan)', padding: '8px 10px', fontSize: '12px', textAlign: 'left', borderRadius: '8px', cursor: 'pointer' }}
-                              className="glass-panel-hover"
-                            >
-                              <Mic size={14} /> <span>Voice Recording</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <div ref={emojiContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', marginLeft: '6px' }}>
-                        <button 
-                          type="button"
-                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                          style={{ background: 'none', border: 'none', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
-                        >
-                          <Smile size={22} />
-                        </button>
-                        {showEmojiPicker && (
-                          <div className="glass-panel" style={{ position: 'absolute', bottom: '46px', left: 0, width: '220px', display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px', padding: '12px', borderRadius: '16px', zIndex: 100, background: 'var(--bg-dark)', border: '1px solid var(--glass-border)' }}>
-                            {['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬'].map(em => (
-                              <span key={em} onClick={() => addEmoji(em)} style={{ fontSize: '18px', cursor: 'pointer', textAlign: 'center', display: 'block', transition: 'transform 0.1s' }} className="emoji-hover">{em}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <textarea
-                        value={inputText}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Message..."
-                        rows={1}
-                        style={{
-                          flex: 1,
-                          background: 'transparent',
-                          border: 'none',
-                          outline: 'none',
-                          color: 'var(--text-white)',
-                          padding: '12px 8px',
-                          fontSize: '14px',
-                          height: '40px',
-                          minHeight: '40px',
-                          resize: 'none',
-                          fontFamily: 'Rubik, sans-serif'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  <button 
-                    type="button"
-                    onClick={handleSend}
-                    className={isDesktop ? "btn-primary" : ""} 
-                    style={isDesktop ? { 
-                      width: '40px', 
-                      height: '40px', 
-                      borderRadius: '50%', 
-                      minHeight: '40px', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      padding: 0 
-                    } : {
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: 'var(--btn-primary-bg)',
-                      color: 'var(--btn-primary-text)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: 'none',
-                      cursor: 'pointer',
-                      flexShrink: 0
-                    }}
-                  >
-                    <Send size={isDesktop ? 15 : 18} style={isDesktop ? { marginLeft: '2px' } : { marginLeft: '3px' }} />
-                  </button>
-
-                </div>
-              )}
-
+              <MessageInputBar
+                activeConversationId={activeConversationId}
+                currentUser={currentUser}
+                onSend={(text) => sendP2PMessage(activeConversationId, text, null, 'text')}
+                isDesktop={isDesktop}
+                isRecording={isRecording}
+                recordingDuration={recordingDuration}
+                startRecording={startRecording}
+                stopRecording={stopRecording}
+                triggerAttachment={triggerAttachment}
+              />
             </div>
           </>
         ) : (

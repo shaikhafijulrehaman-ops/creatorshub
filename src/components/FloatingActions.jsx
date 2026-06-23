@@ -109,7 +109,7 @@ export const FloatingActions = ({ role, onAction }) => {
         >
           {open ? (
             <X size={24} />
-          ) : role === 'Influencer' ? (
+          ) : (
             <img 
               src="/creators-hub-logo.png" 
               alt="CH Logo" 
@@ -120,8 +120,6 @@ export const FloatingActions = ({ role, onAction }) => {
                 objectFit: 'cover'
               }}
             />
-          ) : (
-            <TriggerIcon size={24} />
           )}
         </button>
       </div>
