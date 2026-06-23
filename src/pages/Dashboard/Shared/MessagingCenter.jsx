@@ -176,7 +176,7 @@ const MessageInputBar = ({
           padding: '0 8px 0 12px',
           minHeight: '48px',
           maxHeight: '120px',
-          overflow: 'hidden'
+          overflow: 'visible'
         }}>
           <div ref={attachmentContainerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <button 
