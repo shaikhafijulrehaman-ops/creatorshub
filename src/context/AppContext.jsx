@@ -2,6 +2,8 @@
 import { createContext, useState, useEffect, useRef } from 'react';
 import { supabase, setSupabaseUserHeader } from '../supabaseClient';
 
+const LIGHTWEIGHT_COLUMNS = 'id,role,full_name,location,description,business_name,business_category,logo,profile_photo,bio,website,team_size,monthly_marketing_budget,content_categories,platforms,followers_count,average_reach,engagement_rate,languages,collaboration_pricing,verification_status,profile_strength,rating,reviews,fraud_audit,services,skills,experience,verification_requested,phone_visibility,email_visibility,website_visibility,social_links_visibility,contact_visibility,whatsapp,gst,contact_person,social_links,field_visibility,email,mobile_number,address';
+
 const getConvIdFromNotif = (notifId) => {
   if (!notifId || !notifId.startsWith('notif-msg-')) return null;
   const withoutPrefix = notifId.substring('notif-msg-'.length);
@@ -222,6 +224,92 @@ export const AppProvider = ({ children }) => {
     setClientVersion(prev => prev + 1);
   };
 
+  const profileCacheRef = useRef({});
+
+  const fetchFullProfile = async (userId) => {
+    if (!userId) return null;
+    if (profileCacheRef.current[userId]) {
+      return profileCacheRef.current[userId];
+    }
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching full profile:', error);
+        return null;
+      }
+      if (data) {
+        const fullProfile = mapUserFromDb(data);
+        profileCacheRef.current[userId] = fullProfile;
+        
+        // Also update in global users list so other places see the updated/loaded fields
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...fullProfile } : u));
+        
+        return fullProfile;
+      }
+    } catch (err) {
+      console.error('Exception fetching full profile:', err);
+    }
+    return null;
+  };
+
+  const loadMoreMessages = async (conversationId, beforeTimestamp = null) => {
+    if (!conversationId) return;
+    try {
+      let query = supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (beforeTimestamp) {
+        query = query.lt('created_at', beforeTimestamp);
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('Error loading more messages:', error);
+        return;
+      }
+
+      if (data) {
+        const formatted = data.map(m => ({
+          id: m.id,
+          conversationId: m.conversation_id,
+          senderId: m.sender_id,
+          text: m.message,
+          attachmentUrl: m.attachment_url,
+          messageType: m.message_type,
+          seen: m.seen,
+          timestamp: m.created_at
+        })).reverse(); // Reverse so they are chronological
+
+        setP2pMessages(prev => {
+          const existing = prev[conversationId] || [];
+          if (beforeTimestamp) {
+            const filteredNew = formatted.filter(n => !existing.some(e => e.id === n.id));
+            return {
+              ...prev,
+              [conversationId]: [...filteredNew, ...existing]
+            };
+          } else {
+            return {
+              ...prev,
+              [conversationId]: formatted
+            };
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Exception loading more messages:', err);
+    }
+  };
+
   const toggleTheme = () => {
     // Dark mode disabled
   };
@@ -265,7 +353,7 @@ export const AppProvider = ({ children }) => {
         }
 
         // 1. Fetch Users
-        const { data: dbUsers, error: usersErr } = await supabase.from('profiles').select('*');
+        const { data: dbUsers, error: usersErr } = await supabase.from('profiles').select(LIGHTWEIGHT_COLUMNS);
         let finalUsers = [];
         if (usersErr) {
           console.warn('Error fetching users from Supabase:', usersErr);
@@ -294,25 +382,7 @@ export const AppProvider = ({ children }) => {
         }
         setActivityFeed(finalActivities);
 
-        // 4. Fetch Messages
-        const { data: dbMessages, error: msgErr } = await supabase.from('messages').select('*');
-        const groupedMessages = {};
-        if (msgErr) {
-          console.warn('Error fetching messages from Supabase:', msgErr);
-        } else if (dbMessages && dbMessages.length > 0) {
-          dbMessages.forEach(msg => {
-            if (!groupedMessages[msg.project_id]) {
-              groupedMessages[msg.project_id] = [];
-            }
-            groupedMessages[msg.project_id].push({
-              senderId: msg.sender_id,
-              senderName: msg.sender_name,
-              text: msg.text,
-              timestamp: msg.timestamp
-            });
-          });
-        }
-        setMessages(groupedMessages);
+        // 4. Messages fetch removed (workspace messages load in memory or dynamically)
 
         // 4.5 Fetch Applications
         const { data: dbApps, error: appsErr } = await supabase.from('applications').select('*');
@@ -444,6 +514,7 @@ export const AppProvider = ({ children }) => {
         } else if (payload.eventType === 'UPDATE') {
           const mapped = mapUserFromDb(payload.new);
           setUsers(prev => prev.map(u => u.id === mapped.id ? { ...u, ...mapped } : u));
+          profileCacheRef.current[mapped.id] = mapped;
           
           // Sync current logged-in user state if they are updated
           setCurrentUser(curr => {
@@ -799,7 +870,7 @@ export const AppProvider = ({ children }) => {
         localStorage.setItem('ch_current_user', JSON.stringify(user));
         updateSupabaseClient(user.id);
         
-        supabase.from('profiles').select('*').then(({ data: refreshedUsers }) => {
+        supabase.from('profiles').select(LIGHTWEIGHT_COLUMNS).then(({ data: refreshedUsers }) => {
           if (refreshedUsers) {
             const finalUsers = refreshedUsers.map(mapUserFromDb);
             setUsers(finalUsers);
@@ -936,6 +1007,7 @@ export const AppProvider = ({ children }) => {
             setCurrentUser(merged);
             localStorage.setItem('ch_current_user', JSON.stringify(merged));
           }
+          profileCacheRef.current[userId] = merged;
           return merged;
         }
         return u;
@@ -1586,25 +1658,24 @@ export const AppProvider = ({ children }) => {
         .select('id, updated_at')
         .in('id', conversationIds);
 
-      // 3. Fetch all messages for these conversations
-      const { data: allMsgs, error: msgsErr } = await supabase
-        .from('messages')
-        .select('*')
-        .in('conversation_id', conversationIds)
-        .order('created_at', { ascending: true });
+      // 3. Fetch latest 1 message for each conversation to populate list preview
+      const latestMsgsPromises = conversationIds.map(cId => 
+        supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', cId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+      );
+      const latestMsgsResults = await Promise.all(latestMsgsPromises);
 
-      if (msgsErr) {
-        console.warn('Error fetching P2P messages:', msgsErr.message);
-      }
-
-      // Group messages by conversation ID
       const msgsGrouped = {};
-      if (allMsgs) {
-        allMsgs.forEach(m => {
-          if (!msgsGrouped[m.conversation_id]) {
-            msgsGrouped[m.conversation_id] = [];
-          }
-          msgsGrouped[m.conversation_id].push({
+      latestMsgsResults.forEach((result, idx) => {
+        const dbMsgs = result.data;
+        const cId = conversationIds[idx];
+        if (dbMsgs && dbMsgs.length > 0) {
+          const m = dbMsgs[0];
+          msgsGrouped[cId] = [{
             id: m.id,
             conversationId: m.conversation_id,
             senderId: m.sender_id,
@@ -1613,9 +1684,11 @@ export const AppProvider = ({ children }) => {
             messageType: m.message_type,
             seen: m.seen,
             timestamp: m.created_at
-          });
-        });
-      }
+          }];
+        } else {
+          msgsGrouped[cId] = [];
+        }
+      });
       setP2pMessages(msgsGrouped);
 
       // Map conversation details
@@ -1640,13 +1713,19 @@ export const AppProvider = ({ children }) => {
   // Sync P2P LocalStorage
 
 
-  // Realtime Messages Subscription (uses refs to avoid stale closures)
+  // Realtime Messages Subscription (filtered at socket level for active conversation)
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !activeConversationId) return;
 
+    console.log('Subscribing to realtime messages for conversation:', activeConversationId);
     const messagesSubscription = supabase
-      .channel('messages-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, async (payload) => {
+      .channel(`messages-${activeConversationId}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `conversation_id=eq.${activeConversationId}`
+      }, async (payload) => {
         const msg = payload.new;
         if (!msg) return;
 
@@ -1682,7 +1761,7 @@ export const AppProvider = ({ children }) => {
             });
           });
 
-          if (activeConversationIdRef.current === msg.conversation_id && msg.sender_id !== currentUser.id) {
+          if (msg.sender_id !== currentUser.id) {
             supabase
               .from('messages')
               .update({ seen: true })
@@ -1703,9 +1782,17 @@ export const AppProvider = ({ children }) => {
       .subscribe();
 
     return () => {
+      console.log('Unsubscribing from realtime messages for conversation:', activeConversationId);
       supabase.removeChannel(messagesSubscription);
     };
-  }, [currentUser, clientVersion]);
+  }, [currentUser, activeConversationId, clientVersion]);
+
+  // Load first 30 messages when activeConversationId changes
+  useEffect(() => {
+    if (activeConversationId) {
+      loadMoreMessages(activeConversationId);
+    }
+  }, [activeConversationId]);
 
   // Presence Synchronization
   useEffect(() => {
@@ -2161,6 +2248,8 @@ export const AppProvider = ({ children }) => {
       checkEmailExists,
       loginWithGoogle,
       updateProfile,
+      fetchFullProfile,
+      loadMoreMessages,
       createProject,
       applyToProject,
       acceptApplication,

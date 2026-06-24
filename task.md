@@ -1,6 +1,32 @@
 - [x] Database Schema Setup
   - [x] Update public.profiles view and RLS policies
   - [x] Add public.applications table and publication settings
+- [x] **Vite Route Splitting & Prefetching**
+  - [x] Convert static imports to React `lazy` imports in `src/App.jsx`
+  - [x] Wrap routes in `Suspense` with corresponding skeletons in `src/App.jsx`
+  - [x] Prefetch chunks in `App.jsx` on mount when idle
+  - [x] Remove the 300ms delay timer for `showSkeletons` in `src/App.jsx`
+- [x] **Explore Search Debouncing & Lazy Loading**
+  - [x] Implement 250ms debounced search in `src/App.jsx`
+  - [x] Add `loading="lazy"` to explore directory list images
+- [x] **Database Query & Caching in AppContext**
+  - [x] Fetch specific lightweight columns for profiles in `AppContext.jsx`
+  - [x] Remove broken global messages query from `initData` in `AppContext.jsx`
+  - [x] Implement `profileCacheRef` and `fetchFullProfile` on-demand in `AppContext.jsx`
+- [x] **On-Demand Messaging & Infinite Scroll**
+  - [x] Implement `loadMoreMessages` pagination in `AppContext.jsx`
+  - [x] Load initial 30 messages when `activeConversationId` changes in `AppContext.jsx`
+  - [x] Filter real-time messages subscription at Postgres socket level for active chat only
+- [x] **Profile Loading On-Demand**
+  - [x] Fetch profile detail via `fetchFullProfile` on mount in `src/pages/Dashboard/Shared/ProfileView.jsx`
+- [x] **Messaging Scroll Pagination**
+  - [x] Implement scroll pagination in `src/pages/Dashboard/Shared/MessagingCenter.jsx`
+  - [x] Retain scroll position on loading history and use smart scroll-to-bottom on new messages
+- [x] **Image WebP Compression**
+  - [x] Update `PhotoUploader.jsx` canvas saving to output WebP formats
+- [x] **Verify & Compile**
+  - [x] Run production build `npm run build`
+  - [x] Update walkthrough report
 - [x] AppContext State & Real-Time Setup
   - [x] Add applications table fetch logic & Supabase realtime subscription
   - [x] Remove all mock/seeded fallbacks for users, projects, activities, and messages

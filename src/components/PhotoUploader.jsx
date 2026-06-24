@@ -133,7 +133,17 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
       const y = (h - drawH) / 2 + offset.y * K;
 
       ctx.drawImage(img, x, y, drawW, drawH);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      let dataUrl;
+      try {
+        const testWebP = canvas.toDataURL('image/webp');
+        if (testWebP.indexOf('data:image/webp') === 0) {
+          dataUrl = canvas.toDataURL('image/webp', 0.80);
+        } else {
+          dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        }
+      } catch (err) {
+        dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      }
       onChange && onChange(dataUrl);
       setPreview(dataUrl);
       setEditing(false);

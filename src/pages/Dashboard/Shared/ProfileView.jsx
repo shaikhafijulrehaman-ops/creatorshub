@@ -221,7 +221,8 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
     users, currentUser, toggleSaveUser, savedProfiles, 
     toggleFollowUser, followedProfiles, updateProfile, startConversation,
     conversations, projects, isConnected: isDbConnected, loading, initialized,
-    connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, getConnections, setActiveDashboardTab
+    connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, getConnections, setActiveDashboardTab,
+    fetchFullProfile
   } = useContext(AppContext);
   const [searchParams] = useSearchParams();
   const queryUserId = searchParams.get('id');
@@ -321,23 +322,21 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
     return score;
   };
 
-  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(true);
 
   useEffect(() => {
-    if (loading || !initialized) {
-      const timer = setTimeout(() => {
-        setShowSkeleton(true);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      setShowSkeleton(false);
+    if (!targetUserId) {
+      setFetchingProfile(false);
+      return;
     }
-  }, [loading, initialized]);
+    setFetchingProfile(true);
+    fetchFullProfile(targetUserId).finally(() => {
+      setFetchingProfile(false);
+    });
+  }, [targetUserId, fetchFullProfile]);
 
-  if ((loading || !initialized) && showSkeleton) {
+  if (loading || !initialized || fetchingProfile) {
     return <ProfileSkeleton />;
-  } else if (loading || !initialized) {
-    return null;
   }
 
   const user = users.find(u => u.id === targetUserId);

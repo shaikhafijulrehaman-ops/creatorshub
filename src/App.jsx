@@ -1,16 +1,18 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, lazy, Suspense } from 'react';
 import { AppContext, AppProvider } from './context/AppContext';
 import { Header } from './components/Header';
 import { Particles } from './components/Particles';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { Landing } from './pages/Landing';
-import { Onboarding } from './pages/Onboarding';
-import { BusinessDashboard } from './pages/Dashboard/BusinessDashboard';
-import { InfluencerDashboard } from './pages/Dashboard/InfluencerDashboard';
-import { FreelancerDashboard } from './pages/Dashboard/FreelancerDashboard';
-import { Workspace } from './pages/Dashboard/Shared/Workspace';
-import { ProfileView } from './pages/Dashboard/Shared/ProfileView';
-import { MessagingCenter } from './pages/Dashboard/Shared/MessagingCenter';
+
+// Route-based lazy loading
+const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+const Onboarding = lazy(() => import('./pages/Onboarding').then(m => ({ default: m.Onboarding })));
+const BusinessDashboard = lazy(() => import('./pages/Dashboard/BusinessDashboard').then(m => ({ default: m.BusinessDashboard })));
+const InfluencerDashboard = lazy(() => import('./pages/Dashboard/InfluencerDashboard').then(m => ({ default: m.InfluencerDashboard })));
+const FreelancerDashboard = lazy(() => import('./pages/Dashboard/FreelancerDashboard').then(m => ({ default: m.FreelancerDashboard })));
+const Workspace = lazy(() => import('./pages/Dashboard/Shared/Workspace').then(m => ({ default: m.Workspace })));
+const ProfileView = lazy(() => import('./pages/Dashboard/Shared/ProfileView').then(m => ({ default: m.ProfileView })));
+const MessagingCenter = lazy(() => import('./pages/Dashboard/Shared/MessagingCenter').then(m => ({ default: m.MessagingCenter })));
 import { 
   Search, Briefcase, Sparkles, Home, MessageSquare, User, Bell, Menu, X, 
   CreditCard, BarChart2, ShieldCheck, LogOut, ChevronLeft, Calendar,
@@ -493,18 +495,33 @@ const AppContent = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [showSkeletons, setShowSkeletons] = useState(false);
+  const [showSkeletons, setShowSkeletons] = useState(true);
 
   useEffect(() => {
     if (!initialized) {
-      const timer = setTimeout(() => {
-        setShowSkeletons(true);
-      }, 300);
-      return () => clearTimeout(timer);
+      setShowSkeletons(true);
     } else {
       setShowSkeletons(false);
     }
   }, [initialized]);
+
+  useEffect(() => {
+    const prefetch = () => {
+      import('./pages/Landing').catch(() => {});
+      import('./pages/Onboarding').catch(() => {});
+      import('./pages/Dashboard/BusinessDashboard').catch(() => {});
+      import('./pages/Dashboard/FreelancerDashboard').catch(() => {});
+      import('./pages/Dashboard/InfluencerDashboard').catch(() => {});
+      import('./pages/Dashboard/Shared/Workspace').catch(() => {});
+      import('./pages/Dashboard/Shared/ProfileView').catch(() => {});
+      import('./pages/Dashboard/Shared/MessagingCenter').catch(() => {});
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(prefetch);
+    } else {
+      setTimeout(prefetch, 1500);
+    }
+  }, []);
 
   // Keyboard scroll-into-view helper on mobile screens
   useEffect(() => {
@@ -569,6 +586,15 @@ const AppContent = () => {
 
   // Explore page states
   const [exploreQuery, setExploreQuery] = useState('');
+  const [debouncedExploreQuery, setDebouncedExploreQuery] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedExploreQuery(exploreQuery);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [exploreQuery]);
+
   const [exploreActiveTab, setExploreActiveTab] = useState('feed');
   const [usersFilter, setUsersFilter] = useState('All');
 
@@ -677,9 +703,9 @@ const AppContent = () => {
         flexDirection: 'column'
       }}>
         <Routes>
-          <Route path="/" element={<Landing onNavigate={handleNavigate} />} />
-          <Route path="/login" element={<Onboarding key="login" onNavigate={handleNavigate} initialParams={{ loginOnly: true }} />} />
-          <Route path="/register" element={<Onboarding key="register" onNavigate={handleNavigate} initialParams={{ loginOnly: false }} />} />
+          <Route path="/" element={<Suspense fallback={<DashboardSkeleton />}><Landing onNavigate={handleNavigate} /></Suspense>} />
+          <Route path="/login" element={<Suspense fallback={<DashboardSkeleton />}><Onboarding key="login" onNavigate={handleNavigate} initialParams={{ loginOnly: true }} /></Suspense>} />
+          <Route path="/register" element={<Suspense fallback={<DashboardSkeleton />}><Onboarding key="register" onNavigate={handleNavigate} initialParams={{ loginOnly: false }} /></Suspense>} />
           <Route path="/explore" element={
             (() => {
               // Get campaigns and users from context
@@ -719,7 +745,7 @@ const AppContent = () => {
                 .slice(0, 4);
 
               // Search query helper
-              const q = exploreQuery.toLowerCase().trim();
+              const q = debouncedExploreQuery.toLowerCase().trim();
               
               const matchesQuery = (u) => {
                 if (!q) return true;
@@ -1124,6 +1150,7 @@ const AppContent = () => {
                                   <div key={u.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
                                       <img 
+                                        loading="lazy"
                                         src={u.profilePhoto || u.logo || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'} 
                                         alt={u.fullName || u.businessName} 
                                         style={{ width: '44px', height: '44px', borderRadius: u.role === 'Business Holder' ? '8px' : '50%', objectFit: 'cover' }} 
@@ -1240,6 +1267,7 @@ const AppContent = () => {
                               <div key={fl.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
                                   <img 
+                                    loading="lazy"
                                     src={fl.profilePhoto || 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80'} 
                                     alt={fl.fullName} 
                                     style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} 
@@ -1285,6 +1313,7 @@ const AppContent = () => {
                               <div key={biz.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
                                   <img 
+                                    loading="lazy"
                                     src={biz.logo || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=100&auto=format&fit=crop&q=80'} 
                                     alt={biz.businessName} 
                                     style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover' }} 
@@ -1323,6 +1352,7 @@ const AppContent = () => {
                               <div key={inf.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
                                   <img 
+                                    loading="lazy"
                                     src={inf.profilePhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
                                     alt={inf.fullName} 
                                     style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover' }} 
@@ -1416,7 +1446,11 @@ const AppContent = () => {
             !initialized ? (
               showSkeletons ? <MessagesSkeleton /> : null
             ) : (
-              !currentUser ? <RedirectToLogin /> : <MessagingCenter onOpenProfile={handleOpenProfile} />
+              !currentUser ? <RedirectToLogin /> : (
+                <Suspense fallback={<MessagesSkeleton />}>
+                  <MessagingCenter onOpenProfile={handleOpenProfile} />
+                </Suspense>
+              )
             )
           } />
           <Route path="/profile" element={
@@ -1427,12 +1461,20 @@ const AppContent = () => {
                 const params = new URLSearchParams(location.search);
                 const queryId = params.get('id');
                 if (queryId) {
-                  return <ProfileView userId={queryId} />;
+                  return (
+                    <Suspense fallback={<ProfileSkeleton />}>
+                      <ProfileView userId={queryId} />
+                    </Suspense>
+                  );
                 }
                 if (!currentUser) {
                   return <RedirectToLogin />;
                 }
-                return <ProfileView userId={currentUser.id} />;
+                return (
+                  <Suspense fallback={<ProfileSkeleton />}>
+                    <ProfileView userId={currentUser.id} />
+                  </Suspense>
+                );
               })()
             )
           } />
@@ -1448,29 +1490,35 @@ const AppContent = () => {
                 // Render Role-specific Dashboard
                 if (currentUser.role === 'Business Holder') {
                   return (
-                    <BusinessDashboard 
-                      onNavigate={handleNavigate} 
-                      onOpenWorkspace={handleOpenWorkspace} 
-                      onOpenProfile={handleOpenProfile} 
-                    />
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <BusinessDashboard 
+                        onNavigate={handleNavigate} 
+                        onOpenWorkspace={handleOpenWorkspace} 
+                        onOpenProfile={handleOpenProfile} 
+                      />
+                    </Suspense>
                   );
                 }
                 if (currentUser.role === 'Influencer') {
                   return (
-                    <InfluencerDashboard 
-                      onNavigate={handleNavigate} 
-                      onOpenWorkspace={handleOpenWorkspace} 
-                      onOpenProfile={handleOpenProfile}
-                    />
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <InfluencerDashboard 
+                        onNavigate={handleNavigate} 
+                        onOpenWorkspace={handleOpenWorkspace} 
+                        onOpenProfile={handleOpenProfile}
+                      />
+                    </Suspense>
                   );
                 }
                 if (currentUser.role === 'Freelancer') {
                   return (
-                    <FreelancerDashboard 
-                      onNavigate={handleNavigate} 
-                      onOpenWorkspace={handleOpenWorkspace} 
-                      onOpenProfile={handleOpenProfile}
-                    />
+                    <Suspense fallback={<DashboardSkeleton />}>
+                      <FreelancerDashboard 
+                        onNavigate={handleNavigate} 
+                        onOpenWorkspace={handleOpenWorkspace} 
+                        onOpenProfile={handleOpenProfile}
+                      />
+                    </Suspense>
                   );
                 }
                 return null;
@@ -1484,14 +1532,18 @@ const AppContent = () => {
       {activeProfileId && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(10,11,18,0.85)', backdropFilter: 'blur(8px)', overflowY: 'auto', padding: '40px 20px' }}>
           <div style={{ maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
-            <ProfileView userId={activeProfileId} onClose={handleCloseOverlay} onNavigate={handleNavigate} />
+            <Suspense fallback={<ProfileSkeleton />}>
+              <ProfileView userId={activeProfileId} onClose={handleCloseOverlay} onNavigate={handleNavigate} />
+            </Suspense>
           </div>
         </div>
       )}
       {activeWorkspaceId && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, background: 'rgba(10,11,18,0.85)', backdropFilter: 'blur(8px)', overflowY: 'auto', padding: '40px 20px' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
-            <Workspace projectId={activeWorkspaceId} onClose={handleCloseOverlay} />
+            <Suspense fallback={<DashboardSkeleton />}>
+              <Workspace projectId={activeWorkspaceId} onClose={handleCloseOverlay} />
+            </Suspense>
           </div>
         </div>
       )}

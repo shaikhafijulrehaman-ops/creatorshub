@@ -294,7 +294,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
     setActiveConversationId, p2pMessages, sendP2PMessage, 
     markMessagesAsSeen, presenceList, getConnections, startConversation,
     markMessageNotificationsAsRead, blockUser, deleteConversation, isBlockedRelation,
-    showConfirmation
+    showConfirmation, loadMoreMessages
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const { isMobile, isDesktop } = useResponsive();
@@ -326,10 +326,54 @@ export const MessagingCenter = ({ onOpenProfile }) => {
   const otherUser = activeConv ? users.find(u => u.id === activeConv.otherUserId) : null;
   const messagesList = activeConversationId ? (p2pMessages[activeConversationId] || []) : [];
 
-  // Scroll to bottom on new messages
+  const scrollContainerRef = useRef(null);
+  const lastMessageIdRef = useRef(null);
+  const activeConversationIdPrevRef = useRef(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const handleChatScroll = async () => {
+    const container = scrollContainerRef.current;
+    if (!container || isLoadingHistory) return;
+
+    // Detect if we scrolled near the top
+    if (container.scrollTop < 30) {
+      const oldestMsg = messagesList[0];
+      if (oldestMsg && oldestMsg.timestamp) {
+        setIsLoadingHistory(true);
+        const previousScrollHeight = container.scrollHeight;
+        const previousScrollTop = container.scrollTop;
+
+        await loadMoreMessages(activeConversationId, oldestMsg.timestamp);
+
+        setTimeout(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight;
+            container.scrollTop = previousScrollTop + (newScrollHeight - previousScrollHeight);
+          }
+          setIsLoadingHistory(false);
+        }, 50);
+      }
+    }
+  };
+
+  // Smart scroll to bottom or maintain position on new messages
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messagesList]);
+    const container = scrollContainerRef.current;
+    if (!container || messagesList.length === 0) return;
+
+    const lastMsg = messagesList[messagesList.length - 1];
+    const convChanged = activeConversationId !== activeConversationIdPrevRef.current;
+    activeConversationIdPrevRef.current = activeConversationId;
+
+    const newMsgAppended = lastMsg.id !== lastMessageIdRef.current;
+    lastMessageIdRef.current = lastMsg.id;
+
+    if (convChanged) {
+      container.scrollTop = container.scrollHeight;
+    } else if (newMsgAppended) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messagesList, activeConversationId]);
 
   // Close actions dropdown when clicked outside
   useEffect(() => {
@@ -1056,24 +1100,28 @@ export const MessagingCenter = ({ onOpenProfile }) => {
               </div>
             </header>
 
-            <div style={isDesktop ? {
-              flex: 1,
-              overflowY: 'auto',
-              padding: '24px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            } : {
-              flex: 1,
-              overflowY: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              padding: '16px 16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              background: 'var(--bg-deep)',
-              minHeight: 0
-            }}>
+            <div 
+              ref={scrollContainerRef}
+              onScroll={handleChatScroll}
+              style={isDesktop ? {
+                flex: 1,
+                overflowY: 'auto',
+                padding: '24px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              } : {
+                flex: 1,
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                padding: '16px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                background: 'var(--bg-deep)',
+                minHeight: 0
+              }}
+            >
               {messagesList.length === 0 ? (
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', opacity: 0.6 }}>
                   <Smile size={36} style={{ marginBottom: '12px' }} />
