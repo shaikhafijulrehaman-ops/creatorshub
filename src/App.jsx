@@ -172,25 +172,41 @@ const MobileHeader = ({ onOpenDrawer, onOpenNotifications, notificationCount, cu
                 style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--accent-cyan)' }}
               />
             </button>
+
+            <button 
+              onClick={onOpenDrawer}
+              style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+            >
+              <Menu size={20} />
+            </button>
           </>
         ) : (
-          <button 
-            onClick={() => onNavigate('onboarding', { loginOnly: true })}
-            style={{
-              background: 'none',
-              border: '1.5px solid var(--accent-cyan)',
-              color: 'var(--accent-cyan)',
-              padding: '6px 14px',
-              fontSize: '12.5px',
-              borderRadius: '8px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              minHeight: '32px',
-              transition: 'var(--transition-fast)'
-            }}
-          >
-            Sign In
-          </button>
+          <>
+            <button 
+              onClick={() => onNavigate('onboarding', { loginOnly: true })}
+              style={{
+                background: 'none',
+                border: '1.5px solid var(--accent-cyan)',
+                color: 'var(--accent-cyan)',
+                padding: '6px 14px',
+                fontSize: '12.5px',
+                borderRadius: '8px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                minHeight: '32px',
+                transition: 'var(--transition-fast)'
+              }}
+            >
+              Sign In
+            </button>
+
+            <button 
+              onClick={onOpenDrawer}
+              style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+            >
+              <Menu size={20} />
+            </button>
+          </>
         )}
       </div>
     </header>
