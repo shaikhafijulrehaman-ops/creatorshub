@@ -368,7 +368,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--accent-cyan);
+  background: #00e5ff;
   border: none;
   border-radius: 12px;
   color: #0c0d16;
@@ -377,13 +377,13 @@
   padding: 10px 22px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
 }
 
 .photo-btn-save-new:hover {
-  background: var(--accent-cyan-bright);
+  background: #33ebff;
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(0, 217, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 229, 255, 0.45);
 }
 
 /* Mobile Fullscreen styling overlay override */
