@@ -80,9 +80,8 @@ export const FreelancerProfile = ({ section }) => {
     console.log('handleSave triggered! Form state:', form);
     setSaving(true);
     try {
-      await new Promise(r => setTimeout(r, 400));
       console.log('Calling updateProfile...');
-      updateProfile(u.id, {
+      await updateProfile(u.id, {
         fullName:           form.fullName,
         freelancerCategory: form.category,
         description:        form.description,
@@ -108,7 +107,7 @@ export const FreelancerProfile = ({ section }) => {
       showSuccessToast({ title: 'Profile Saved', subtitle: 'Your freelancer profile has been updated.' });
     } catch (err) {
       console.error('Error inside handleSave:', err);
-      showSuccessToast({ title: '⚠ Save Failed', subtitle: err.message });
+      showSuccessToast({ title: '⚠ Save Failed', subtitle: err.message || 'Please check your connection.' });
     } finally {
       setSaving(false);
     }

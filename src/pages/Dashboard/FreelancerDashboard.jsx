@@ -201,14 +201,7 @@ export const FreelancerDashboard = ({ onNavigate, onOpenProfile }) => {
     setWorkspaceChatInput('');
   };
 
-  const getProfileCompletion = () => {
-    let score = 10;
-    if (currentUser.profilePhoto) score += 30;
-    if (currentUser.skills && currentUser.skills.length > 0) score += 30;
-    if (currentUser.portfolio && currentUser.portfolio.length > 0) score += 30;
-    return score;
-  };
-  const profileCompletion = getProfileCompletion();
+  const profileCompletion = currentUser?.profileStrength || 0;
 
   // Filter Projects
   const openProjects = projects.filter(p => p.status === 'Open');

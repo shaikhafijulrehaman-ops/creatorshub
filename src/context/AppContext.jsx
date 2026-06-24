@@ -787,31 +787,42 @@ export const AppProvider = ({ children }) => {
     return data;
   };
 
-  const updateProfile = (userId, updatedDetails) => {
+  const updateProfile = async (userId, updatedDetails) => {
+    console.log('AppContext: updateProfile triggered for:', userId, updatedDetails);
     try {
-      console.log('AppContext: updateProfile triggered for:', userId, updatedDetails);
       let merged = null;
       setUsers(prev => prev.map(u => {
         if (u.id === userId) {
-          merged = { ...u, ...updatedDetails };
+          let logoImg = updatedDetails.logo || updatedDetails.profilePhoto || u.logo || u.profilePhoto || null;
+          merged = { 
+            ...u, 
+            ...updatedDetails,
+            logo: logoImg,
+            profilePhoto: logoImg
+          };
           merged.profileStrength = calculateProfileStrength(u.role, merged);
           if (currentUser && currentUser.id === userId) {
             setCurrentUser(merged);
+            localStorage.setItem('ch_current_user', JSON.stringify(merged));
           }
           return merged;
         }
         return u;
       }));
 
-      setTimeout(() => {
-        if (merged) {
-          console.log('AppContext: Syncing profile changes to Supabase...');
-          supabase.from('users').update(mapUserToDb(merged)).eq('id', userId).then(({ error }) => {
-            if (error) console.error('Error updating user in Supabase:', error);
-            else console.log('AppContext: Supabase profile sync completed.');
-          });
+      if (merged) {
+        console.log('AppContext: Syncing profile changes to Supabase...');
+        const { error } = await supabase
+          .from('users')
+          .update(mapUserToDb(merged))
+          .eq('id', userId);
+        
+        if (error) {
+          console.error('Error updating user in Supabase:', error);
+          throw error;
         }
-      }, 0);
+        console.log('AppContext: Supabase profile sync completed.');
+      }
     } catch (e) {
       console.error('Error in AppContext: updateProfile:', e);
       throw e;
@@ -819,37 +830,75 @@ export const AppProvider = ({ children }) => {
   };
 
   const calculateProfileStrength = (role, user) => {
-    if (!user) return 15;
-    let score = 15; // baseline
-    if (role === 'Business Holder') {
-      const hasBusinessProfile = user.businessName && user.businessCategory && user.description;
-      const hasContactDetails = user.mobileNumber && user.address;
-      const hasPreferences = user.teamSize && user.monthlyMarketingBudget && user.website;
-      
-      if (hasBusinessProfile) score += 30; 
-      if (hasContactDetails) score += 30;  
-      if (hasPreferences) score += 25;      
-    } else if (role === 'Influencer') {
-      const hasContentCategory = user.contentCategories && user.contentCategories.length > 0;
-      const hasPlatform = user.platforms && Object.keys(user.platforms).length > 0;
-      const hasProfileUrl = user.profileUrl || (user.platforms && Object.values(user.platforms).some(p => p.url));
-      const hasAudienceDetails = user.followersCount && user.averageReach && user.collaborationPricing && user.bio;
-      
-      if (hasContentCategory) score += 15;   
-      if (hasPlatform) score += 25;         
-      if (hasProfileUrl) score += 25;       
-      if (hasAudienceDetails) score += 20;  
-    } else {
-      const hasServices = user.services && user.services.length > 0;
-      const hasPortfolio = user.portfolio && user.portfolio.length > 0;
-      const hasPreviousWork = user.experience && user.bio;
-      const hasSkills = user.skills && user.skills.length > 0;
-      
-      if (hasServices) score += 15;          
-      if (hasPortfolio) score += 25;         
-      if (hasPreviousWork) score += 25;      
-      if (hasSkills) score += 20;            
+    if (!user) return 0;
+    let score = 0;
+
+    // 1. Profile Photo (10%)
+    if (user.logo || user.profilePhoto) {
+      score += 10;
     }
+
+    // 2. Banner (10%)
+    if (user.coverBanner) {
+      score += 10;
+    }
+
+    // 3. Basic Info (20%)
+    if (user.fullName && (user.description || user.bio)) {
+      score += 20;
+    } else if (user.fullName || user.description || user.bio) {
+      score += 10;
+    }
+
+    // 4. Contact Info (20%)
+    let contactFields = 0;
+    if (user.email) contactFields++;
+    if (user.mobileNumber) contactFields++;
+    if (user.whatsapp) contactFields++;
+    if (user.contactPerson) contactFields++;
+    if (user.address) contactFields++;
+    if (contactFields >= 2) {
+      score += 20;
+    } else if (contactFields === 1) {
+      score += 10;
+    }
+
+    // 5. Portfolio (15%)
+    if (role === 'Business Holder') {
+      if (user.teamSize || user.monthlyMarketingBudget || user.gst) {
+        score += 15;
+      }
+    } else {
+      if (user.portfolio && user.portfolio.length > 0) {
+        score += 15;
+      }
+    }
+
+    // 6. Social Links (10%)
+    let hasSocial = false;
+    if (user.socialLinks) {
+      hasSocial = Object.values(user.socialLinks).some(val => val && val.trim() !== '');
+    }
+    if (user.website) hasSocial = true;
+    if (hasSocial) {
+      score += 10;
+    }
+
+    // 7. Category Details (15%)
+    if (role === 'Business Holder') {
+      if (user.businessName || user.businessCategory) {
+        score += 15;
+      }
+    } else if (role === 'Freelancer') {
+      if (user.freelancerCategory || user.experience || (user.skills && user.skills.length > 0)) {
+        score += 15;
+      }
+    } else if (role === 'Influencer') {
+      if (user.influencerNiche || user.followerCount || user.engagementRate) {
+        score += 15;
+      }
+    }
+
     return Math.min(100, score);
   };
 

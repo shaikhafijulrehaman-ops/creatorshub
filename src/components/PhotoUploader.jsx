@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, Crop, ZoomIn, ZoomOut, X, RotateCcw, Check } from 'lucide-react';
 import './PhotoUploader.css';
 
@@ -14,6 +14,21 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
   const fileRef = useRef(null);
   const previewImgRef = useRef(null);
   const canvasRef = useRef(null);
+  const editorRef = useRef(null);
+  const [touchStartDist, setTouchStartDist] = useState(0);
+  const [touchStartZoom, setTouchStartZoom] = useState(1);
+
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const preventDefaultWheel = (e) => {
+      e.preventDefault();
+      const delta = -e.deltaY * 0.0015;
+      setZoom(z => Math.max(0.5, Math.min(4, z + delta)));
+    };
+    el.addEventListener('wheel', preventDefaultWheel, { passive: false });
+    return () => el.removeEventListener('wheel', preventDefaultWheel);
+  }, [editing]);
 
   const processFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -45,6 +60,41 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
   }, [draggingImg, dragStart]);
   const handleMouseUp = () => setDraggingImg(false);
 
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setDraggingImg(true);
+      const touch = e.touches[0];
+      setDragStart({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
+    } else if (e.touches.length === 2) {
+      setDraggingImg(false);
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setTouchStartDist(dist);
+      setTouchStartZoom(zoom);
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 1 && draggingImg) {
+      const touch = e.touches[0];
+      setOffset({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
+    } else if (e.touches.length === 2 && touchStartDist > 0) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = dist / touchStartDist;
+      setZoom(Math.max(0.5, Math.min(4, touchStartZoom * factor)));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setDraggingImg(false);
+    setTouchStartDist(0);
+  };
+
   const handleSave = () => {
     if (!originalFile || !canvasRef.current || !previewImgRef.current) {
       onChange && onChange(preview);
@@ -55,8 +105,8 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
     const ctx = canvas.getContext('2d');
     const img = new Image();
     img.onload = () => {
-      const size = aspectRatio === 1 ? 500 : 1600;
-      const h    = aspectRatio === 1 ? 500 : 500;
+      const size = aspectRatio === 1 ? 400 : 1200;
+      const h    = aspectRatio === 1 ? 400 : 375;
       canvas.width  = size;
       canvas.height = h;
       ctx.clearRect(0, 0, size, h);
@@ -64,7 +114,7 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
       // Measure the editor box size in DOM
       const imgEl = previewImgRef.current;
       const box = imgEl.parentElement?.getBoundingClientRect();
-      const W_box = box ? box.width : (aspectRatio === 1 ? 500 : 1600);
+      const W_box = box ? box.width : (aspectRatio === 1 ? 400 : 1200);
 
       // Calculate scale factor from DOM to Canvas
       const K = size / W_box;
@@ -83,7 +133,7 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
       const y = (h - drawH) / 2 + offset.y * K;
 
       ctx.drawImage(img, x, y, drawW, drawH);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       onChange && onChange(dataUrl);
       setPreview(dataUrl);
       setEditing(false);
@@ -141,12 +191,17 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
         /* Crop editor */
         <div className="photo-editor">
           <div
+            ref={editorRef}
             className="photo-editor-canvas"
             style={{ aspectRatio: aspectRatio === 1 ? '1 / 1' : '16 / 5', cursor: draggingImg ? 'grabbing' : 'grab' }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
           >
             <img
               ref={previewImgRef}

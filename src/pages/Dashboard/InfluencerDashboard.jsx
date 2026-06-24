@@ -201,14 +201,7 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
   };
 
   // Profile Strength Calculation
-  const getProfileCompletion = () => {
-    let score = 10;
-    if (currentUser.profilePhoto) score += 30;
-    if (currentUser.platforms && Object.keys(currentUser.platforms).length > 0) score += 30;
-    if (currentUser.contentCategories && currentUser.contentCategories.length > 0) score += 30;
-    return score;
-  };
-  const profileCompletion = getProfileCompletion();
+  const profileCompletion = currentUser?.profileStrength || 0;
 
   // Filter Campaigns
   const openCampaigns = projects.filter(p => p.status === 'Open');

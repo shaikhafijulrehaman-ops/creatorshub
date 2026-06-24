@@ -120,14 +120,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   });
 
   // Calculate Profile Completion
-  const getProfileCompletion = () => {
-    let score = 10;
-    if (currentUser.logo) score += 30;
-    if (currentUser.businessName && currentUser.description) score += 30;
-    if (currentUser.website && currentUser.location) score += 30;
-    return score;
-  };
-  const profileCompletion = getProfileCompletion();
+  const profileCompletion = currentUser?.profileStrength || 0;
 
   // Handle Publish Requirement
   const handlePublishRequirement = (e) => {

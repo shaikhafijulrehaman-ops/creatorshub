@@ -79,9 +79,8 @@ export const InfluencerProfile = ({ section }) => {
     console.log('handleSave triggered! Form state:', form);
     setSaving(true);
     try {
-      await new Promise(r => setTimeout(r, 400));
       console.log('Calling updateProfile...');
-      updateProfile(u.id, {
+      await updateProfile(u.id, {
         fullName:          form.fullName,
         description:       form.description,
         website:           form.website,
@@ -106,7 +105,7 @@ export const InfluencerProfile = ({ section }) => {
       showSuccessToast({ title: 'Profile Saved', subtitle: 'Your influencer profile has been updated.' });
     } catch (err) {
       console.error('Error inside handleSave:', err);
-      showSuccessToast({ title: '⚠ Save Failed', subtitle: err.message });
+      showSuccessToast({ title: '⚠ Save Failed', subtitle: err.message || 'Please check your connection.' });
     } finally {
       setSaving(false);
     }
