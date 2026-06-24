@@ -158,92 +158,126 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
     onChange && onChange(null);
   };
 
+  const handleCancel = () => {
+    setEditing(false);
+    setOriginalFile(null);
+    if (fileRef.current) {
+      fileRef.current.value = '';
+    }
+  };
+
   return (
     <div className="photo-uploader">
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       {/* Drop zone / preview */}
-      {!editing ? (
-        <div
-          className={`photo-drop-zone${dragging ? ' photo-drop-zone--active' : ''}`}
-          style={{ aspectRatio: aspectRatio === 1 ? '1 / 1' : '16 / 5' }}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => fileRef.current?.click()}
-        >
-          {preview ? (
-            <>
-              <img
-                src={preview}
-                alt={label}
-                className="photo-preview-img"
-                style={{ objectPosition: 'center' }}
-              />
-              <div className="photo-preview-overlay">
-                <button type="button" className="photo-btn-change" onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}>
-                  <Upload size={13} /> Change
-                </button>
-                <button type="button" className="photo-btn-remove" onClick={(e) => { e.stopPropagation(); handleRemove(); }}>
-                  <X size={13} /> Remove
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="photo-placeholder">
-              <Upload size={20} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
-              <p className="photo-placeholder-label">Drop {label} here</p>
-              <p className="photo-placeholder-sub">or click to upload — {recommendedSize} recommended, max {maxMB}MB</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        /* Crop editor */
-        <div className="photo-editor">
-          <div
-            ref={editorRef}
-            className="photo-editor-canvas"
-            style={{ aspectRatio: aspectRatio === 1 ? '1 / 1' : '16 / 5', cursor: draggingImg ? 'grabbing' : 'grab' }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onTouchCancel={handleTouchEnd}
-          >
+      <div
+        className={`photo-drop-zone${dragging ? ' photo-drop-zone--active' : ''}`}
+        style={{ aspectRatio: aspectRatio === 1 ? '1 / 1' : '16 / 5' }}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        onClick={() => fileRef.current?.click()}
+      >
+        {preview ? (
+          <>
             <img
-              ref={previewImgRef}
-              src={originalFile}
-              alt="crop preview"
-              className="photo-editor-img"
-              style={{
-                transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
-                transformOrigin: 'center center',
-                userSelect: 'none',
-                pointerEvents: 'none',
-              }}
-              draggable={false}
+              src={preview}
+              alt={label}
+              className="photo-preview-img"
+              style={{ objectPosition: 'center' }}
             />
-            <div className="photo-editor-grid" />
-          </div>
-
-          {/* Controls */}
-          <div className="photo-editor-controls">
-            <span className="photo-editor-hint">Drag to reposition</span>
-            <div className="photo-zoom-controls">
-              <button type="button" onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}><ZoomOut size={14} /></button>
-              <span className="photo-zoom-val">{Math.round(zoom * 100)}%</span>
-              <button type="button" onClick={() => setZoom(z => Math.min(3, z + 0.1))}><ZoomIn size={14} /></button>
+            <div className="photo-preview-overlay">
+              <button type="button" className="photo-btn-change" onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}>
+                <Upload size={13} /> Change
+              </button>
+              <button type="button" className="photo-btn-remove" onClick={(e) => { e.stopPropagation(); handleRemove(); }}>
+                <X size={13} /> Remove
+              </button>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button type="button" className="photo-btn-reset" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}>
-                <RotateCcw size={12} /> Reset
+          </>
+        ) : (
+          <div className="photo-placeholder">
+            <Upload size={20} style={{ color: 'var(--text-muted)', marginBottom: '8px' }} />
+            <p className="photo-placeholder-label">Drop {label} here</p>
+            <p className="photo-placeholder-sub">or click to upload — {recommendedSize} recommended, max {maxMB}MB</p>
+          </div>
+        )}
+      </div>
+
+      {/* WhatsApp-style full-screen/modal image editor */}
+      {editing && (
+        <div className="photo-editor-overlay-backdrop" onClick={handleCancel}>
+          <div 
+            className="photo-editor-modal-container" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="photo-editor-modal-header">
+              <h3>Edit {label}</h3>
+              <button type="button" className="photo-editor-close-x" onClick={handleCancel}>
+                <X size={20} />
               </button>
-              <button type="button" className="photo-btn-save" onClick={handleSave}>
-                <Check size={12} /> Apply
-              </button>
+            </div>
+
+            {/* Crop container wrapper */}
+            <div 
+              ref={editorRef}
+              className={`photo-crop-wrapper ${aspectRatio === 1 ? 'profile-aspect' : 'banner-aspect'}`}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
+            >
+              <img
+                ref={previewImgRef}
+                src={originalFile}
+                alt="crop preview"
+                className="photo-crop-image"
+                style={{
+                  transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
+                  transformOrigin: 'center center',
+                }}
+                draggable={false}
+              />
+              
+              {/* WhatsApp crop overlay hole */}
+              <div className={`crop-overlay-hole ${aspectRatio === 1 ? 'circle' : 'rectangle'}`} />
+            </div>
+
+            {/* Controls footer */}
+            <div className="photo-editor-modal-footer">
+              <div className="photo-editor-zoom-row">
+                <button type="button" onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}><ZoomOut size={16} /></button>
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="4" 
+                  step="0.01" 
+                  value={zoom} 
+                  onChange={(e) => setZoom(parseFloat(e.target.value))} 
+                  className="photo-zoom-slider"
+                />
+                <button type="button" onClick={() => setZoom(z => Math.min(4, z + 0.1))}><ZoomIn size={16} /></button>
+              </div>
+
+              <div className="photo-editor-buttons-row">
+                <button type="button" className="photo-btn-cancel-new" onClick={handleCancel}>
+                  Cancel
+                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className="photo-btn-reset-new" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}>
+                    <RotateCcw size={14} /> Reset
+                  </button>
+                  <button type="button" className="photo-btn-save-new" onClick={handleSave}>
+                    <Check size={14} /> Save
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
