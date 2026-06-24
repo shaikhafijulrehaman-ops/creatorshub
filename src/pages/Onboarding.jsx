@@ -114,6 +114,12 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
         return;
       }
 
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        setErrorMsg('Please enter a valid email address.');
+        return;
+      }
+
       setIsCheckingEmail(true);
       const exists = await checkEmailExists(email);
       setIsCheckingEmail(false);
@@ -543,7 +549,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
                     textAlign: 'center',
                     lineHeight: '1.6'
                   }}>
-                    This email is already registered. Please sign in.
+                    This email is already registered. Please log in instead.
                   </div>
                   <button
                     onClick={() => {

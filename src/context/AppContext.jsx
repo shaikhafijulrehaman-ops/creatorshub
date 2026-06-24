@@ -330,13 +330,27 @@ export const AppProvider = ({ children }) => {
         // Check if there is an active Supabase Auth session (like Google OAuth redirect)
         const { data: { session: authSession } } = await supabase.auth.getSession();
         if (authSession?.user) {
-          const { data: dbUser } = await supabase.from('users').select('*').eq('id', authSession.user.id).maybeSingle();
+          const emailNormalized = authSession.user.email ? authSession.user.email.trim().toLowerCase() : '';
+          let dbUser = null;
+          
+          // First check by Google UID
+          const { data: dbUserById } = await supabase.from('users').select('*').eq('id', authSession.user.id).maybeSingle();
+          if (dbUserById) {
+            dbUser = dbUserById;
+          } else if (emailNormalized) {
+            // Check by email (linking Google OAuth to existing email/password account if found)
+            const { data: dbUserByEmail } = await supabase.from('users').select('*').eq('email', emailNormalized).maybeSingle();
+            if (dbUserByEmail) {
+              dbUser = dbUserByEmail;
+            }
+          }
+
           if (dbUser) {
             activeUser = mapUserFromDb(dbUser);
           } else {
             // New user signed in via Google OAuth
             const googleName = authSession.user.user_metadata?.full_name || authSession.user.user_metadata?.name || 'Google User';
-            const googleEmail = authSession.user.email;
+            const googleEmail = emailNormalized || authSession.user.email;
             const newId = authSession.user.id;
 
             const newUser = {
@@ -366,7 +380,11 @@ export const AppProvider = ({ children }) => {
               website: ''
             };
 
-            await supabase.from('users').insert([mapUserToDb(newUser)]);
+            const { error: insertErr } = await supabase.from('users').insert([mapUserToDb(newUser)]);
+            if (insertErr) {
+              console.error('Error inserting new Google OAuth user:', insertErr);
+              throw new Error('Google registration failed: ' + insertErr.message);
+            }
             activeUser = newUser;
 
             // Update local users list
@@ -654,6 +672,7 @@ export const AppProvider = ({ children }) => {
 
   // Auth Operations
   const checkEmailExists = async (email) => {
+    if (!email) return false;
     try {
       const { data, error } = await supabase.from('users').select('id').eq('email', email.trim().toLowerCase()).maybeSingle();
       if (error) {
@@ -668,14 +687,32 @@ export const AppProvider = ({ children }) => {
   };
 
   const registerUser = async (role, basicDetails, profileDetails = {}, verificationLevel = 'Basic Verified') => {
-    const { email } = basicDetails;
+    const email = basicDetails?.email ? basicDetails.email.trim().toLowerCase() : '';
     if (!email) {
       throw new Error('Email is required.');
     }
 
+    // Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Please enter a valid email address.');
+    }
+
+    if (!basicDetails?.password || basicDetails.password.length < 6) {
+      throw new Error('Password must be at least 6 characters.');
+    }
+
+    if (!basicDetails?.fullName || basicDetails.fullName.trim() === '') {
+      throw new Error('Full Name is required.');
+    }
+
+    if (!['Business Holder', 'Freelancer', 'Influencer'].includes(role)) {
+      throw new Error('Invalid account role.');
+    }
+
     const emailExists = await checkEmailExists(email);
     if (emailExists) {
-      throw new Error('This email is already registered. Please sign in.');
+      throw new Error('This email is already registered. Please log in instead.');
     }
 
     const newId = generateUserId(role);
@@ -696,7 +733,7 @@ export const AppProvider = ({ children }) => {
       services: [],
       skills: [],
       verificationRequested: false,
-      mobileNumber: '',
+      mobileNumber: basicDetails?.mobileNumber || '',
       location: '',
       description: '',
       businessName: '',
@@ -712,6 +749,7 @@ export const AppProvider = ({ children }) => {
       role,
       ...defaultData,
       ...basicDetails,
+      email, // normalized
       ...profileDetails,
       verificationStatus: verificationLevel,
       rating: 5.0,
@@ -725,7 +763,10 @@ export const AppProvider = ({ children }) => {
     const { error } = await supabase.from('users').insert([mapUserToDb(newUser)]);
     if (error) {
       console.error('Error inserting user to Supabase:', error);
-      throw error;
+      if (error.code === '23505' || (error.message && (error.message.includes('unique constraint') || error.message.includes('already exists') || error.message.includes('duplicate key')))) {
+        throw new Error('This email is already registered. Please log in instead.');
+      }
+      throw new Error('Registration failed: ' + error.message);
     }
 
     setUsers(prev => [...prev, newUser]);
@@ -741,8 +782,16 @@ export const AppProvider = ({ children }) => {
 
   const loginUser = async (email, password) => {
     try {
-      const { data, error } = await supabase.rpc('login_user', { p_email: email, p_password: password });
-      if (error) throw error;
+      const emailNormalized = email ? email.trim().toLowerCase() : '';
+      if (!emailNormalized || !password) {
+        return { success: false, message: 'Please enter both email and password.' };
+      }
+
+      const { data, error } = await supabase.rpc('login_user', { p_email: emailNormalized, p_password: password });
+      if (error) {
+        console.error('Database error during login:', error);
+        return { success: false, message: 'Could not connect to database. Please check your internet connection.' };
+      }
       
       if (data && data.length > 0) {
         const user = mapUserFromDb(data[0]);
@@ -765,7 +814,7 @@ export const AppProvider = ({ children }) => {
       return { success: false, message: 'Invalid email or password.' };
     } catch (err) {
       console.error('Login error:', err.message);
-      return { success: false, message: 'Login failed: ' + err.message };
+      return { success: false, message: 'Login failed. Please try again.' };
     }
   };
 
@@ -787,16 +836,98 @@ export const AppProvider = ({ children }) => {
     return data;
   };
 
+  const mergeNonEmptyFields = (existing, updates) => {
+    if (!existing) return updates;
+    if (!updates) return existing;
+
+    const result = { ...existing };
+
+    const isValEmpty = (v) => {
+      if (v === undefined || v === null) return true;
+      if (typeof v === 'string' && v.trim() === '') return true;
+      if (Array.isArray(v) && v.length === 0) return true;
+      if (typeof v === 'object' && Object.keys(v).length === 0) return true;
+      return false;
+    };
+
+    const isExistingEmpty = (v) => {
+      if (v === undefined || v === null) return true;
+      if (typeof v === 'string' && v.trim() === '') return true;
+      if (Array.isArray(v) && v.length === 0) return true;
+      if (typeof v === 'object' && Object.keys(v).length === 0) return true;
+      return false;
+    };
+
+    Object.keys(updates).forEach(key => {
+      const val = updates[key];
+
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        const existingVal = existing[key] || {};
+        const mergedObj = { ...existingVal };
+
+        Object.keys(val).forEach(subKey => {
+          const subVal = val[subKey];
+          if (!isValEmpty(subVal)) {
+            mergedObj[subKey] = subVal;
+          } else if (!isExistingEmpty(existingVal[subKey])) {
+            mergedObj[subKey] = existingVal[subKey];
+          } else {
+            mergedObj[subKey] = subVal;
+          }
+        });
+        result[key] = mergedObj;
+      } else {
+        if (!isValEmpty(val)) {
+          result[key] = val;
+        } else if (!isExistingEmpty(existing[key])) {
+          result[key] = existing[key];
+        } else {
+          result[key] = val;
+        }
+      }
+    });
+
+    return result;
+  };
+
   const updateProfile = async (userId, updatedDetails) => {
     console.log('AppContext: updateProfile triggered for:', userId, updatedDetails);
     try {
+      // 1. Validation before saving
+      if (updatedDetails.fullName !== undefined && (!updatedDetails.fullName || updatedDetails.fullName.trim() === '')) {
+        throw new Error('Full Name is required.');
+      }
+      if (updatedDetails.businessName !== undefined && (!updatedDetails.businessName || updatedDetails.businessName.trim() === '')) {
+        throw new Error('Business Name is required.');
+      }
+      if (updatedDetails.email !== undefined) {
+        const email = updatedDetails.email.trim().toLowerCase();
+        if (!email) {
+          throw new Error('Email is required.');
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          throw new Error('Please enter a valid email address.');
+        }
+        // Check for duplicate email (excluding this user)
+        const { data: duplicateUser } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .neq('id', userId)
+          .maybeSingle();
+        if (duplicateUser) {
+          throw new Error('This email is already registered. Please log in instead.');
+        }
+      }
+
       let merged = null;
       setUsers(prev => prev.map(u => {
         if (u.id === userId) {
-          let logoImg = updatedDetails.logo || updatedDetails.profilePhoto || u.logo || u.profilePhoto || null;
+          const mergedFields = mergeNonEmptyFields(u, updatedDetails);
+          let logoImg = mergedFields.logo || mergedFields.profilePhoto || null;
           merged = { 
-            ...u, 
-            ...updatedDetails,
+            ...mergedFields,
             logo: logoImg,
             profilePhoto: logoImg
           };
@@ -811,15 +942,14 @@ export const AppProvider = ({ children }) => {
       }));
 
       if (merged) {
-        console.log('AppContext: Syncing profile changes to Supabase...');
+        console.log('AppContext: Syncing profile changes to Supabase via UPSERT...');
         const { error } = await supabase
           .from('users')
-          .update(mapUserToDb(merged))
-          .eq('id', userId);
+          .upsert(mapUserToDb(merged), { onConflict: 'id' });
         
         if (error) {
-          console.error('Error updating user in Supabase:', error);
-          throw error;
+          console.error('Error upserting user in Supabase:', error);
+          throw new Error('Failed to save profile changes to the database: ' + error.message);
         }
         console.log('AppContext: Supabase profile sync completed.');
       }

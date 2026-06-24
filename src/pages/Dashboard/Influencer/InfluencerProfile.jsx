@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
 import { PhotoUploader } from '../../../components/PhotoUploader';
@@ -25,7 +25,7 @@ const Youtube = ({ size = 16 }) => (
 
 
 export const InfluencerProfile = ({ section }) => {
-  const { currentUser, updateProfile } = useContext(AppContext);
+  const { currentUser, updateProfile, loading } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const { isMobile, isTablet } = useResponsive();
 
@@ -57,13 +57,47 @@ export const InfluencerProfile = ({ section }) => {
     social:    u.fieldVisibility?.social    || 'Public',
   });
 
-  const [profilePhoto, setProfilePhoto] = useState(u.logo || null);
-  const [cover, setCover]               = useState(u.coverBanner || null);
+  const [profilePhoto, setProfilePhoto] = useState(u?.logo || null);
+  const [cover, setCover]               = useState(u?.coverBanner || null);
   const [saving, setSaving]             = useState(false);
-
+ 
   // Wizard state for mobile/tablet when section is not provided
   const [currentStep, setCurrentStep] = useState(1);
   const isWizard = !section && (isMobile || isTablet);
+
+  const hasLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!loading && u && !hasLoadedRef.current) {
+      setForm({
+        fullName:          u.fullName        || '',
+        niche:             u.influencerNiche || '',
+        description:       u.description     || '',
+        website:           u.website         || '',
+        location:          u.location        || '',
+        mobileNumber:      u.mobileNumber    || '',
+        whatsapp:          u.whatsapp        || '',
+        contactPerson:     u.contactPerson   || '',
+        followerCount:     u.followerCount   || '',
+        engagementRate:    u.engagementRate   || '',
+        collaborationRate: u.collaborationRate || '',
+        instagram:         u.socialLinks?.instagram || '',
+        youtube:           u.socialLinks?.youtube   || '',
+      });
+      setVisibility({
+        email:     u.fieldVisibility?.email     || 'Private',
+        mobile:    u.fieldVisibility?.mobile    || 'Private',
+        whatsapp:  u.fieldVisibility?.whatsapp  || 'Private',
+        website:   u.fieldVisibility?.website   || 'Public',
+        portfolio: u.fieldVisibility?.portfolio || 'Public',
+        contact:   u.fieldVisibility?.contact   || 'Private',
+        social:    u.fieldVisibility?.social    || 'Public',
+      });
+      setProfilePhoto(u.logo || null);
+      setCover(u.coverBanner || null);
+      hasLoadedRef.current = true;
+    }
+  }, [loading, u]);
 
   const setVis = (key, val) => {
     setVisibility(prev => {
