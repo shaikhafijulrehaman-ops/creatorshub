@@ -2,7 +2,78 @@
 import { createContext, useState, useEffect, useRef } from 'react';
 import { supabase, setSupabaseUserHeader } from '../supabaseClient';
 
-const LIGHTWEIGHT_COLUMNS = 'id,role,full_name,location,description,business_name,business_category,logo,profile_photo,bio,website,team_size,monthly_marketing_budget,content_categories,platforms,followers_count,average_reach,engagement_rate,languages,collaboration_pricing,verification_status,profile_strength,rating,reviews,fraud_audit,services,skills,experience,verification_requested,phone_visibility,email_visibility,website_visibility,social_links_visibility,contact_visibility,whatsapp,gst,contact_person,social_links,field_visibility,email,mobile_number,address';
+const LIGHTWEIGHT_COLUMNS = 'id,role,full_name,location,description,business_name,business_category,logo,profile_photo,bio,website,team_size,monthly_marketing_budget,content_categories,platforms,followers_count,average_reach,engagement_rate,languages,collaboration_pricing,verification_status,profile_strength,rating,reviews,fraud_audit,services,skills,experience,verification_requested,phone_visibility,email_visibility,website_visibility,social_links_visibility,contact_visibility,whatsapp,gst,contact_person,social_links,field_visibility,email,mobile_number,address,cover_banner';
+
+const base64ToBlob = (base64Data, contentType = '') => {
+  const sliceSize = 1024;
+  const byteCharacters = atob(base64Data.split(',')[1]);
+  const byteArrays = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+
+  return new Blob(byteArrays, { type: contentType });
+};
+
+const uploadBase64Image = async (userId, base64Str, prefix) => {
+  if (!base64Str || !base64Str.startsWith('data:')) {
+    return base64Str; // Already a URL
+  }
+  
+  const match = base64Str.match(/^data:([^;]+);base64,/);
+  if (!match) {
+    throw new Error('Invalid base64 image data format');
+  }
+  const contentType = match[1];
+  const extension = contentType.split('/')[1] || 'webp';
+  
+  const blob = base64ToBlob(base64Str, contentType);
+  const fileName = `${prefix}_${Date.now()}.${extension}`;
+  const filePath = `${userId}/${fileName}`;
+  
+  const { data, error } = await supabase.storage
+    .from('profiles')
+    .upload(filePath, blob, {
+      contentType: contentType,
+      upsert: true
+    });
+    
+  if (error) {
+    console.error('Storage upload error:', error);
+    throw new Error(`Failed to upload ${prefix} image: ` + error.message);
+  }
+  
+  const { data: { publicUrl } } = supabase.storage
+    .from('profiles')
+    .getPublicUrl(filePath);
+    
+  return publicUrl;
+};
+
+const deleteOldImageFromStorage = async (oldUrl) => {
+  if (!oldUrl) return;
+  const prefix = '/storage/v1/object/public/profiles/';
+  const idx = oldUrl.indexOf(prefix);
+  if (idx !== -1) {
+    const filePath = oldUrl.substring(idx + prefix.length);
+    if (filePath) {
+      console.log('Deleting old storage file:', filePath);
+      const { error } = await supabase.storage.from('profiles').remove([filePath]);
+      if (error) {
+        console.warn('Failed to delete old file from storage:', error.message);
+      } else {
+        console.log('Old storage file deleted successfully');
+      }
+    }
+  }
+};
 
 const getConvIdFromNotif = (notifId) => {
   if (!notifId || !notifId.startsWith('notif-msg-')) return null;
@@ -992,10 +1063,56 @@ export const AppProvider = ({ children }) => {
         }
       }
 
+      // Find existing user details to know if we need to clean up old files
+      const existingUser = users.find(u => u.id === userId) || (currentUser && currentUser.id === userId ? currentUser : null);
+      const detailsToSave = { ...updatedDetails };
+
+      // Process profile photo
+      const proposedLogo = detailsToSave.logo !== undefined ? detailsToSave.logo : detailsToSave.profilePhoto;
+      if (proposedLogo !== undefined) {
+        if (proposedLogo && proposedLogo.startsWith('data:image/')) {
+          console.log('Uploading profile photo to storage...');
+          const newLogoUrl = await uploadBase64Image(userId, proposedLogo, 'avatar');
+          detailsToSave.logo = newLogoUrl;
+          detailsToSave.profilePhoto = newLogoUrl;
+          
+          if (existingUser && (existingUser.logo || existingUser.profilePhoto)) {
+            await deleteOldImageFromStorage(existingUser.logo || existingUser.profilePhoto);
+          }
+        } else if (proposedLogo === null) {
+          console.log('Removing profile photo from storage...');
+          if (existingUser && (existingUser.logo || existingUser.profilePhoto)) {
+            await deleteOldImageFromStorage(existingUser.logo || existingUser.profilePhoto);
+          }
+          detailsToSave.logo = null;
+          detailsToSave.profilePhoto = null;
+        }
+      }
+
+      // Process cover banner
+      if (detailsToSave.coverBanner !== undefined) {
+        const proposedCover = detailsToSave.coverBanner;
+        if (proposedCover && proposedCover.startsWith('data:image/')) {
+          console.log('Uploading cover banner to storage...');
+          const newCoverUrl = await uploadBase64Image(userId, proposedCover, 'banner');
+          detailsToSave.coverBanner = newCoverUrl;
+
+          if (existingUser && existingUser.coverBanner) {
+            await deleteOldImageFromStorage(existingUser.coverBanner);
+          }
+        } else if (proposedCover === null) {
+          console.log('Removing cover banner from storage...');
+          if (existingUser && existingUser.coverBanner) {
+            await deleteOldImageFromStorage(existingUser.coverBanner);
+          }
+          detailsToSave.coverBanner = null;
+        }
+      }
+
       let merged = null;
       setUsers(prev => prev.map(u => {
         if (u.id === userId) {
-          const mergedFields = mergeNonEmptyFields(u, updatedDetails);
+          const mergedFields = mergeNonEmptyFields(u, detailsToSave);
           let logoImg = mergedFields.logo || mergedFields.profilePhoto || null;
           merged = { 
             ...mergedFields,
