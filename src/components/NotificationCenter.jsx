@@ -64,9 +64,6 @@ export const NotificationCenter = ({ open, onClose }) => {
     clearNotifications,
     setActiveConversationId,
     setActiveTabToRedirect,
-    connectionRequests,
-    acceptConnectionRequest,
-    declineConnectionRequest,
     currentUser,
     showConfirmation
   } = useContext(AppContext);
@@ -153,10 +150,7 @@ export const NotificationCenter = ({ open, onClose }) => {
               const meta = ICONS[notif.type] || ICONS.message;
               const Icon = meta.icon;
 
-              const isConnectionRequest = notif.type === 'connection_request';
-              const req = isConnectionRequest && connectionRequests
-                ? connectionRequests.find(r => r.sender_id === notif.sender_id && r.receiver_id === currentUser?.id)
-                : null;
+              // Connection requests logic removed
 
               return (
                 <div
@@ -208,62 +202,7 @@ export const NotificationCenter = ({ open, onClose }) => {
                         {notif.actionLabel}
                       </button>
                     )}
-                     {isConnectionRequest && (
-                      req && req.status === 'Pending' ? (
-                        <div className="notif-conn-actions" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                          <button
-                            className="notif-btn-accept"
-                            style={{
-                              padding: '5px 10px',
-                              backgroundColor: '#22c55e',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await acceptConnectionRequest(req.id, notif.sender_id);
-                              markNotificationRead(notif.id);
-                            }}
-                          >
-                            <Check size={11} /> Accept
-                          </button>
-                          <button
-                            className="notif-btn-reject"
-                            style={{
-                              padding: '5px 10px',
-                              backgroundColor: '#f3f4f6',
-                              color: '#374151',
-                              border: '1px solid #d1d5db',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              await declineConnectionRequest(req.id, notif.sender_id);
-                              markNotificationRead(notif.id);
-                            }}
-                          >
-                            <X size={11} /> Decline
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="notif-conn-status" style={{ fontSize: '11.5px', color: '#6b7280', marginTop: '6px', display: 'inline-block', fontStyle: 'italic' }}>
-                          Request handled
-                        </span>
-                      )
-                    )}
+                     {/* Connection action buttons removed */}
                   </div>
                   {!notif.read && (
                     <button

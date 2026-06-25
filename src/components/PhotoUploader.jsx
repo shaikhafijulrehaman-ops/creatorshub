@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Upload, Crop, ZoomIn, ZoomOut, X, RotateCcw, Check } from 'lucide-react';
+import { Upload, ZoomIn, ZoomOut, X, RotateCcw, Check } from 'lucide-react';
 import './PhotoUploader.css';
 
 export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo', recommendedSize = '500x500', maxMB = 5 }) => {
@@ -141,7 +141,7 @@ export const PhotoUploader = ({ value, onChange, aspectRatio = 1, label = 'Photo
         } else {
           dataUrl = canvas.toDataURL('image/jpeg', 0.85);
         }
-      } catch (err) {
+      } catch {
         dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       }
       onChange && onChange(dataUrl);

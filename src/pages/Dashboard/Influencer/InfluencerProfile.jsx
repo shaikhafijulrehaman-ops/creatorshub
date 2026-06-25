@@ -3,7 +3,7 @@ import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
 import { PhotoUploader } from '../../../components/PhotoUploader';
 import { VisibilityToggle } from '../../../components/VisibilityToggle';
-import { Save, Globe, MapPin, Phone, Mail, MessageSquare, User, Link, ChevronRight, ChevronLeft, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { Save, Globe, MapPin, Phone, Mail, MessageSquare, User, ChevronRight, ChevronLeft, TrendingUp, Users, DollarSign } from 'lucide-react';
 import { useResponsive } from '../../../hooks/useResponsive';
 import '../Business/Business.css';
 
@@ -146,7 +146,7 @@ export const InfluencerProfile = ({ section }) => {
   };
 
   const renderPhotos = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Profile Photos</h4>
       <div className="biz-cover-wrap">
         <label className="form-label">Cover Banner <span className="biz-recommended">Recommended: 1600 x 500</span></label>
@@ -160,7 +160,7 @@ export const InfluencerProfile = ({ section }) => {
       </div>
       <div className="biz-logo-wrap" style={{ marginTop: '16px' }}>
         <label className="form-label">Profile Photo <span className="biz-recommended">Recommended: 500 x 500</span></label>
-        <div style={{ maxWidth: '180px' }}>
+        <div style={isMobile ? { width: '100%' } : { maxWidth: '180px' }}>
           <PhotoUploader
             value={profilePhoto}
             onChange={setProfilePhoto}
@@ -175,7 +175,7 @@ export const InfluencerProfile = ({ section }) => {
   );
 
   const renderIdentity = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Creator Identity</h4>
       <div className="biz-field-row">
         <div className="biz-field">
@@ -206,7 +206,7 @@ export const InfluencerProfile = ({ section }) => {
   );
 
   const renderContact = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Contact Details</h4>
       <p className="biz-section-sub">Control who can see each field using the visibility toggle.</p>
 
@@ -240,7 +240,7 @@ export const InfluencerProfile = ({ section }) => {
   );
 
   const renderSocial = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <div className="biz-section-header-row" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
         <h4 className="biz-section-title" style={{ margin: 0 }}>Social Links</h4>
         <VisibilityToggle value={visibility.social} onChange={(v) => setVis('social', v)} />
@@ -262,7 +262,7 @@ export const InfluencerProfile = ({ section }) => {
   );
 
   const renderAudienceAndRates = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Audience & Rates</h4>
       <div className="biz-field-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="biz-field">
@@ -281,14 +281,14 @@ export const InfluencerProfile = ({ section }) => {
         <div className="biz-field">
           <label className="form-label"><DollarSign size={13} /> Collaboration Rate (per post)</label>
           <p className="biz-section-sub" style={{ fontSize: '11px', margin: '2px 0 6px 0', color: 'var(--text-muted)' }}>
-            This helps brands understand your expected rate. It is optional and can be changed later.
+            This helps brands understand your pricing expectations. It is optional and can be changed later.
           </p>
           <select className="form-input" value={form.collaborationRate} onChange={e => setField('collaborationRate', e.target.value)}>
             {[
               'Not Specified',
               'Under ₹1,000',
               '₹1,000 - ₹5,000',
-              '₹5,000 - ₹10,000',
+              '₹1,000 - ₹10,000',
               '₹10,000 - ₹25,000',
               '₹25,000 - ₹50,000',
               '₹50,000 - ₹1,00,000',
@@ -306,7 +306,7 @@ export const InfluencerProfile = ({ section }) => {
 
 
   const renderReviewStep = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Review Details</h4>
       <p className="biz-section-sub" style={{ marginBottom: '16px' }}>Verify your influencer profile summary before saving changes.</p>
       

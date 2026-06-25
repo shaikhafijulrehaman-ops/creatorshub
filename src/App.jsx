@@ -14,12 +14,10 @@ const Workspace = lazy(() => import('./pages/Dashboard/Shared/Workspace').then(m
 const ProfileView = lazy(() => import('./pages/Dashboard/Shared/ProfileView').then(m => ({ default: m.ProfileView })));
 const MessagingCenter = lazy(() => import('./pages/Dashboard/Shared/MessagingCenter').then(m => ({ default: m.MessagingCenter })));
 import { 
-  Search, Briefcase, Sparkles, Home, MessageSquare, User, Bell, Menu, X, 
-  CreditCard, BarChart2, ShieldCheck, LogOut, ChevronLeft, Calendar,
-  Star, Award, BarChart3, LayoutDashboard, FileText, Users, CheckSquare, Upload,
+  Search, Briefcase, Sparkles, MessageSquare, Bell, Menu, X, 
+  LogOut, Calendar, Star, Award, LayoutDashboard, FileText, Users, CheckSquare, Upload,
   FolderKanban, UserCheck, Settings, Layers
 } from 'lucide-react';
-import { useToast } from './components/SuccessToast';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useResponsive } from './hooks/useResponsive';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -301,7 +299,6 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         { id: 'requirements', label: 'Post Project', icon: <FolderKanban size={18} /> },
         { id: 'applications', label: 'Applications', icon: <UserCheck size={18} /> },
         { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-        { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
         { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
       ];
     }
@@ -311,10 +308,9 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         { id: 'discover', label: 'Browse Jobs', icon: <Search size={18} /> },
         { id: 'projects', label: 'My Projects', icon: <CheckSquare size={18} /> },
         { id: 'portfolio', label: 'Portfolio', icon: <Upload size={18} /> },
-        { id: 'analytics', label: 'Earnings', icon: <CreditCard size={18} /> },
         { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-        { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
-        { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
+        { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> },
+        { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
       ];
     }
     if (role === 'Influencer') {
@@ -323,12 +319,10 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
         { id: 'campaigns', label: 'Discover Campaigns', icon: <Search size={18} /> },
         { id: 'invitations', label: 'Invitations', icon: <FileText size={18} /> },
         { id: 'mediakit', label: 'Portfolio', icon: <Award size={18} /> },
-        { id: 'analytics', label: 'Social Analytics', icon: <BarChart3 size={18} /> },
-        { id: 'earnings', label: 'Earnings', icon: <CreditCard size={18} /> },
         { id: 'calendar', label: 'Calendar', icon: <Calendar size={18} /> },
         { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-        { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
-        { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
+        { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> },
+        { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
       ];
     }
     return [];
@@ -477,16 +471,15 @@ const MobileDrawer = ({ isOpen, onClose, currentUser, onNavigate, onLogout, acti
 
 const AppContent = () => {
   const { 
-    currentUser, users, projects, loading, initialized, logoutUser, 
+    currentUser, users, projects, initialized, logoutUser, 
     activeDashboardTab, setActiveDashboardTab, notifications = [], 
-    connectionRequests = [], acceptConnectionRequest, sendConnectionRequest, 
-    startConversation, isConnected, isBlockedRelation, activeConversationId
+    startConversation, isBlockedRelation, activeConversationId,
+    showConfirmation
   } = useContext(AppContext);
-  const { showSuccessToast } = useToast();
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { isMobile } = useResponsive();
 
   const handleLogout = async () => {
     if (isMobile) {
@@ -511,15 +504,7 @@ const AppContent = () => {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [showSkeletons, setShowSkeletons] = useState(true);
-
-  useEffect(() => {
-    if (!initialized) {
-      setShowSkeletons(true);
-    } else {
-      setShowSkeletons(false);
-    }
-  }, [initialized]);
+  const showSkeletons = !initialized;
 
   useEffect(() => {
     const prefetch = () => {
@@ -593,9 +578,6 @@ const AppContent = () => {
     currentPage = 'profile';
   }
 
-  // Routing States
-  const [navigationParams, setNavigationParams] = useState({});
-
   // Overlay states (inside dashboard or explore)
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(null);
   const [activeProfileId, setActiveProfileId] = useState(null);
@@ -643,22 +625,7 @@ const AppContent = () => {
     }
   };
 
-  const getTabForSection = (section, role) => {
-    if (section === 'dashboard') return 'dashboard';
-    if (section === 'projects') {
-      if (role === 'Business Holder') return 'requirements';
-      if (role === 'Influencer') return 'deals';
-      return 'projects';
-    }
-    if (section === 'applications') return 'applications';
-    if (section === 'analytics') return 'analytics';
-    if (section === 'payments') {
-      if (role === 'Influencer') return 'earnings';
-      return 'dashboard';
-    }
-    if (section === 'settings') return 'settings';
-    return 'dashboard';
-  };
+
 
   const handleOpenWorkspace = (projId) => {
     setActiveWorkspaceId(projId);
@@ -1154,14 +1121,6 @@ const AppContent = () => {
                           return (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }} className="explore-directory-grid">
                               {filteredUsers.map(u => {
-                                const isConn = isConnected ? isConnected(currentUser?.id, u.id) : false;
-                                const pendingReq = (connectionRequests || []).find(r => 
-                                  (r.sender_id === currentUser?.id && r.receiver_id === u.id) ||
-                                  (r.sender_id === u.id && r.receiver_id === currentUser?.id)
-                                );
-                                const isSent = pendingReq && pendingReq.sender_id === currentUser?.id;
-                                const isRecv = pendingReq && pendingReq.sender_id === u.id;
-
                                 return (
                                   <div key={u.id} className="glass-panel glass-panel-hover" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12.5px' }}>
@@ -1202,48 +1161,7 @@ const AppContent = () => {
                                       </button>
                                       
                                       <div style={{ display: 'flex', gap: '6px' }}>
-                                        {/* Connect Button */}
-                                        {!currentUser ? (
-                                          <button 
-                                            onClick={() => handleNavigate('onboarding')}
-                                            className="btn-outline-cyan" 
-                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
-                                          >
-                                            Connect
-                                          </button>
-                                        ) : isConn ? (
-                                          <button 
-                                            disabled
-                                            className="btn-secondary" 
-                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px', opacity: 0.6, cursor: 'default' }}
-                                          >
-                                            Connected
-                                          </button>
-                                        ) : isSent ? (
-                                          <button 
-                                            disabled
-                                            className="btn-secondary" 
-                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px', opacity: 0.8, cursor: 'default' }}
-                                          >
-                                            Requested
-                                          </button>
-                                        ) : isRecv ? (
-                                          <button 
-                                            onClick={() => acceptConnectionRequest(pendingReq.id, u.id)}
-                                            className="btn-primary" 
-                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px', background: '#22c55e', borderColor: '#22c55e' }}
-                                          >
-                                            Accept
-                                          </button>
-                                        ) : (
-                                          <button 
-                                            onClick={() => sendConnectionRequest(u.id)}
-                                            className="btn-outline-cyan" 
-                                            style={{ padding: '4px 10px', minHeight: '28px', fontSize: '11px', borderRadius: '6px' }}
-                                          >
-                                            Connect
-                                          </button>
-                                        )}
+                                        {/* Connect Button removed */}
 
                                         {/* Message Button */}
                                         <button 

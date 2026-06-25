@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import { useContext, useState, useEffect, useCallback } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Trash2, Ban, AlertTriangle, CheckCircle, HelpCircle, X, Loader2 } from 'lucide-react';
 
@@ -7,13 +7,46 @@ export const ConfirmationModal = () => {
   const [isPending, setIsPending] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
+  const {
+    title = 'Confirm Action',
+    message = 'Are you sure you want to proceed?',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    type = 'confirmation', // delete | block | warning | success | confirmation
+    isDestructive = false,
+    onConfirm,
+    resolve
+  } = confirmationModal || {};
+
+  const handleCancel = useCallback(() => {
+    if (isPending) return;
+    if (resolve) resolve(false);
+    setConfirmationModal(null);
+  }, [isPending, resolve, setConfirmationModal]);
+
+  const handleConfirm = useCallback(async () => {
+    if (isPending) return;
+    if (onConfirm) {
+      try {
+        setIsPending(true);
+        await onConfirm();
+      } catch (err) {
+        console.error('Error in confirmation action:', err);
+      } finally {
+        setIsPending(false);
+      }
+    }
+    if (resolve) resolve(true);
+    setConfirmationModal(null);
+  }, [isPending, onConfirm, resolve, setConfirmationModal]);
+
   // Sync visible state with slide-up scale animation
   useEffect(() => {
     if (confirmationModal) {
-      setIsVisible(true);
-      setIsPending(false);
-    } else {
-      setIsVisible(false);
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [confirmationModal]);
 
@@ -26,42 +59,9 @@ export const ConfirmationModal = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [confirmationModal, isPending]);
+  }, [confirmationModal, isPending, handleCancel]);
 
   if (!confirmationModal) return null;
-
-  const {
-    title = 'Confirm Action',
-    message = 'Are you sure you want to proceed?',
-    confirmText = 'Confirm',
-    cancelText = 'Cancel',
-    type = 'confirmation', // delete | block | warning | success | confirmation
-    isDestructive = false,
-    onConfirm,
-    resolve
-  } = confirmationModal;
-
-  const handleCancel = () => {
-    if (isPending) return;
-    resolve(false);
-    setConfirmationModal(null);
-  };
-
-  const handleConfirm = async () => {
-    if (isPending) return;
-    if (onConfirm) {
-      try {
-        setIsPending(true);
-        await onConfirm();
-      } catch (err) {
-        console.error('Error in confirmation action:', err);
-      } finally {
-        setIsPending(false);
-      }
-    }
-    resolve(true);
-    setConfirmationModal(null);
-  };
 
   const handleOverlayClick = (e) => {
     if (e.target === e.currentTarget && !isDestructive && !isPending) {

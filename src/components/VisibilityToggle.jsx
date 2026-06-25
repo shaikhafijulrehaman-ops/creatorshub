@@ -3,9 +3,9 @@ import { ChevronDown, Check, Globe, Users, Lock } from 'lucide-react';
 import './VisibilityToggle.css';
 
 const OPTIONS = [
-  { value: 'Public', Icon: Globe },
-  { value: 'Connections Only', Icon: Users },
-  { value: 'Private', Icon: Lock }
+  { value: 'Public', label: 'Public', Icon: Globe },
+  { value: 'Connections Only', label: 'Registered Users', Icon: Users },
+  { value: 'Private', label: 'Private', Icon: Lock }
 ];
 
 export const VisibilityToggle = ({ value = 'Private', onChange }) => {
@@ -73,7 +73,7 @@ export const VisibilityToggle = ({ value = 'Private', onChange }) => {
             Visibility
           </span>
           <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-white)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <CurrentIcon size={14} style={{ color: 'var(--accent-cyan)' }} /> {currentOpt.value}
+            <CurrentIcon size={14} style={{ color: 'var(--accent-cyan)' }} /> {currentOpt.label || currentOpt.value}
           </span>
         </div>
         <ChevronDown 
@@ -148,7 +148,7 @@ export const VisibilityToggle = ({ value = 'Private', onChange }) => {
                 }}
               >
                 <OptIcon size={15} style={{ color: isSelected ? 'var(--accent-cyan)' : '#9CA3AF', flexShrink: 0 }} />
-                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.value}</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{opt.label || opt.value}</span>
                 {isSelected && <Check size={14} style={{ color: 'var(--accent-cyan)', flexShrink: 0 }} />}
               </button>
             );

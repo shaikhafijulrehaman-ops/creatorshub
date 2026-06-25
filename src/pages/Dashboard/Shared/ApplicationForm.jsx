@@ -1,53 +1,48 @@
 import { useContext, useState } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
-import { X, Send, Link, FileText, Briefcase, Calendar, IndianRupee, Clock } from 'lucide-react';
+import { X, Send, IndianRupee, Clock, Calendar } from 'lucide-react';
+import { useResponsive } from '../../../hooks/useResponsive';
 import './ApplicationForm.css';
 
 export const ApplicationForm = ({ project, onClose, onSuccess }) => {
+  const { isMobile } = useResponsive();
   const { currentUser, applyToProject } = useContext(AppContext);
   const { showSuccessToast } = useToast();
 
   const [form, setForm] = useState({
-    coverLetter:   '',
-    portfolioUrl:  currentUser?.portfolio?.[0]?.url || '',
-    resumeUrl:     '',
-    proposal:      '',
-    pricing:       '',
-    daysToComplete:'',
-    availability:  'Available Now',
+    pricing: '',
+    daysToComplete: '',
+    availability: 'Available Now',
   });
   const [submitting, setSubmitting] = useState(false);
-  const [step, setStep] = useState(1); // 2-step form
 
   const setField = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.coverLetter.trim() || !form.pricing || !form.daysToComplete) {
+    if (!form.pricing || !form.daysToComplete) {
       showSuccessToast({ title: 'Missing Information', subtitle: 'Please fill in all required fields.' });
       return;
     }
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 400));
+
+    // Serialize availability and delivery days inside pitch
+    const pitchJson = JSON.stringify({
+      daysToComplete: parseInt(form.daysToComplete, 10) || 7,
+      availability: form.availability,
+      coverLetter: `${currentUser.fullName} is available for this project.`
+    });
 
     applyToProject(project.id, {
-      creatorId:     currentUser.id,
-      creatorName:   currentUser.fullName,
-      coverLetter:   form.coverLetter,
-      portfolioUrl:  form.portfolioUrl,
-      resumeUrl:     form.resumeUrl,
-      proposal:      form.proposal,
-      pricing:       form.pricing,
-      daysToComplete:parseInt(form.daysToComplete, 10) || 7,
-      availability:  form.availability,
-      applicationStatus: 'New',
+      coverLetter: pitchJson,
+      pricing: form.pricing
     });
 
     showSuccessToast({
       title: 'Application Submitted',
-      subtitle: `Your proposal for "${project.title}" has been sent. The business will review it shortly.`,
-      redirectText: 'Good luck!',
+      subtitle: `Your proposal for "${project.title}" has been sent successfully.`,
     });
 
     setSubmitting(false);
@@ -57,190 +52,88 @@ export const ApplicationForm = ({ project, onClose, onSuccess }) => {
 
   return (
     <div className="appform-overlay" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
-      <div className="appform-modal animate-scale-up">
-
+      <div className="appform-modal animate-scale-up" style={{ maxWidth: '420px', padding: isMobile ? '16px' : '24px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: isMobile ? '24px 24px 0 0' : '24px' }}>
+        
         {/* Header */}
-        <div className="appform-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px' }}>
           <div>
-            <h3 className="appform-title">Submit Application</h3>
-            <p className="appform-sub">Applying for: <strong>{project.title}</strong></p>
+            <h3 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>Submit Pitch Proposal</h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>Brief: <strong>{project.title}</strong></p>
           </div>
-          <button className="appform-close" onClick={onClose} aria-label="Close">
-            <X size={16} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer', padding: '4px' }}>
+            <X size={18} />
           </button>
         </div>
 
-        {/* Step indicator */}
-        <div className="appform-steps">
-          {[1, 2].map(n => (
-            <div key={n} className="appform-step-item">
-              <div className={`appform-step-dot${step >= n ? ' active' : ''}`}>{n}</div>
-              <span className={`appform-step-label${step >= n ? ' active' : ''}`}>
-                {n === 1 ? 'Your Pitch' : 'Proposal & Budget'}
-              </span>
-              {n < 2 && <div className={`appform-step-line${step > n ? ' done' : ''}`} />}
-            </div>
-          ))}
-        </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Budget */}
+          <div>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-gray)' }}>
+              <IndianRupee size={13} style={{ color: 'var(--accent-cyan)' }} /> Expected Budget Allocation*
+            </label>
+            <input
+              type="text"
+              className="form-input"
+              value={form.pricing}
+              onChange={e => setField('pricing', e.target.value)}
+              placeholder="E.g. ₹15,000"
+              style={{ marginTop: '6px' }}
+              required
+            />
+            {project.budget && (
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>Campaign target budget: {project.budget}</span>
+            )}
+          </div>
 
-        <form onSubmit={handleSubmit} className="appform-body">
+          {/* Delivery */}
+          <div>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-gray)' }}>
+              <Clock size={13} style={{ color: 'var(--accent-cyan)' }} /> Delivery Timeframe (Days)*
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="365"
+              className="form-input"
+              value={form.daysToComplete}
+              onChange={e => setField('daysToComplete', e.target.value)}
+              placeholder="E.g. 7"
+              style={{ marginTop: '6px' }}
+              required
+            />
+          </div>
 
-          {step === 1 && (
-            <div className="appform-step-content animate-fade-in">
-              {/* Cover Letter */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <Briefcase size={13} /> Cover Letter *
-                </label>
-                <textarea
-                  className="form-input appform-textarea"
-                  rows={5}
-                  value={form.coverLetter}
-                  onChange={e => setField('coverLetter', e.target.value)}
-                  placeholder="Introduce yourself. Why are you the perfect fit for this project? Describe your relevant experience and what excites you about this opportunity..."
-                  required
-                />
-                <span className="appform-char">{form.coverLetter.length} / 1000</span>
-              </div>
+          {/* Availability */}
+          <div>
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-gray)' }}>
+              <Calendar size={13} style={{ color: 'var(--accent-cyan)' }} /> Workspace Availability*
+            </label>
+            <select
+              className="form-input"
+              value={form.availability}
+              onChange={e => setField('availability', e.target.value)}
+              style={{ background: 'var(--bg-dark)', marginTop: '6px' }}
+              required
+            >
+              {['Available Now', 'Available in 1 Week', 'Available in 2 Weeks', 'Available Next Month', 'Other / Flexible'].map(a => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+            </select>
+          </div>
 
-              {/* Proposal */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <FileText size={13} /> Project Proposal
-                </label>
-                <textarea
-                  className="form-input appform-textarea"
-                  rows={3}
-                  value={form.proposal}
-                  onChange={e => setField('proposal', e.target.value)}
-                  placeholder="Describe your approach, methodology, and how you plan to execute this project..."
-                />
-              </div>
-
-              {/* Portfolio URL */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <Link size={13} /> Portfolio URL
-                </label>
-                <input
-                  type="url"
-                  className="form-input"
-                  value={form.portfolioUrl}
-                  onChange={e => setField('portfolioUrl', e.target.value)}
-                  placeholder="https://your-portfolio.com"
-                />
-              </div>
-
-              {/* Resume */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <FileText size={13} /> Resume / CV Link
-                </label>
-                <input
-                  type="url"
-                  className="form-input"
-                  value={form.resumeUrl}
-                  onChange={e => setField('resumeUrl', e.target.value)}
-                  placeholder="https://drive.google.com/..."
-                />
-              </div>
-
-              <button
-                type="button"
-                className="btn-primary appform-next-btn"
-                onClick={() => {
-                  if (!form.coverLetter.trim()) {
-                    showSuccessToast({ title: 'Cover Letter Required', subtitle: 'Please write your pitch before continuing.' });
-                    return;
-                  }
-                  setStep(2);
-                }}
-              >
-                Continue to Proposal
-              </button>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="appform-step-content animate-fade-in">
-              {/* Budget */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <IndianRupee size={13} /> Expected Budget *
-                </label>
-                <input
-                  className="form-input"
-                  value={form.pricing}
-                  onChange={e => setField('pricing', e.target.value)}
-                  placeholder="e.g. ₹15,000"
-                  required
-                />
-                {project.budget && (
-                  <span className="appform-hint">Project budget: {project.budget}</span>
-                )}
-              </div>
-
-              {/* Delivery */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <Clock size={13} /> Estimated Delivery (days) *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  className="form-input"
-                  value={form.daysToComplete}
-                  onChange={e => setField('daysToComplete', e.target.value)}
-                  placeholder="e.g. 14"
-                  required
-                />
-              </div>
-
-              {/* Availability */}
-              <div className="appform-field">
-                <label className="form-label appform-label">
-                  <Calendar size={13} /> Availability
-                </label>
-                <select
-                  className="form-input"
-                  value={form.availability}
-                  onChange={e => setField('availability', e.target.value)}
-                >
-                  {['Available Now', 'Available in 1 Week', 'Available in 2 Weeks', 'Available Next Month', 'Other'].map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Project summary */}
-              <div className="appform-summary">
-                <h5>Application Summary</h5>
-                <div className="appform-summary-row">
-                  <span>Budget</span><strong>{form.pricing || '—'}</strong>
-                </div>
-                <div className="appform-summary-row">
-                  <span>Delivery</span><strong>{form.daysToComplete ? `${form.daysToComplete} days` : '—'}</strong>
-                </div>
-                <div className="appform-summary-row">
-                  <span>Availability</span><strong>{form.availability}</strong>
-                </div>
-              </div>
-
-              <div className="appform-footer-btns">
-                <button type="button" className="btn-secondary appform-back-btn" onClick={() => setStep(1)}>
-                  Back
-                </button>
-                <button type="submit" className="btn-primary appform-submit-btn" disabled={submitting}>
-                  {submitting ? (
-                    <span className="biz-saving-spinner" />
-                  ) : (
-                    <><Send size={14} /> Submit Application</>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid var(--glass-border)', paddingTop: '16px', marginTop: '8px' }}>
+            <button type="button" className="btn-secondary" onClick={onClose} style={{ flex: 1, minHeight: '38px', borderRadius: '10px' }}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary" disabled={submitting} style={{ flex: 1, minHeight: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {submitting ? (
+                <span className="biz-saving-spinner" />
+              ) : (
+                <><Send size={13} /> Send Pitch</>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

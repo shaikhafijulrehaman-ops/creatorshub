@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import './SuccessToast.css';
 
@@ -10,16 +11,23 @@ export const useToast = () => {
   return ctx;
 };
 
+// Pure deterministic pseudo-random generator to satisfy react-hooks/purity
+const pseudoRandom = (seed) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
+
 /* ─── Confetti particle component ─── */
 const ConfettiParticle = ({ index }) => {
   const angle = (index / 12) * 360;
-  const distance = 28 + Math.random() * 18;
-  const size = 4 + Math.random() * 4;
+  const distance = 28 + pseudoRandom(index * 17 + 1) * 18;
+  const size = 4 + pseudoRandom(index * 17 + 2) * 4;
   const colors = ['#22C55E', '#4ADE80', '#86EFAC', '#FDE047', '#38BDF8', '#A78BFA', '#FB923C', '#F472B6'];
   const color = colors[index % colors.length];
   const shapes = ['circle', 'square', 'triangle'];
   const shape = shapes[index % shapes.length];
   const delay = index * 25;
+  const rotation = pseudoRandom(index * 17 + 3) * 360;
 
   return (
     <div
@@ -30,7 +38,7 @@ const ConfettiParticle = ({ index }) => {
         '--size': `${size}px`,
         '--color': color,
         '--delay': `${delay}ms`,
-        '--rotation': `${Math.random() * 360}deg`,
+        '--rotation': `${rotation}deg`,
       }}
     />
   );

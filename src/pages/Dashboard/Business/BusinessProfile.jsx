@@ -3,7 +3,7 @@ import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
 import { PhotoUploader } from '../../../components/PhotoUploader';
 import { VisibilityToggle } from '../../../components/VisibilityToggle';
-import { Save, Building, Globe, MapPin, Phone, Mail, MessageSquare, User, Hash, Link, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Save, Building, Globe, MapPin, Phone, Mail, MessageSquare, User, Hash, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useResponsive } from '../../../hooks/useResponsive';
 import './Business.css';
 
@@ -157,10 +157,8 @@ export const BusinessProfile = ({ section }) => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const renderPhotos = () => (
-    <div className="biz-section glass-panel">
+  };  const renderPhotos = () => (
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Brand Photos</h4>
       <div className="biz-cover-wrap">
         <label className="form-label">Cover Banner <span className="biz-recommended">Recommended: 1600 x 500</span></label>
@@ -174,7 +172,7 @@ export const BusinessProfile = ({ section }) => {
       </div>
       <div className="biz-logo-wrap" style={{ marginTop: '16px' }}>
         <label className="form-label">Business Logo <span className="biz-recommended">Recommended: 500 x 500</span></label>
-        <div style={{ maxWidth: '180px' }}>
+        <div style={isMobile ? { width: '100%' } : { maxWidth: '180px' }}>
           <PhotoUploader
             value={logo}
             onChange={setLogo}
@@ -188,7 +186,7 @@ export const BusinessProfile = ({ section }) => {
   );
 
   const renderIdentity = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Business Identity</h4>
       <div className="biz-field-row">
         <div className="biz-field">
@@ -222,7 +220,7 @@ export const BusinessProfile = ({ section }) => {
   );
 
   const renderContact = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Contact Details</h4>
       <p className="biz-section-sub">Control who can see each field using the visibility toggle.</p>
 
@@ -256,7 +254,7 @@ export const BusinessProfile = ({ section }) => {
   );
 
   const renderSocial = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <div className="biz-section-header-row" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
         <h4 className="biz-section-title" style={{ margin: 0 }}>Social Links</h4>
         <VisibilityToggle value={visibility.social} onChange={(v) => setVis('social', v)} />
@@ -278,7 +276,7 @@ export const BusinessProfile = ({ section }) => {
   );
 
   const renderDetailsAndBudget = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Collaboration Details & Budget</h4>
       <div className="biz-field-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="biz-field">
@@ -321,10 +319,8 @@ export const BusinessProfile = ({ section }) => {
     </div>
   );
 
-
-
   const renderReviewStep = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Review Details</h4>
       <p className="biz-section-sub" style={{ marginBottom: '16px' }}>Verify your business settings summary before saving changes.</p>
       

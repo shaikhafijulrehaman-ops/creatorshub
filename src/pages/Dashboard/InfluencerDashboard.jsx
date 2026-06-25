@@ -3,12 +3,11 @@ import { AppContext } from '../../context/AppContext';
 import { MessagingCenter } from './Shared/MessagingCenter';
 import { 
   LayoutDashboard, Search, Briefcase, FileText, CheckSquare, 
-  Award, MessageSquare, BarChart3, User, Settings, LogOut,
-  IndianRupee, Bookmark, X, Plus, Mail, MapPin, Clock, Calendar,
-  Send, ArrowRight, ShieldCheck, CreditCard, Star, Users,
-  ChevronDown
+  Award, MessageSquare, Settings, LogOut,
+  IndianRupee, Bookmark, X, Plus, Mail, Clock, Calendar,
+  Send, ArrowRight, ShieldCheck, Star,
+  ChevronDown, ExternalLink
 } from 'lucide-react';
-import { MyConnections } from './Shared/MyConnections';
 import { InfluencerProfile } from './Influencer/InfluencerProfile';
 import { useToast } from '../../components/SuccessToast';
 import { ApplicationForm } from './Shared/ApplicationForm';
@@ -62,11 +61,11 @@ const generateTaskId = () => `t-${Date.now()}`;
 export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
   const { isMobile, isTablet } = useResponsive();
   const { 
-    currentUser, logoutUser, projects, applyToProject, updateProfile, 
-    activityFeed, messages, sendMessage, loading,
-    activeTabToRedirect, setActiveTabToRedirect, notifications,
-    activeDashboardTab, setActiveDashboardTab, startConversation,
-    applications, isBlockedRelation, showConfirmation
+    currentUser, logoutUser, projects, updateProfile, 
+    activityFeed, messages, sendMessage,
+    activeTabToRedirect, setActiveTabToRedirect,
+    activeDashboardTab, setActiveDashboardTab,
+    applications, showConfirmation
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
   const [notifOpen, setNotifOpen] = useState(false);
@@ -76,7 +75,6 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
   
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
   const handleLogout = async () => {
@@ -115,9 +113,6 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
   // Pitch Modal States
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [coverLetter, setCoverLetter] = useState('');
-  const [bidPrice, setBidPrice] = useState('');
-  const [daysToComplete, setDaysToComplete] = useState(5);
 
   // Media Kit Form States
   const [instaFollowers, setInstaFollowers] = useState(currentUser?.platforms?.Instagram?.followers || '');
@@ -160,27 +155,7 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
     setShowApplyModal(true);
   };
 
-  const handleApplySubmit = (e) => {
-    e.preventDefault();
-    if (!coverLetter || !bidPrice) {
-      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out proposal pricing and details.' });
-      return;
-    }
 
-    applyToProject(selectedProjectId, {
-      creatorId: currentUser.id,
-      creatorName: currentUser.fullName,
-      coverLetter,
-      pricing: bidPrice,
-      daysToComplete: Number(daysToComplete)
-    });
-
-    setCoverLetter('');
-    setBidPrice('');
-    setShowApplyModal(false);
-    showSuccessToast({ title: '✔ Application Sent', subtitle: 'Your brand pitch proposal has been submitted!', redirectText: 'Redirecting to deals...' });
-    setActiveTab('deals');
-  };
 
   // Update Media Kit Metrics
   const handleSaveMediaKit = (e) => {
@@ -233,31 +208,7 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
     }
   });
 
-  // Dynamic Earnings Calculations
-  const completedProjects = projects.filter(p => {
-    if (p.status !== 'Completed') return false;
-    return p.team && p.team.members && Object.values(p.team.members).includes(currentUser?.id);
-  });
-  
-  const totalEarningsAmount = completedProjects.reduce((sum, p) => {
-    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
-    return sum + numericBudget;
-  }, 0);
 
-  const activeCampaignValue = activeWorkspaces.reduce((sum, p) => {
-    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
-    return sum + numericBudget;
-  }, 0);
-
-  const pendingEscrowAmount = activeWorkspaces.reduce((sum, p) => {
-    if (p.team && p.team.payments) {
-      const pendingForProj = p.team.payments
-        .filter(pm => pm.status !== 'Paid')
-        .reduce((s, pm) => s + (parseFloat(pm.amount?.replace(/[^0-9.]/g, '')) || 0), 0);
-      return sum + pendingForProj;
-    }
-    return sum;
-  }, 0);
 
   // Dynamic Invitations Calculations
   const invitations = projects.filter(p => p.invitedCreators && p.invitedCreators.includes(currentUser?.id));
@@ -265,13 +216,13 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
   // Add Portfolio Item
   const handlePortfolioSubmit = (e) => {
     e.preventDefault();
-    if (!portTitle || !portDesc) {
-      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out the required fields.' });
+    if (!portDesc) {
+      showSuccessToast({ title: '⚠ Missing Fields', subtitle: 'Please fill out the description.' });
       return;
     }
 
     const newItem = {
-      title: portTitle,
+      title: portTitle || 'Portfolio Campaign',
       type: portType,
       url: portUrl,
       description: portDesc
@@ -336,12 +287,10 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
     { id: 'campaigns', label: 'Discover Campaigns', icon: <Search size={18} /> },
     { id: 'invitations', label: 'Invitations', icon: <FileText size={18} /> },
     { id: 'mediakit', label: 'Portfolio', icon: <Award size={18} /> },
-    { id: 'analytics', label: 'Social Analytics', icon: <BarChart3 size={18} /> },
-    { id: 'earnings', label: 'Earnings', icon: <CreditCard size={18} /> },
     { id: 'calendar', label: 'Calendar', icon: <Calendar size={18} /> },
-    { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
     { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
-    { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> }
+    { id: 'reviews', label: 'Reviews', icon: <Star size={18} /> },
+    { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
   ];
 
 
@@ -422,7 +371,6 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id);
-                    setMobileMenuOpen(false);
                   }}
                   className="sidebar-tab-link"
                   style={{
@@ -573,80 +521,9 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
         </header>
 
         {/* Dashboard Main Scrollable Area */}
-        <main style={{ padding: 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
-          
-          {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
-          {((isMobile || isTablet) && (activeTab === 'dashboard' || activeTab === 'profile')) ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Workspace controls</span>
-                <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>Influencer Portal</h3>
-                <p style={{ color: 'var(--text-gray)', fontSize: '13px', marginTop: '2px' }}>Manage all aspects of your influencer profile, brand deals, and connections below.</p>
-              </div>
-
-              {activeTab === 'dashboard' && (
-                <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', marginBottom: '16px' }}>
-                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ padding: '6px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
-                      <Briefcase size={16} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Brand Deals</span>
-                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{activeWorkspaces.length}</h4>
-                    </div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ padding: '6px', background: 'rgba(126, 197, 180, 0.08)', color: 'var(--accent-cyan-light)', borderRadius: '8px' }}>
-                      <FileText size={16} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Campaign Pitches</span>
-                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{sentPitches.length}</h4>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {[
-                { title: 'Influencer Information', component: <InfluencerProfile section="info" /> },
-                { title: 'Contact Information', component: <InfluencerProfile section="contact" /> },
-                { title: 'My Connections', component: <MyConnections onOpenProfile={onOpenProfile} onStartChat={(userId) => { startConversation(userId); setActiveTab('messages'); }} /> },
-                { title: 'Blocked Profiles', component: <BlockedProfilesList /> }
-              ].map((acc, index) => {
-                const isOpen = expandedAccordion === index;
-                return (
-                  <div key={index} className="glass-panel" style={{ borderRadius: '18px', overflow: 'hidden', border: '1px solid ' + (isOpen ? 'var(--accent-cyan)' : 'var(--glass-border)'), background: 'rgba(255,255,255,0.01)', marginBottom: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
-                      style={{
-                        width: '100%',
-                        padding: '16px 20px',
-                        background: isOpen ? 'rgba(255,255,255,0.02)' : 'none',
-                        border: 'none',
-                        color: 'var(--text-white)',
-                        fontWeight: '700',
-                        fontSize: '14px',
-                        textAlign: 'left',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <span>{index + 1}. {acc.title}</span>
-                      <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', color: 'var(--text-muted)' }} />
-                    </button>
-                    {isOpen && (
-                      <div style={{ padding: '20px', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
-                        {acc.component}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : activeTab === 'dashboard' && (
+        <main style={{ padding: (isMobile && activeTab === 'messages') ? '0' : 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
+           {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
+          {activeTab === 'dashboard' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
               
               {/* Profile Completion Card */}
@@ -662,42 +539,87 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
                 </div>
               )}
 
-              {/* Stats overview */}
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }} className="stats-cards-grid">
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
-                    <Briefcase size={20} />
+              {/* Social overview / Media Kit Display */}
+              <section style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '16px' }} className="stats-cards-grid">
+                {/* Instagram Card */}
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <BrandIcon type="Instagram" size={20} style={{ color: '#e1306c' }} />
+                      <h4 style={{ fontSize: '14.5px', fontWeight: '800', color: 'var(--text-white)' }}>Instagram</h4>
+                    </div>
+                    {currentUser.platforms?.Instagram?.url && (
+                      <a href={currentUser.platforms.Instagram.url} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: 'var(--accent-cyan)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontWeight: '600' }}>
+                        Visit <ExternalLink size={10} />
+                      </a>
+                    )}
                   </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Brand Deals</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{activeWorkspaces.length}</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Followers</span>
+                      <strong style={{ color: 'var(--text-white)' }}>{instaFollowers || '0'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Reach</span>
+                      <strong style={{ color: 'var(--text-white)' }}>{instaReach || '0'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Engagement</span>
+                      <strong style={{ color: 'var(--accent-cyan)' }}>{instaEngage || '0%'}</strong>
+                    </div>
                   </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(126, 197, 180, 0.08)', color: 'var(--accent-cyan-light)', borderRadius: '12px' }}>
-                    <FileText size={20} />
+
+                {/* YouTube Card */}
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <BrandIcon type="Youtube" size={20} style={{ color: '#ff0000' }} />
+                      <h4 style={{ fontSize: '14.5px', fontWeight: '800', color: 'var(--text-white)' }}>YouTube</h4>
+                    </div>
+                    {currentUser.platforms?.YouTube?.url && (
+                      <a href={currentUser.platforms.YouTube.url} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: 'var(--accent-cyan)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none', fontWeight: '600' }}>
+                        Visit <ExternalLink size={10} />
+                      </a>
+                    )}
                   </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Campaign Pitches</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{sentPitches.length}</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Subscribers</span>
+                      <strong style={{ color: 'var(--text-white)' }}>{youtubeSubscribers || '0'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Reach</span>
+                      <strong style={{ color: 'var(--text-white)' }}>{youtubeReach || '0'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Engagement</span>
+                      <strong style={{ color: 'var(--accent-cyan)' }}>{youtubeEngage || '0%'}</strong>
+                    </div>
                   </div>
                 </div>
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
-                    <Mail size={20} />
+
+                {/* Combined & Authenticity Card */}
+                <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ShieldCheck size={20} style={{ color: 'var(--accent-cyan)' }} />
+                    <h4 style={{ fontSize: '14.5px', fontWeight: '800', color: 'var(--text-white)' }}>Verified Audience</h4>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Invitations</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{invitations.length}</h3>
-                  </div>
-                </div>
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
-                    <IndianRupee size={20} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Earnings</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹{totalEarningsAmount.toLocaleString()}</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Combined Reach</span>
+                      <strong style={{ color: 'var(--text-white)' }}>
+                        {totalReach >= 1000000 ? (totalReach / 1000000).toFixed(1) + 'M' : (totalReach >= 1000 ? (totalReach / 1000).toFixed(1) + 'K' : totalReach)}
+                      </strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Avg Engagement</span>
+                      <strong style={{ color: 'var(--text-white)' }}>{avgEngagement.toFixed(1)}%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px' }}>
+                      <span style={{ color: 'var(--text-gray)' }}>Authenticity</span>
+                      <strong style={{ color: '#22c55e' }}>{currentUser.fraudAudit?.engagementAuthenticity || '98% Verified'}</strong>
+                    </div>
                   </div>
                 </div>
               </section>
@@ -775,15 +697,15 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-gray)' }}><BrandIcon type="Instagram" size={14} /> Instagram Followers</span>
-                        <strong style={{ color: 'var(--text-white)' }}>{instaFollowers}</strong>
+                        <strong style={{ color: 'var(--text-white)' }}>{instaFollowers || '0'}</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-gray)' }}><BrandIcon type="Youtube" size={14} /> YouTube Subscribers</span>
-                        <strong style={{ color: 'var(--text-white)' }}>{youtubeSubscribers}</strong>
+                        <strong style={{ color: 'var(--text-white)' }}>{youtubeSubscribers || '0'}</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-gray)' }}><BrandIcon type="Instagram" size={14} /> Avg. Reach</span>
-                        <strong style={{ color: 'var(--text-white)' }}>{instaReach}</strong>
+                        <strong style={{ color: 'var(--text-white)' }}>{instaReach || '0'}</strong>
                       </div>
                     </div>
                     <button onClick={() => setActiveTab('mediakit')} className="btn-secondary" style={{ width: '100%', minHeight: '36px', borderRadius: '10px', marginTop: '16px', fontSize: '12px' }}>
@@ -815,9 +737,7 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
 
               </div>
             </div>
-          )}
-
-          {/* ==================== 2. CAMPAIGNS FEED VIEW ==================== */}
+          )}          {/* ==================== 2. CAMPAIGNS FEED VIEW ==================== */}
           {activeTab === 'campaigns' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div>
@@ -929,158 +849,158 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
 
                   {selectedWorkspaceId && (
                     (() => {
-                      const proj = activeWorkspaces.find(p => p.id === selectedWorkspaceId);
-                      if (!proj || !proj.team) return null;
-                      const projMessages = messages[proj.id] || [];
+                       const proj = activeWorkspaces.find(p => p.id === selectedWorkspaceId);
+                       if (!proj || !proj.team) return null;
+                       const projMessages = messages[proj.id] || [];
 
-                      return (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }} className="workspace-main-grid">
-                          
-                          {/* Workspace Progress */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                            
-                            {/* Milestones list */}
-                            <div className="glass-panel" style={{ padding: '24px' }}>
-                              <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Clock size={16} style={{ color: 'var(--accent-cyan)' }} /> Campaign Milestones
-                              </h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {proj.team.milestones?.map(m => (
-                                  <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
-                                    <div>
-                                      <h5 style={{ fontSize: '13.5px', color: 'var(--text-white)', fontWeight: '700' }}>{m.title}</h5>
-                                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Due: {m.deadline}</span>
-                                    </div>
-                                    <span style={{
-                                      background: m.status === 'Completed' ? 'rgba(34, 197, 94, 0.08)' : (m.status === 'In Progress' ? 'var(--accent-cyan-glow)' : 'rgba(141, 164, 160, 0.1)'),
-                                      color: m.status === 'Completed' ? '#22c55e' : (m.status === 'In Progress' ? 'var(--accent-cyan)' : 'var(--text-muted)'),
-                                      padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600'
-                                    }}>
-                                      {m.status}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                       return (
+                         <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '24px' }} className="workspace-main-grid">
+                           
+                           {/* Workspace Progress */}
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                             
+                             {/* Milestones list */}
+                             <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '16px' } : { padding: '24px' }}>
+                               <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                 <Clock size={16} style={{ color: 'var(--accent-cyan)' }} /> Campaign Milestones
+                               </h4>
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                 {proj.team.milestones?.map(m => (
+                                   <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
+                                     <div>
+                                       <h5 style={{ fontSize: '13.5px', color: 'var(--text-white)', fontWeight: '700' }}>{m.title}</h5>
+                                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Due: {m.deadline}</span>
+                                     </div>
+                                     <span style={{
+                                       background: m.status === 'Completed' ? 'rgba(34, 197, 94, 0.08)' : (m.status === 'In Progress' ? 'var(--accent-cyan-glow)' : 'rgba(141, 164, 160, 0.1)'),
+                                       color: m.status === 'Completed' ? '#22c55e' : (m.status === 'In Progress' ? 'var(--accent-cyan)' : 'var(--text-muted)'),
+                                       padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600'
+                                     }}>
+                                       {m.status}
+                                     </span>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
 
-                            {/* Task Checklist */}
-                            <div className="glass-panel" style={{ padding: '24px' }}>
-                              <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <CheckSquare size={16} style={{ color: 'var(--accent-cyan)' }} /> Script & Video Tasks Checklist
-                              </h4>
-                              
-                              <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                                <input 
-                                  type="text" 
-                                  value={workspaceTaskInput}
-                                  onChange={(e) => setWorkspaceTaskInput(e.target.value)}
-                                  className="form-input" 
-                                  placeholder="Add script milestone item..."
-                                  style={{ height: '38px', minHeight: '38px', fontSize: '13px' }}
-                                />
-                                <button onClick={() => {
-                                  if (!workspaceTaskInput.trim()) return;
-                                  if (!proj.team.tasks) proj.team.tasks = [];
-                                  proj.team.tasks.push({ id: generateTaskId(), title: workspaceTaskInput, completed: false });
-                                  sendMessage(proj.id, `📋 Creator added workflow item: "${workspaceTaskInput}"`, 'system', 'Creators Hub AI');
-                                  setWorkspaceTaskInput('');
-                                }} className="btn-primary" style={{ padding: '0 16px', minHeight: '38px', borderRadius: '12px' }}>
-                                  <Plus size={16} />
-                                </button>
-                              </div>
+                             {/* Task Checklist */}
+                             <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '16px' } : { padding: '24px' }}>
+                               <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                 <CheckSquare size={16} style={{ color: 'var(--accent-cyan)' }} /> Script & Video Tasks Checklist
+                               </h4>
+                               
+                               <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                                 <input 
+                                   type="text" 
+                                   value={workspaceTaskInput}
+                                   onChange={(e) => setWorkspaceTaskInput(e.target.value)}
+                                   className="form-input" 
+                                   placeholder="Add script milestone item..."
+                                   style={{ height: '38px', minHeight: '38px', fontSize: '13px' }}
+                                 />
+                                 <button onClick={() => {
+                                   if (!workspaceTaskInput.trim()) return;
+                                   if (!proj.team.tasks) proj.team.tasks = [];
+                                   proj.team.tasks.push({ id: generateTaskId(), title: workspaceTaskInput, completed: false });
+                                   sendMessage(proj.id, `📋 Creator added workflow item: "${workspaceTaskInput}"`, 'system', 'Creators Hub AI');
+                                   setWorkspaceTaskInput('');
+                                 }} className="btn-primary" style={{ padding: '0 16px', minHeight: '38px', borderRadius: '12px' }}>
+                                   <Plus size={16} />
+                                 </button>
+                               </div>
 
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {(proj.team.tasks || []).map(t => (
-                                  <div 
-                                    key={t.id} 
-                                    onClick={() => {
-                                      t.completed = !t.completed;
-                                      sendMessage(proj.id, `✅ Item ${t.completed ? 'Completed' : 'Reopened'} by Creator: "${t.title}"`, 'system', 'Creators Hub AI');
-                                      setSelectedWorkspaceId(proj.id);
-                                    }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--glass-border)', cursor: 'pointer' }}
-                                  >
-                                    <input type="checkbox" checked={t.completed} readOnly style={{ accentColor: 'var(--accent-cyan)' }} />
-                                    <span style={{ fontSize: '13px', color: t.completed ? 'var(--text-muted)' : 'var(--text-white)', textDecoration: t.completed ? 'line-through' : 'none' }}>
-                                      {t.title}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                 {(proj.team.tasks || []).map(t => (
+                                   <div 
+                                     key={t.id} 
+                                     onClick={() => {
+                                       t.completed = !t.completed;
+                                       sendMessage(proj.id, `✅ Item ${t.completed ? 'Completed' : 'Reopened'} by Creator: "${t.title}"`, 'system', 'Creators Hub AI');
+                                       setSelectedWorkspaceId(proj.id);
+                                     }}
+                                     style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'var(--bg-dark)', borderRadius: '10px', border: '1px solid var(--glass-border)', cursor: 'pointer' }}
+                                   >
+                                     <input type="checkbox" checked={t.completed} readOnly style={{ accentColor: 'var(--accent-cyan)' }} />
+                                     <span style={{ fontSize: '13px', color: t.completed ? 'var(--text-muted)' : 'var(--text-white)', textDecoration: t.completed ? 'line-through' : 'none' }}>
+                                       {t.title}
+                                     </span>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
 
-                            {/* Escrow Payments */}
-                            <div className="glass-panel" style={{ padding: '24px' }}>
-                              <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <IndianRupee size={16} style={{ color: 'var(--accent-cyan)' }} /> Escrow Funding Milestones
-                              </h4>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {proj.team.payments?.map(p => (
-                                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
-                                    <div>
-                                      <h5 style={{ fontSize: '13.5px', color: 'var(--text-white)', fontWeight: '700' }}>{p.title}</h5>
-                                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Value: <strong>{p.amount}</strong></span>
-                                    </div>
-                                    <span style={{
-                                      color: p.status === 'Paid' ? '#22c55e' : '#eab308',
-                                      fontSize: '11.5px', fontWeight: '700'
-                                    }}>
-                                      {p.status === 'Paid' ? 'Paid Out' : 'Escrow Locked'}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                             {/* Escrow Payments */}
+                             <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '16px' } : { padding: '24px' }}>
+                               <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                 <IndianRupee size={16} style={{ color: 'var(--accent-cyan)' }} /> Escrow Funding Milestones
+                               </h4>
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                 {proj.team.payments?.map(p => (
+                                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '10px' }}>
+                                     <div>
+                                       <h5 style={{ fontSize: '13.5px', color: 'var(--text-white)', fontWeight: '700' }}>{p.title}</h5>
+                                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Value: <strong>{p.amount}</strong></span>
+                                     </div>
+                                     <span style={{
+                                       color: p.status === 'Paid' ? '#22c55e' : '#eab308',
+                                       fontSize: '11.5px', fontWeight: '700'
+                                     }}>
+                                       {p.status === 'Paid' ? 'Paid Out' : 'Escrow Locked'}
+                                     </span>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
 
-                          </div>
+                           </div>
 
-                          {/* Chat Stream */}
-                          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '580px', justifyContent: 'space-between' }}>
-                            <h4 style={{ fontSize: '15px', fontWeight: '800', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px' }}>
-                              Brand Collaboration Chat
-                            </h4>
+                           {/* Chat Stream */}
+                           <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '16px 0', display: 'flex', flexDirection: 'column', height: '480px', justifyContent: 'space-between' } : { padding: '20px', display: 'flex', flexDirection: 'column', height: '580px', justifyContent: 'space-between' }}>
+                             <h4 style={{ fontSize: '15px', fontWeight: '800', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px' }}>
+                               Brand Collaboration Chat
+                             </h4>
 
-                            <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                              {projMessages.map((msg, index) => {
-                                const isSys = msg.senderId === 'system';
-                                return (
-                                  <div key={index} style={{
-                                    alignSelf: isSys ? 'center' : (msg.senderId === currentUser.id ? 'flex-end' : 'flex-start'),
-                                    background: isSys ? 'var(--accent-cyan-glow)' : (msg.senderId === currentUser.id ? 'var(--accent-cyan)' : 'var(--bg-dark)'),
-                                    border: '1px solid var(--glass-border)',
-                                    padding: '10px 14px',
-                                    borderRadius: '12px',
-                                    maxWidth: '85%',
-                                    fontSize: '12.5px'
-                                  }}>
-                                    {!isSys && <strong style={{ color: msg.senderId === currentUser.id ? 'rgba(255,255,255,0.9)' : 'var(--accent-cyan)', fontSize: '10.5px', display: 'block', marginBottom: '2px' }}>{msg.senderName}</strong>}
-                                    <p style={{ color: isSys ? 'var(--text-gray)' : (msg.senderId === currentUser.id ? '#ffffff' : 'var(--text-white)'), lineHeight: '1.4' }}>{msg.text}</p>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block', textAlign: 'right', marginTop: '4px' }}>
-                                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                             <div style={{ flex: 1, overflowY: 'auto', padding: '12px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                               {projMessages.map((msg, index) => {
+                                 const isSys = msg.senderId === 'system';
+                                 return (
+                                   <div key={index} style={{
+                                     alignSelf: isSys ? 'center' : (msg.senderId === currentUser.id ? 'flex-end' : 'flex-start'),
+                                     background: isSys ? 'var(--accent-cyan-glow)' : (msg.senderId === currentUser.id ? 'var(--accent-cyan)' : 'var(--bg-dark)'),
+                                     border: '1px solid var(--glass-border)',
+                                     padding: '10px 14px',
+                                     borderRadius: '12px',
+                                     maxWidth: '85%',
+                                     fontSize: '12.5px'
+                                   }}>
+                                     {!isSys && <strong style={{ color: msg.senderId === currentUser.id ? 'rgba(255,255,255,0.9)' : 'var(--accent-cyan)', fontSize: '10.5px', display: 'block', marginBottom: '2px' }}>{msg.senderName}</strong>}
+                                     <p style={{ color: isSys ? 'var(--text-gray)' : (msg.senderId === currentUser.id ? '#ffffff' : 'var(--text-white)'), lineHeight: '1.4' }}>{msg.text}</p>
+                                     <span style={{ fontSize: '9px', color: 'var(--text-muted)', display: 'block', textAlign: 'right', marginTop: '4px' }}>
+                                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                     </span>
+                                   </div>
+                                 );
+                               })}
+                             </div>
 
-                            <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
-                              <input 
-                                type="text" 
-                                value={workspaceChatInput}
-                                onChange={(e) => setWorkspaceChatInput(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkspaceChat(proj.id, workspaceChatInput); }}
-                                className="form-input" 
-                                placeholder="Message brand cell..." 
-                                style={{ height: '38px', minHeight: '38px', fontSize: '13px' }}
-                              />
-                              <button onClick={() => handleSendWorkspaceChat(proj.id, workspaceChatInput)} className="btn-primary" style={{ padding: '0 14px', minHeight: '38px', borderRadius: '10px' }}>
-                                <Send size={14} />
-                              </button>
-                            </div>
-                          </div>
+                             <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}>
+                               <input 
+                                 type="text" 
+                                 value={workspaceChatInput}
+                                 onChange={(e) => setWorkspaceChatInput(e.target.value)}
+                                 onKeyDown={(e) => { if (e.key === 'Enter') handleSendWorkspaceChat(proj.id, workspaceChatInput); }}
+                                 className="form-input" 
+                                 placeholder="Message brand cell..." 
+                                 style={{ height: '38px', minHeight: '38px', fontSize: '13px' }}
+                               />
+                               <button onClick={() => handleSendWorkspaceChat(proj.id, workspaceChatInput)} className="btn-primary" style={{ padding: '0 14px', minHeight: '38px', borderRadius: '10px' }}>
+                                 <Send size={14} />
+                               </button>
+                             </div>
+                           </div>
 
-                        </div>
-                      );
+                         </div>
+                       );
                     })()
                   )}
                 </div>
@@ -1312,91 +1232,11 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
             </div>
           )}
 
-          {/* ==================== 7. MY CONNECTIONS ==================== */}
-          {activeTab === 'connections' && (
-            <MyConnections 
-              onOpenProfile={onOpenProfile} 
-              onStartChat={(userId) => {
-                startConversation(userId);
-                setActiveTab('messages');
-              }}
-            />
-          )}
+
 
           {/* ==================== 7. MESSAGES VIEW ==================== */}
           {activeTab === 'messages' && (
             <MessagingCenter onOpenProfile={onOpenProfile} />
-          )}
-
-          {/* ==================== 8. INSIGHTS ANALYTICS VIEW ==================== */}
-          {activeTab === 'analytics' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Audience Performance Insights</h3>
-              {avgEngagement === 0 && totalReach === 0 ? (
-                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  <p style={{ fontSize: '14px' }}>Analytics will appear after your profile starts receiving visitors.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Average Engagement</span>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>
-                      {avgEngagement.toFixed(1)}%
-                    </h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Monthly Reach</span>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>
-                      {totalReach >= 1000000 ? (totalReach / 1000000).toFixed(1) + 'M' : (totalReach >= 1000 ? (totalReach / 1000).toFixed(1) + 'K' : totalReach)}
-                    </h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Revenue Completed</span>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>
-                      ₹{totalEarningsAmount.toLocaleString()}
-                    </h3>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ==================== EARNINGS VIEW ==================== */}
-          {activeTab === 'earnings' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Earnings Dashboard</h3>
-              {totalEarningsAmount === 0 ? (
-                <div className="glass-panel" style={{ padding: '48px', textAlign: 'center' }}>
-                  <IndianRupee size={40} style={{ color: 'var(--accent-cyan)', opacity: 0.3, marginBottom: '16px' }} />
-                  <h4 style={{ fontSize: '17px', fontWeight: '800', color: 'var(--text-white)' }}>No Earnings Yet</h4>
-                  <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', marginTop: '4px' }}>Complete your first campaign to start earning.</p>
-                  <button onClick={() => setActiveTab('campaigns')} className="btn-primary" style={{ padding: '8px 20px', minHeight: '36px', borderRadius: '10px', fontSize: '13px', marginTop: '20px' }}>
-                    Browse Opportunities
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }} className="analytics-grid">
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Escrow Payments Pending</span>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan)', marginTop: '4px' }}>
-                      ₹{pendingEscrowAmount.toLocaleString()}
-                    </h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Active Campaign Value</span>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--accent-cyan-light)', marginTop: '4px' }}>
-                      ₹{activeCampaignValue.toLocaleString()}
-                    </h3>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '20px' }}>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Total Net Earned</span>
-                    <h3 style={{ fontSize: '24px', fontWeight: '800', color: 'var(--text-white)', marginTop: '4px' }}>
-                      ₹{totalEarningsAmount.toLocaleString()}
-                    </h3>
-                  </div>
-                </div>
-              )}
-            </div>
           )}
 
           {/* ==================== CLIENT REVIEWS VIEW ==================== */}
@@ -1426,19 +1266,67 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
           )}
 
           {/* ==================== 9. CREATOR PROFILE VIEW ==================== */}
-          {activeTab === 'profile' && !(isMobile || isTablet) && (
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
-              <InfluencerProfile />
-              <div className="glass-panel" style={{ padding: '24px' }}>
-                <BlockedProfilesList />
+          {activeTab === 'profile' && (
+            (isMobile || isTablet) ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Profile settings</span>
+                  <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>Influencer Portal</h3>
+                  <p style={{ color: 'var(--text-gray)', fontSize: '13px', marginTop: '2px' }}>Manage all aspects of your creator profile and settings below.</p>
+                </div>
+
+                {[
+                  { title: 'Influencer Information', component: <InfluencerProfile section="info" /> },
+                  { title: 'Contact Information', component: <InfluencerProfile section="contact" /> },
+                  { title: 'Blocked Profiles', component: <BlockedProfilesList /> }
+                ].map((acc, index) => {
+                  const isOpen = expandedAccordion === index;
+                  return (
+                    <div key={index} className={isMobile ? "" : "glass-panel"} style={isMobile ? { borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '12px' } : { borderRadius: '18px', overflow: 'hidden', border: '1px solid ' + (isOpen ? 'var(--accent-cyan)' : 'var(--glass-border)'), background: 'rgba(255,255,255,0.01)', marginBottom: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
+                        style={{
+                          width: '100%',
+                          padding: isMobile ? '12px 0' : '16px 20px',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-white)',
+                          fontWeight: '700',
+                          fontSize: '14px',
+                          textAlign: 'left',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <span>{index + 1}. {acc.title}</span>
+                        <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', color: 'var(--text-muted)' }} />
+                      </button>
+                      {isOpen && (
+                        <div style={isMobile ? { padding: '16px 0 8px 0' } : { padding: '20px', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                          {acc.component}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', alignItems: 'start' }}>
+                <InfluencerProfile />
+                <div className="glass-panel" style={{ padding: '24px' }}>
+                  <BlockedProfilesList />
+                </div>
+              </div>
+            )
           )}
 
           {/* ==================== 10. SETTINGS VIEW ==================== */}
           {activeTab === 'settings' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="glass-panel" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '24px' }}>
+              <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0' } : { padding: '24px' }}>
                 <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Creator Settings</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
@@ -1452,7 +1340,7 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
                 </div>
               </div>
 
-              <div className="glass-panel" style={{ padding: '24px' }}>
+              <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0' } : { padding: '24px' }}>
                 <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Privacy Settings</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', flexWrap: 'wrap', gap: '12px' }}>
@@ -1509,14 +1397,13 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
 
             <form onSubmit={handlePortfolioSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label className="form-label">Project Title*</label>
+                <label className="form-label">Project Title</label>
                 <input 
                   type="text" 
                   value={portTitle} 
                   onChange={(e) => setPortTitle(e.target.value)} 
                   className="form-input" 
-                  placeholder="E.g. Summer Skincare Campaign Reel" 
-                  required 
+                  placeholder="E.g. Summer Skincare Campaign Reel (Optional)" 
                 />
               </div>
 
@@ -1533,13 +1420,14 @@ export const InfluencerDashboard = ({ onNavigate, onOpenProfile }) => {
                   <option value="Instagram Reel">Instagram Reel</option>
                   <option value="TikTok Showcase">TikTok Showcase</option>
                   <option value="Brand Deal">Brand Deal</option>
+                  <option value="Other">Other / Custom Link</option>
                 </select>
               </div>
 
               <div>
                 <label className="form-label">Project URL (Optional)</label>
                 <input 
-                  type="url" 
+                  type="text" 
                   value={portUrl} 
                   onChange={(e) => setPortUrl(e.target.value)} 
                   className="form-input" 

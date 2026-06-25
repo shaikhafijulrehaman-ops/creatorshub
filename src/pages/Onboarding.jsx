@@ -3,7 +3,7 @@ import { AppContext } from '../context/AppContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, ArrowRight, Briefcase, Video, Code, Mail, Lock, 
-  User, Phone, Eye, EyeOff, Sparkles
+  User, Phone, Eye, EyeOff
 } from 'lucide-react';
 import { useToast } from '../components/SuccessToast';
 
@@ -37,10 +37,6 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [duplicateEmailError, setDuplicateEmailError] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
-
-  // Step 4 Welcome Animation Stage
-  const [successAnimationActive, setSuccessAnimationActive] = useState(false);
 
   // Auto-redirect for post-registration success page (Step 4)
   useEffect(() => {
@@ -120,9 +116,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
         return;
       }
 
-      setIsCheckingEmail(true);
       const exists = await checkEmailExists(email);
-      setIsCheckingEmail(false);
 
       if (exists) {
         setDuplicateEmailError(true);
@@ -134,7 +128,6 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
     } catch (err) {
       console.error('Registration step 2 submit failed:', err);
       setErrorMsg('Error: ' + err.message);
-      setIsCheckingEmail(false);
     }
   };
 
@@ -160,9 +153,6 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
       });
       
       setSignUpStep(4);
-      setTimeout(() => {
-        setSuccessAnimationActive(true);
-      }, 100);
     } catch (err) {
       console.error('OTP verification failed:', err);
       if (err.message && err.message.includes('already registered')) {
@@ -174,37 +164,7 @@ export const Onboarding = ({ onNavigate, initialParams = {} }) => {
     }
   };
 
-  // Helper values for Success screen (Step 4)
-  const getSuccessContent = () => {
-    switch (role) {
-      case 'Business Holder':
-        return {
-          headline: 'Welcome Aboard.',
-          subheadline: 'Build your team. Launch your next project.',
-          color: '#00C2FF'
-        };
-      case 'Freelancer':
-        return {
-          headline: 'Welcome Freelancer.',
-          subheadline: "Thousands of opportunities await you. Let's build something amazing.",
-          color: '#67E8F9'
-        };
-      case 'Influencer':
-        return {
-          headline: 'Welcome Creator.',
-          subheadline: 'Your next brand collaboration starts here.',
-          color: '#06B6D4'
-        };
-      default:
-        return {
-          headline: 'Welcome.',
-          subheadline: 'Entering your workspace.',
-          color: '#00C2FF'
-        };
-    }
-  };
 
-  const successContent = getSuccessContent();
 
   return (
     <div style={{ 

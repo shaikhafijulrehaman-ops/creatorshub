@@ -1,22 +1,22 @@
 import { useContext } from 'react';
 import { AppContext } from '../../../context/AppContext';
-import { MapPin, Building, Globe, Shield, Star, Users, Clock, CheckCircle, Calendar, Link } from 'lucide-react';
+import { MapPin, Building, Globe, Shield, Star, Users, CheckCircle, Calendar, Link } from 'lucide-react';
 import './Business.css';
 
 const Lock = () => (
   <div className="biz-lock-overlay">
     <Shield size={14} />
-    <span>Visible only after connection is accepted</span>
+    <span>Visible only to registered members</span>
   </div>
 );
 
 export const BusinessPublicProfile = ({ businessId, viewerId }) => {
-  const { users, projects, isConnected, applications } = useContext(AppContext);
+  const { users, projects, applications } = useContext(AppContext);
 
   const business = users.find(u => u.id === businessId);
   if (!business) return null;
 
-  const connected = viewerId && isConnected ? isConnected(viewerId, businessId) : false;
+  const connected = !!viewerId;
   const fv = business.fieldVisibility || {};
 
   const canSee = (key) => {

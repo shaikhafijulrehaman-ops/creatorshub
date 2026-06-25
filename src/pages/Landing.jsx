@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { 
-  ArrowRight, Play, Sparkles, Shield, Cpu, Users, Layers, 
-  CreditCard, BarChart2, ExternalLink, X,
-  Briefcase, Video, Code, ShieldCheck, Eye, MessageSquare
+  ArrowRight, Play, Sparkles, Cpu, Layers, 
+  ExternalLink, X,
+  Briefcase, Video, Code, ShieldCheck, MessageSquare
 } from 'lucide-react';
 import { AnimatedLogo } from '../components/AnimatedLogo';
 

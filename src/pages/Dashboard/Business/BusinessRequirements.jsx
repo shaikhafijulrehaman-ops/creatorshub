@@ -1,7 +1,8 @@
 import { useContext, useState } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { useToast } from '../../../components/SuccessToast';
-import { Plus, X, MapPin, Clock, IndianRupee, Briefcase, Tag, Users, Calendar, ChevronDown } from 'lucide-react';
+import { Plus, X, MapPin, IndianRupee, Briefcase, Users, Calendar, ChevronDown } from 'lucide-react';
+import { useResponsive } from '../../../hooks/useResponsive';
 import './Business.css';
 
 const STATUS_MAP = {
@@ -21,6 +22,7 @@ const CATEGORIES = [
 export const BusinessRequirements = () => {
   const { currentUser, projects, createProject, setProjects, applications } = useContext(AppContext);
   const { showSuccessToast } = useToast();
+  const { isMobile } = useResponsive();
 
   const businessProjects = projects.filter(p => p.businessId === currentUser.id);
 
@@ -85,7 +87,7 @@ export const BusinessRequirements = () => {
 
       {/* Inline creation form */}
       {showForm && (
-        <div className="glass-panel biz-req-form-wrap animate-scale-up">
+        <div className={isMobile ? "biz-req-form-wrap mobile-spacious-section animate-scale-up" : "glass-panel biz-req-form-wrap animate-scale-up"} style={isMobile ? { padding: '0 0 16px 0' } : {}}>
           <div className="biz-req-form-header">
             <h4>Publish a Requirement</h4>
             <button type="button" onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -170,7 +172,7 @@ export const BusinessRequirements = () => {
             const isExpanded = expandedId === proj.id;
             const appCount = (applications || []).filter(app => app.project_id === proj.id).length;
             return (
-              <div key={proj.id} className="glass-panel biz-req-card">
+              <div key={proj.id} className={isMobile ? "biz-req-card mobile-spacious-section" : "glass-panel biz-req-card"} style={isMobile ? { borderBottom: '1px solid var(--glass-border)', paddingBottom: '20px', marginBottom: '8px' } : {}}>
                 {/* Card header */}
                 <div className="biz-req-card-top">
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

@@ -3,9 +3,9 @@ import { AppContext } from '../../context/AppContext';
 import { MessagingCenter } from './Shared/MessagingCenter';
 import { 
   LayoutDashboard, FolderKanban, Users, UserCheck, MessageSquare, 
-  Calendar, Bell, BarChart3, Building, CreditCard, Settings, LogOut,
-  Plus, Search, ArrowRight, X, Check, Briefcase, Send, ExternalLink,
-  MapPin, Clock, IndianRupee, CheckSquare
+  Bell, BarChart3, Settings, LogOut,
+  Plus, Search, ArrowRight, X, Check, Send,
+  Clock, IndianRupee, CheckSquare
 } from 'lucide-react';
 import { useToast } from '../../components/SuccessToast';
 import { BusinessProfile } from './Business/BusinessProfile';
@@ -13,7 +13,6 @@ import { BusinessRequirements } from './Business/BusinessRequirements';
 import { BusinessApplications } from './Business/BusinessApplications';
 import { NotificationCenter, NotificationBell } from '../../components/NotificationCenter';
 import { BusinessPublicProfile } from './Business/BusinessPublicProfile';
-import { MyConnections } from './Shared/MyConnections';
 import { BlockedProfilesList } from '../../components/BlockedProfilesList';
 import { ChevronDown } from 'lucide-react';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -25,9 +24,9 @@ const generateTaskId = () => `t-${Date.now()}`;
 export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const { 
     currentUser, logoutUser, projects, createProject, users, 
-    activityFeed, messages, sendMessage, activateCreatorTeam, updateProfile, loading,
-    activeTabToRedirect, setActiveTabToRedirect, setActiveConversationId, notifications, setProjects,
-    activeDashboardTab, setActiveDashboardTab, startConversation,
+    activityFeed, messages, sendMessage, updateProfile,
+    activeTabToRedirect, setActiveTabToRedirect, setActiveConversationId,
+    activeDashboardTab, setActiveDashboardTab,
     applications, isBlockedRelation, showConfirmation
   } = useContext(AppContext);
   const { showSuccessToast } = useToast();
@@ -41,7 +40,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   
   // Left Sidebar Collapsibility State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
   const handleLogout = async () => {
@@ -72,13 +70,10 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   const [reqCategory, setReqCategory] = useState('Website Development');
   const [reqBudget, setReqBudget] = useState('');
   const [reqDeadline, setReqDeadline] = useState('');
-  const [reqLocation, setReqLocation] = useState('');
+
   const [reqType, setReqType] = useState('Remote');
   const [reqDesc, setReqDesc] = useState('');
-  const [reqSkills, setReqSkills] = useState('');
-  const [reqDeliverables, setReqDeliverables] = useState('');
-  const [reqLinks, setReqLinks] = useState('');
-  const [reqImages, setReqImages] = useState('');
+
 
   // Active Workspace / Projects View State
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(null);
@@ -87,18 +82,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
   
   // Search Directory State
   const [talentSearchQuery, setTalentSearchQuery] = useState('');
-  const [talentCategoryFilter, setTalentCategoryFilter] = useState('All');
 
   // Filter Data
   const businessProjects = projects.filter(p => p.businessId === currentUser.id);
   const openRequirements = businessProjects.filter(p => p.status === 'Open');
   const activeCollaborations = businessProjects.filter(p => p.status === 'Active Workspace');
 
-  // Calculate dynamic escrow budget from active collaborations
-  const totalEscrowedBudget = activeCollaborations.reduce((sum, p) => {
-    const numericBudget = parseFloat(p.budget?.replace(/[^0-9.]/g, '')) || 0;
-    return sum + numericBudget;
-  }, 0);
+
 
   // Collect All Received applications across all requirements from the applications table
   const receivedApplications = [];
@@ -135,13 +125,13 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
       category: reqCategory,
       budget: reqBudget,
       deadline: reqDeadline,
-      location: reqLocation || 'Global',
-      remoteType: reqType,
+      location: 'Global',
+      remoteType: reqType === 'Onsite' ? 'On-site' : 'Remote',
       description: reqDesc,
-      skills: reqSkills ? reqSkills.split(',').map(s => s.trim()) : [],
-      deliverables: reqDeliverables ? reqDeliverables.split(',').map(d => d.trim()) : [],
-      referenceLinks: reqLinks ? reqLinks.split(',').map(l => l.trim()) : [],
-      referenceImages: reqImages ? reqImages.split(',').map(i => i.trim()) : [],
+      skills: [],
+      deliverables: [],
+      referenceLinks: [],
+      referenceImages: [],
       businessName: currentUser.businessName || currentUser.fullName,
       status: 'Open'
     });
@@ -150,12 +140,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     setReqTitle('');
     setReqBudget('');
     setReqDeadline('');
-    setReqLocation('');
     setReqDesc('');
-    setReqSkills('');
-    setReqDeliverables('');
-    setReqLinks('');
-    setReqImages('');
     setShowReqModal(false);
     setActiveTab('requirements');
   };
@@ -198,35 +183,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     }
   };
 
-  // Handle Hire Creator
-  const handleHireCreator = (projectId, proposal) => {
-    const proj = projects.find(p => p.id === projectId);
-    if (!proj) return;
 
-    // Check creator role
-    const creator = users.find(u => u.id === proposal.creatorId);
-    const assignedRole = creator?.role === 'Influencer' ? 'Influencer' : 'Contractor';
-    
-    // Assemble creator team
-    activateCreatorTeam(projectId, { [assignedRole]: proposal.creatorId });
-    
-    // Auto remove proposal from pending once active workspace starts
-    proj.proposals = proj.proposals.filter(p => p.creatorId !== proposal.creatorId);
-    
-    showSuccessToast({ title: '✔ Creator Hired!', subtitle: `Successfully hired ${proposal.creatorName}!`, redirectText: 'Opening collaboration workspace...' });
-    setSelectedWorkspaceId(projectId);
-    setActiveTab('workspace');
-  };
-
-  // Handle Reject Proposal
-  const handleRejectProposal = (projectId, creatorId) => {
-    const proj = projects.find(p => p.id === projectId);
-    if (proj) {
-      proj.proposals = proj.proposals.filter(p => p.creatorId !== creatorId);
-      showSuccessToast({ title: '✔ Proposal Rejected', subtitle: 'Application proposal has been rejected.' });
-      setActiveTab('applications');
-    }
-  };
 
   // Invite Talent to Project Modal/Action
   const handleInviteTalent = (creatorId, projectId) => {
@@ -249,7 +206,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
     { id: 'influencers', label: 'Find Influencers', icon: <Users size={18} /> },
     { id: 'requirements', label: 'Post Project', icon: <FolderKanban size={18} /> },
     { id: 'applications', label: 'Applications', icon: <UserCheck size={18} /> },
-    { id: 'connections', label: 'My Connections', icon: <Users size={18} /> },
     { id: 'messages', label: 'Messages', icon: <MessageSquare size={18} /> },
     { id: 'profile', label: 'Profile Settings', icon: <Settings size={18} /> }
   ];
@@ -328,7 +284,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id);
-                    setMobileMenuOpen(false);
                   }}
                   className="sidebar-tab-link"
                   style={{
@@ -479,58 +434,86 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
         </header>
 
         {/* Dashboard Main Scrollable Area */}
-        <main style={{ padding: 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
+        <main style={{ padding: (isMobile && activeTab === 'messages') ? '0' : 'var(--container-padding)', flex: 1, overflowY: 'auto' }}>
           
           {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
-          {(isMobile || isTablet) && (activeTab === 'dashboard' || activeTab === 'profile') ? (
+          {/* ==================== 1. HOME DASHBOARD VIEW ==================== */}
+          {activeTab === 'dashboard' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '28px' }}>
+              
+              {/* Profile strength check card */}
+              {profileCompletion < 100 && (
+                <div className="glass-panel animate-scale-up" style={{ padding: isMobile ? '16px' : '20px', border: '1px solid rgba(91, 174, 155, 0.25)', background: 'radial-gradient(ellipse at right, rgba(91, 174, 155, 0.08), transparent 70%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-white)' }}>Complete your Business Profile</h3>
+                    <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '4px' }}>Fill in details like logo, cover image, and about section to gain a 3x increase in creator application rates.</p>
+                  </div>
+                  <button onClick={() => {
+                    setActiveTab('profile');
+                  }} className="btn-primary" style={{ padding: '8px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12.5px', width: isMobile ? '100%' : 'auto' }}>
+                    Finish Setup <ArrowRight size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* Stats overview */}
+              <section style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '16px' }} className="stats-cards-grid">
+                <div className="glass-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
+                    <FolderKanban size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-gray)' }}>Open Requirements</span>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '2px' }}>{openRequirements.length}</h3>
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
+                    <CheckSquare size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-gray)' }}>Active Collaborations</span>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '2px' }}>{activeCollaborations.length}</h3>
+                  </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(126, 197, 180, 0.08)', color: 'var(--accent-cyan-light)', borderRadius: '12px' }}>
+                    <UserCheck size={20} />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-gray)' }}>Pending Proposals</span>
+                    <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '2px' }}>{receivedApplications.length}</h3>
+                  </div>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* ==================== PROFILE VIEW (Mobile Accordion / Desktop wizard) ==================== */}
+          {activeTab === 'profile' && (isMobile || isTablet) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div style={{ marginBottom: '16px' }}>
-                <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Workspace controls</span>
+                <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Profile settings</span>
                 <h3 style={{ fontSize: '20px', fontWeight: '800', marginTop: '4px' }}>Business Portal</h3>
                 <p style={{ color: 'var(--text-gray)', fontSize: '13px', marginTop: '2px' }}>Manage all aspects of your company briefs, applications, and settings below.</p>
               </div>
-
-              {activeTab === 'dashboard' && (
-                <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ padding: '6px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
-                      <FolderKanban size={16} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Briefs</span>
-                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{openRequirements.length}</h4>
-                    </div>
-                  </div>
-                  <div className="glass-panel" style={{ padding: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ padding: '6px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '8px' }}>
-                      <CheckSquare size={16} />
-                    </div>
-                    <div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Collaborations</span>
-                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: 0 }}>{activeCollaborations.length}</h4>
-                    </div>
-                  </div>
-                </section>
-              )}
 
               {[
                 { title: 'Business Information', component: <BusinessProfile section="info" /> },
                 { title: 'Contact Information', component: <BusinessProfile section="contact" /> },
                 { title: 'Public Profile', component: <BusinessPublicProfile businessId={currentUser.id} viewerId={currentUser.id} /> },
-                { title: 'Campaign Briefs / Projects', component: <BusinessRequirements /> },
-                { title: 'Applications Received', component: <BusinessApplications onOpenMessages={(convId) => { setActiveConversationId(convId); setActiveTab('messages'); }} /> },
                 { title: 'Blocked Profiles', component: <BlockedProfilesList /> }
               ].map((acc, index) => {
                 const isOpen = expandedAccordion === index;
                 return (
-                  <div key={index} className="glass-panel" style={{ borderRadius: '18px', overflow: 'hidden', border: '1px solid ' + (isOpen ? 'var(--accent-cyan)' : 'var(--glass-border)'), background: 'rgba(255,255,255,0.01)', marginBottom: '8px' }}>
+                  <div key={index} className={isMobile ? "" : "glass-panel"} style={isMobile ? { borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px', marginBottom: '12px' } : { borderRadius: '16px', overflow: 'hidden', border: '1px solid ' + (isOpen ? 'var(--accent-cyan)' : 'var(--glass-border)'), background: 'rgba(255,255,255,0.01)', marginBottom: '8px' }}>
                     <button
                       type="button"
                       onClick={() => setExpandedAccordion(expandedAccordion === index ? null : index)}
                       style={{
                         width: '100%',
-                        padding: '16px 20px',
-                        background: isOpen ? 'rgba(255,255,255,0.02)' : 'none',
+                        padding: isMobile ? '12px 0' : '16px 20px',
+                        background: 'none',
                         border: 'none',
                         color: 'var(--text-white)',
                         fontWeight: '700',
@@ -546,7 +529,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                       <ChevronDown size={16} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', color: 'var(--text-muted)' }} />
                     </button>
                     {isOpen && (
-                      <div style={{ padding: '20px', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
+                      <div style={isMobile ? { padding: '16px 0 8px 0' } : { padding: '16px', borderTop: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
                         {acc.component}
                       </div>
                     )}
@@ -554,183 +537,6 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 );
               })}
             </div>
-          ) : (
-            activeTab === 'dashboard' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
-              
-              {/* Profile strength check card */}
-              {profileCompletion < 100 && (
-                <div className="glass-panel" style={{ padding: '20px', border: '1px solid rgba(91, 174, 155, 0.25)', background: 'radial-gradient(ellipse at right, rgba(91, 174, 155, 0.08), transparent 70%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', color: 'var(--text-white)' }}>Complete your Business Profile</h3>
-                    <p style={{ fontSize: '13px', color: 'var(--text-gray)', marginTop: '4px' }}>Fill in details like logo, cover image, and about section to gain a 3x increase in creator application rates.</p>
-                  </div>
-                  <button onClick={() => {
-                    if (isMobile || isTablet) {
-                      onNavigate('profile');
-                    } else {
-                      setActiveTab('profile');
-                    }
-                  }} className="btn-primary" style={{ padding: '8px 18px', minHeight: '36px', borderRadius: '10px', fontSize: '12.5px' }}>
-                    Finish Setup <ArrowRight size={14} />
-                  </button>
-                </div>
-              )}
-
-              {/* Stats overview */}
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }} className="stats-cards-grid">
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
-                    <FolderKanban size={20} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Open Requirements</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{openRequirements.length}</h3>
-                  </div>
-                </div>
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
-                    <CheckSquare size={20} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Active Collaborations</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{activeCollaborations.length}</h3>
-                  </div>
-                </div>
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(126, 197, 180, 0.08)', color: 'var(--accent-cyan-light)', borderRadius: '12px' }}>
-                    <UserCheck size={20} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Pending Proposals</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>{receivedApplications.length}</h3>
-                  </div>
-                </div>
-                <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(91, 174, 155, 0.08)', color: 'var(--accent-cyan)', borderRadius: '12px' }}>
-                    <IndianRupee size={20} />
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '12.5px', color: 'var(--text-gray)' }}>Escrowed Budget</span>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', marginTop: '2px' }}>₹{totalEscrowedBudget.toLocaleString()}</h3>
-                  </div>
-                </div>
-              </section>
-
-              {/* Home Main Sections */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1.3fr', gap: '24px' }} className="home-dashboard-two-col">
-                
-                {/* Left side */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  
-                  {/* Recent Applications list */}
-                  <div className="glass-panel" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <h3 style={{ fontSize: '16.5px', fontWeight: '800' }}>Recent Applications</h3>
-                      <button onClick={() => setActiveTab('applications')} style={{ background: 'none', border: 'none', color: 'var(--accent-cyan)', fontSize: '12.5px', fontWeight: '600', cursor: 'pointer' }}>
-                        View All
-                      </button>
-                    </div>
-
-                    {receivedApplications.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                        <Users size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
-                        <p style={{ fontSize: '13.5px' }}>No proposals received yet.</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {receivedApplications.slice(0, 4).map((app, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', borderRadius: '14px' }}>
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <strong style={{ color: 'var(--text-white)', fontSize: '13.5px' }}>{app.creatorName}</strong>
-                                <span className="badge-pro" style={{ fontSize: '9px', padding: '2px 6px' }}>Hired Bid: {app.pricing}</span>
-                              </div>
-                              <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>Applied to: {app.projectName}</p>
-                              <p style={{ fontSize: '12px', color: 'var(--text-gray)', marginTop: '4px', fontStyle: 'italic' }}>"{app.coverLetter.substring(0, 80)}..."</p>
-                            </div>
-                            <button onClick={() => { setActiveTab('applications') }} className="btn-outline-cyan" style={{ padding: '6px 14px', fontSize: '11.5px', minHeight: '32px', borderRadius: '8px' }}>
-                              Review
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Open Requirements Quick tracker */}
-                  <div className="glass-panel" style={{ padding: '24px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <h3 style={{ fontSize: '16.5px', fontWeight: '800' }}>Active Requirements</h3>
-                      <button onClick={() => setShowReqModal(true)} className="btn-primary" style={{ padding: '6px 14px', minHeight: '34px', borderRadius: '10px', fontSize: '12px' }}>
-                        <Plus size={14} /> Create
-                      </button>
-                    </div>
-
-                    {openRequirements.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                        <FolderKanban size={32} style={{ opacity: 0.3, marginBottom: '12px' }} />
-                        <p style={{ fontSize: '13.5px' }}>No open requirements yet. Post one to begin.</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {openRequirements.map(req => (
-                          <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', background: 'var(--bg-dark)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                            <div>
-                              <h5 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-white)' }}>{req.title}</h5>
-                              <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '11px', color: 'var(--text-muted)' }}>
-                                <span>Budget: {req.budget}</span>
-                                <span>Deadline: {req.deadline}</span>
-                                <span>Proposals: {(applications || []).filter(app => app.project_id === req.id).length}</span>
-                              </div>
-                            </div>
-                            <button onClick={() => setActiveTab('requirements')} className="btn-secondary" style={{ padding: '6px 14px', minHeight: '32px', borderRadius: '8px', fontSize: '11px' }}>
-                              Manage
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right side widgets */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  
-                  {/* Today's Activity Stream */}
-                  <div className="glass-panel" style={{ padding: '24px' }}>
-                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', marginBottom: '20px' }}>Ecosystem Feed</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      {activityFeed.slice(0, 5).map(act => (
-                        <div key={act.id} style={{ fontSize: '12.5px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-cyan)', marginTop: '6px' }} />
-                          <div>
-                            <p style={{ color: 'var(--text-gray-light)', lineHeight: '1.4' }}>{act.text}</p>
-                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>{act.time}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Quick actions panel */}
-                  <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <h3 style={{ fontSize: '16.5px', fontWeight: '800', marginBottom: '8px' }}>Workspace Operations</h3>
-                    <button onClick={() => setShowReqModal(true)} className="btn-primary" style={{ width: '100%', minHeight: '44px', borderRadius: '12px' }}>
-                      <Plus size={16} /> Create Requirement
-                    </button>
-                    <button onClick={() => { setActiveTab('freelancers'); }} className="btn-secondary" style={{ width: '100%', minHeight: '44px', borderRadius: '12px' }}>
-                      Browse Freelancers
-                    </button>
-                    <button onClick={() => { setActiveTab('influencers'); }} className="btn-secondary" style={{ width: '100%', minHeight: '44px', borderRadius: '12px' }}>
-                      Browse Influencers
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          )
           )}
 
           {/* ==================== 2. REQUIREMENTS VIEW ==================== */}
@@ -876,7 +682,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             
                             {/* Milestones list */}
-                            <div className="glass-panel" style={{ padding: '24px' }}>
+                            <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '16px' } : { padding: '24px' }}>
                               <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Clock size={16} style={{ color: 'var(--accent-cyan)' }} /> Campaign Milestones
                               </h4>
@@ -900,7 +706,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                             </div>
 
                             {/* Task Board */}
-                            <div className="glass-panel" style={{ padding: '24px' }}>
+                            <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0 0 16px 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '16px' } : { padding: '24px' }}>
                               <h4 style={{ fontSize: '15px', fontWeight: '800', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <CheckSquare size={16} style={{ color: 'var(--accent-cyan)' }} /> Sprint Tasks Checklist
                               </h4>
@@ -977,7 +783,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                           </div>
 
                           {/* Right Panel: Workspace Real-Time Chat */}
-                          <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', height: '580px', justifyContent: 'space-between' }}>
+                          <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '16px 0', display: 'flex', flexDirection: 'column', height: '480px', justifyContent: 'space-between' } : { padding: '20px', display: 'flex', flexDirection: 'column', height: '580px', justifyContent: 'space-between' }}>
                             <h4 style={{ fontSize: '15px', fontWeight: '800', borderBottom: '1px solid var(--glass-border)', paddingBottom: '12px' }}>
                               Workspace Secure Feed
                             </h4>
@@ -1040,7 +846,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
           {/* ==================== 7. CALENDAR ==================== */}
           {activeTab === 'calendar' && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
+            <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0' } : { padding: '24px' }}>
               <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Workspace Delivery Calendar</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '10px', textAlign: 'center' }} className="calendar-grid">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
@@ -1079,7 +885,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
 
           {/* ==================== 8. NOTIFICATIONS ==================== */}
           {activeTab === 'notifications' && (
-            <div className="glass-panel" style={{ padding: '24px' }}>
+            <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0' } : { padding: '24px' }}>
               <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Ecosystem Alerts</h3>
               {activityFeed.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '13.5px' }}>
@@ -1126,21 +932,12 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
             </div>
           )}
 
-          {/* ==================== 11. MY CONNECTIONS ==================== */}
-          {activeTab === 'connections' && (
-            <MyConnections 
-              onOpenProfile={onOpenProfile} 
-              onStartChat={(userId) => {
-                startConversation(userId);
-                setActiveTab('messages');
-              }}
-            />
-          )}
+
 
           {/* ==================== 12. SETTINGS PLACEHOLDER ==================== */}
           {activeTab === 'settings' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div className="glass-panel" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '16px' : '24px' }}>
+              <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0' } : { padding: '24px' }}>
                 <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Workspace Settings</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--glass-border)' }}>
@@ -1158,7 +955,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 </div>
               </div>
 
-              <div className="glass-panel" style={{ padding: '24px' }}>
+              <div className={isMobile ? "mobile-spacious-section" : "glass-panel"} style={isMobile ? { padding: '0' } : { padding: '24px' }}>
                 <h3 style={{ fontSize: '17px', fontWeight: '800', marginBottom: '20px' }}>Privacy Settings</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', flexWrap: 'wrap', gap: '12px' }}>
@@ -1191,10 +988,10 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
           top: 0, left: 0, width: '100%', height: '100%',
           background: 'rgba(0, 0, 0, 0.75)',
           backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center',
           zIndex: 9999
         }}>
-          <div className="glass-panel animate-scale-up" style={{ width: '92%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', padding: '32px', background: '#070c17', border: '1px solid rgba(0,217,255,0.15)', borderRadius: '24px' }}>
+          <div className="glass-panel animate-scale-up" style={{ width: isMobile ? '100%' : '92%', maxWidth: '620px', maxHeight: '90vh', overflowY: 'auto', padding: isMobile ? '16px 16px 32px 16px' : '32px', background: '#070c17', border: isMobile ? 'none' : '1px solid rgba(0,217,255,0.15)', borderRadius: isMobile ? '24px 24px 0 0' : '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--glass-border)', paddingBottom: '14px' }}>
               <h3 style={{ fontSize: '18px', fontWeight: '800' }}>Publish Campaign Requirement</h3>
               <button onClick={() => setShowReqModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-gray)', cursor: 'pointer' }}>
@@ -1208,7 +1005,7 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                 <input type="text" value={reqTitle} onChange={(e) => setReqTitle(e.target.value)} className="form-input" placeholder="E.g. Full-Stack Dev for Premium SaaS Platform" required />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="modal-input-row">
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '12px' }} className="modal-input-row">
                 <div>
                   <label className="form-label">Category*</label>
                   <select value={reqCategory} onChange={(e) => setReqCategory(e.target.value)} className="form-input" style={{ background: 'var(--bg-dark)' }}>
@@ -1238,36 +1035,14 @@ export const BusinessDashboard = ({ onNavigate, onOpenProfile }) => {
                   <label className="form-label">Work Type / Location*</label>
                   <select value={reqType} onChange={(e) => setReqType(e.target.value)} className="form-input" style={{ background: 'var(--bg-dark)' }}>
                     <option value="Remote">Remote</option>
-                    <option value="Hybrid">Hybrid</option>
                     <option value="Onsite">Onsite</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="form-label">Skills Required (Comma separated)</label>
-                <input type="text" value={reqSkills} onChange={(e) => setReqSkills(e.target.value)} className="form-input" placeholder="E.g. React, Figma, Next.js" />
-              </div>
-
-              <div>
                 <label className="form-label">Detailed Brief Description*</label>
-                <textarea value={reqDesc} onChange={(e) => setReqDesc(e.target.value)} className="form-input" rows={3} placeholder="Explain the project milestones, deliverables, requirements..." required />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="modal-input-row">
-                <div>
-                  <label className="form-label">Reference Link URLs</label>
-                  <input type="text" value={reqLinks} onChange={(e) => setReqLinks(e.target.value)} className="form-input" placeholder="https://example.com" />
-                </div>
-                <div>
-                  <label className="form-label">Reference Image URLs</label>
-                  <input type="text" value={reqImages} onChange={(e) => setReqImages(e.target.value)} className="form-input" placeholder="https://unsplash.com/..." />
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">Expected Deliverables (Comma separated)</label>
-                <input type="text" value={reqDeliverables} onChange={(e) => setReqDeliverables(e.target.value)} className="form-input" placeholder="E.g. Figma Source, Production Deployment" />
+                <textarea value={reqDesc} onChange={(e) => setReqDesc(e.target.value)} className="form-input" rows={5} placeholder="Explain the project milestones, deliverables, requirements..." required />
               </div>
 
               <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>Publish Requirement</button>

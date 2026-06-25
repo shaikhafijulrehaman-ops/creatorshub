@@ -146,10 +146,8 @@ export const FreelancerProfile = ({ section }) => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const renderPhotos = () => (
-    <div className="biz-section glass-panel">
+  };  const renderPhotos = () => (
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Profile Photos</h4>
       <div className="biz-cover-wrap">
         <label className="form-label">Cover Banner <span className="biz-recommended">Recommended: 1600 x 500</span></label>
@@ -163,7 +161,7 @@ export const FreelancerProfile = ({ section }) => {
       </div>
       <div className="biz-logo-wrap" style={{ marginTop: '16px' }}>
         <label className="form-label">Profile Photo <span className="biz-recommended">Recommended: 500 x 500</span></label>
-        <div style={{ maxWidth: '180px' }}>
+        <div style={isMobile ? { width: '100%' } : { maxWidth: '180px' }}>
           <PhotoUploader
             value={logo}
             onChange={setLogo}
@@ -177,7 +175,7 @@ export const FreelancerProfile = ({ section }) => {
   );
 
   const renderIdentity = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Freelancer Identity</h4>
       <div className="biz-field-row">
         <div className="biz-field">
@@ -215,7 +213,7 @@ export const FreelancerProfile = ({ section }) => {
   );
 
   const renderContact = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Contact Details</h4>
       <p className="biz-section-sub">Control who can see each field using the visibility toggle.</p>
 
@@ -250,7 +248,7 @@ export const FreelancerProfile = ({ section }) => {
   );
 
   const renderSocial = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <div className="biz-section-header-row" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
         <h4 className="biz-section-title" style={{ margin: 0 }}>Social Links</h4>
         <VisibilityToggle value={visibility.social} onChange={(v) => setVis('social', v)} />
@@ -272,7 +270,7 @@ export const FreelancerProfile = ({ section }) => {
   );
 
   const renderSkillsAndRates = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Availability & Rates</h4>
       <div className="biz-field-row" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div className="biz-field">
@@ -294,10 +292,10 @@ export const FreelancerProfile = ({ section }) => {
             {[
               'Not Specified',
               'Under ₹500/hr',
-              '₹500 - ₹1,000/hr',
+              '₹500 - ₹1,00,0/hr',
               '₹1,000 - ₹2,500/hr',
               '₹2,500 - ₹5,000/hr',
-              '₹5,000 - ₹10,000/hr',
+              '₹5,000 - ₹10,0,0/hr',
               '₹10,000+/hr',
               'Flexible / Discuss'
             ].map(r => (
@@ -309,10 +307,8 @@ export const FreelancerProfile = ({ section }) => {
     </div>
   );
 
-
-
   const renderReviewStep = () => (
-    <div className="biz-section glass-panel">
+    <div className={`biz-section ${isMobile ? 'mobile-spacious-section' : 'glass-panel'}`}>
       <h4 className="biz-section-title">Review Details</h4>
       <p className="biz-section-sub" style={{ marginBottom: '16px' }}>Verify your freelancer profile summary before saving changes.</p>
       

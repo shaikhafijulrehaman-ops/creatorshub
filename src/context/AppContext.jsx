@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useEffect, useRef } from 'react';
+import { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase, setSupabaseUserHeader } from '../supabaseClient';
 
 const LIGHTWEIGHT_COLUMNS = 'id,role,full_name,location,description,business_name,business_category,logo,profile_photo,bio,website,team_size,monthly_marketing_budget,content_categories,platforms,followers_count,average_reach,engagement_rate,languages,collaboration_pricing,verification_status,profile_strength,rating,reviews,fraud_audit,services,skills,experience,verification_requested,phone_visibility,email_visibility,website_visibility,social_links_visibility,contact_visibility,whatsapp,gst,contact_person,social_links,field_visibility,email,mobile_number,address,cover_banner';
@@ -29,33 +29,39 @@ const uploadBase64Image = async (userId, base64Str, prefix) => {
   
   const match = base64Str.match(/^data:([^;]+);base64,/);
   if (!match) {
-    throw new Error('Invalid base64 image data format');
+    return base64Str;
   }
   const contentType = match[1];
   const extension = contentType.split('/')[1] || 'webp';
   
-  const blob = base64ToBlob(base64Str, contentType);
-  const fileName = `${prefix}_${Date.now()}.${extension}`;
-  const filePath = `${userId}/${fileName}`;
-  
-  const { data, error } = await supabase.storage
-    .from('profiles')
-    .upload(filePath, blob, {
-      contentType: contentType,
-      upsert: true
-    });
+  try {
+    const blob = base64ToBlob(base64Str, contentType);
+    const fileName = `${prefix}_${Date.now()}.${extension}`;
+    const filePath = `${userId}/${fileName}`;
     
-  if (error) {
-    console.error('Storage upload error:', error);
-    throw new Error(`Failed to upload ${prefix} image: ` + error.message);
+    const { error } = await supabase.storage
+      .from('profiles')
+      .upload(filePath, blob, {
+        contentType: contentType,
+        upsert: true
+      });
+      
+    if (error) {
+      console.warn('Storage upload error (falling back to base64 URL):', error.message);
+      return base64Str; // Fallback to raw base64 string
+    }
+    
+    const { data: { publicUrl } } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(filePath);
+      
+    return publicUrl;
+  } catch (err) {
+    console.warn('Exception during image upload (falling back to base64 URL):', err.message);
+    return base64Str; // Fallback to raw base64 string
   }
-  
-  const { data: { publicUrl } } = supabase.storage
-    .from('profiles')
-    .getPublicUrl(filePath);
-    
-  return publicUrl;
 };
+
 
 const deleteOldImageFromStorage = async (oldUrl) => {
   if (!oldUrl) return;
@@ -115,11 +121,10 @@ const safeParse = (val, fallback = null) => {
 
 const mapUserToDb = (user) => {
   if (!user) return null;
-  return {
+  const dbObj = {
     id: user.id,
     role: user.role,
     email: user.email,
-    password: user.password,
     full_name: user.fullName,
     mobile_number: user.mobileNumber || null,
     location: user.location || null,
@@ -162,6 +167,10 @@ const mapUserToDb = (user) => {
     social_links: safeStringify(user.socialLinks),
     field_visibility: safeStringify(user.fieldVisibility)
   };
+  if (user.password !== undefined && user.password !== null) {
+    dbObj.password = user.password;
+  }
+  return dbObj;
 };
 
 const mapUserFromDb = (dbUser) => {
@@ -278,9 +287,6 @@ export const AppProvider = ({ children }) => {
   // Applications state
   const [applications, setApplications] = useState([]);
 
-  // Connections & Requests state
-  const [connections, setConnections] = useState([]);
-  const [connectionRequests, setConnectionRequests] = useState([]);
   const [blockedUsers, setBlockedUsers] = useState([]);
 
   // Global Active Dashboard Tab
@@ -289,6 +295,85 @@ export const AppProvider = ({ children }) => {
   const [theme] = useState('light');
   const [initialized, setInitialized] = useState(false);
   const [clientVersion, setClientVersion] = useState(0);
+
+  // P2P Messaging States (hoisted to avoid declaration order errors)
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [activeTabToRedirect, setActiveTabToRedirect] = useState(null);
+  const [p2pMessages, setP2pMessages] = useState({});
+  const [presenceList, setPresenceList] = useState({});
+
+  // Refs to prevent stale closures in realtime subscriptions
+  const conversationsRef = useRef([]);
+  const activeConversationIdRef = useRef(null);
+
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
+  useEffect(() => { activeConversationIdRef.current = activeConversationId; }, [activeConversationId]);
+
+  const syncConversationIfNeeded = useCallback(async (conversationId) => {
+    if (!currentUser || !conversationId) return;
+    const exists = conversationsRef.current.some(c => c.id === conversationId);
+    if (exists) return;
+
+    console.log('syncConversationIfNeeded: fetching conversation details from DB for:', conversationId);
+    try {
+      const { data: membersData } = await supabase
+        .from('conversation_members')
+        .select('user_id')
+        .eq('conversation_id', conversationId);
+
+      if (membersData && membersData.length > 0) {
+        const members = membersData.map(m => m.user_id);
+        if (members.includes(currentUser.id)) {
+          const otherUserId = members.find(mId => mId !== currentUser.id);
+          const conv = { id: conversationId, members, otherUserId };
+          setConversations(prev => {
+            if (prev.some(c => c.id === conversationId)) return prev;
+            return [...prev, conv];
+          });
+
+          // Fetch messages for this conversation as well
+          const { data: convMsgs } = await supabase
+            .from('messages')
+            .select('*')
+            .eq('conversation_id', conversationId)
+            .order('created_at', { ascending: true });
+          
+          if (convMsgs && convMsgs.length > 0) {
+            const formatted = convMsgs.map(m => ({
+              id: m.id,
+              conversationId: m.conversation_id,
+              senderId: m.sender_id,
+              text: m.message,
+              attachmentUrl: m.attachment_url,
+              messageType: m.message_type,
+              seen: m.seen,
+              timestamp: m.created_at
+            }));
+            setP2pMessages(prev => ({
+              ...prev,
+              [conversationId]: formatted
+            }));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error syncing conversation dynamically:', e);
+    }
+  }, [currentUser]);
+
+  const addNotification = useCallback(async (targetUserId, notifData) => {
+    const newNotif = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      user_id: targetUserId,
+      sender_id: currentUser ? currentUser.id : null,
+      type: notifData.type,
+      title: notifData.title,
+      message: notifData.message,
+      read: false
+    };
+    await supabase.from('notifications').insert([newNotif]);
+  }, [currentUser]);
 
   const updateSupabaseClient = (userId) => {
     setSupabaseUserHeader(userId);
@@ -387,22 +472,37 @@ export const AppProvider = ({ children }) => {
 
   const fetchUserData = async (userId) => {
     try {
-      console.log('fetchUserData: fetching relationships, notifications and blocks for user:', userId);
-      const [dbConns, dbReqs, dbNotifs, dbBlocked] = await Promise.all([
-        supabase.from('connections').select('*').or(`user_id1.eq.${userId},user_id2.eq.${userId}`),
-        supabase.from('connection_requests').select('*').or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
+      console.log('fetchUserData: fetching notifications and blocks for user:', userId);
+      const [dbNotifs, dbBlocked] = await Promise.all([
         supabase.from('notifications').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('blocked_users').select('*').or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`)
       ]);
 
-      if (dbConns.data) setConnections(dbConns.data);
-      if (dbReqs.data) setConnectionRequests(dbReqs.data);
       if (dbNotifs.data) setNotifications(dbNotifs.data);
       if (dbBlocked.data) setBlockedUsers(dbBlocked.data);
     } catch (e) {
       console.error('Error fetching user details:', e);
     }
   };
+
+  // Background polling fallback to ensure new projects/requirements are visible instantly
+  useEffect(() => {
+    if (!currentUser) return;
+    const fetchProjectsPeriodically = async () => {
+      try {
+        const { data: dbProjects, error: projErr } = await supabase.from('projects').select('*');
+        if (!projErr && dbProjects) {
+          const finalProjects = dbProjects.map(mapProjectFromDb);
+          setProjects(finalProjects);
+        }
+      } catch (err) {
+        console.warn('Background poll for projects failed:', err.message);
+      }
+    };
+
+    const intervalId = setInterval(fetchProjectsPeriodically, 10000);
+    return () => clearInterval(intervalId);
+  }, [currentUser]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -630,55 +730,15 @@ export const AppProvider = ({ children }) => {
     };
   }, [clientVersion]);
 
-  // Realtime database subscription for connections, requests, notifications
+  // Realtime database subscription for notifications, applications, conversations, blocked users
   useEffect(() => {
     if (!currentUser) {
-      setConnections([]);
-      setConnectionRequests([]);
-      setNotifications([]);
-      setBlockedUsers([]);
-      return;
+      const timer = setTimeout(() => {
+        setNotifications([]);
+        setBlockedUsers([]);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-
-    const connectionsSub = supabase
-      .channel('connections-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'connections' }, payload => {
-        const conn = payload.new;
-        if (payload.eventType === 'INSERT') {
-          if (conn.user_id1 === currentUser.id || conn.user_id2 === currentUser.id) {
-            setConnections(prev => {
-              if (prev.some(c => c.id === conn.id)) return prev;
-              return [...prev, conn];
-            });
-          }
-        } else if (payload.eventType === 'DELETE') {
-          const oldConn = payload.old;
-          setConnections(prev => prev.filter(c => c.id !== oldConn.id));
-        }
-      })
-      .subscribe();
-
-    const requestsSub = supabase
-      .channel('requests-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'connection_requests' }, payload => {
-        const req = payload.new;
-        if (payload.eventType === 'INSERT') {
-          if (req.sender_id === currentUser.id || req.receiver_id === currentUser.id) {
-            setConnectionRequests(prev => {
-              if (prev.some(r => r.id === req.id)) return prev;
-              return [...prev, req];
-            });
-          }
-        } else if (payload.eventType === 'UPDATE') {
-          if (req.sender_id === currentUser.id || req.receiver_id === currentUser.id) {
-            setConnectionRequests(prev => prev.map(r => r.id === req.id ? req : r));
-          }
-        } else if (payload.eventType === 'DELETE') {
-          const oldReq = payload.old;
-          setConnectionRequests(prev => prev.filter(r => r.id !== oldReq.id));
-        }
-      })
-      .subscribe();
 
     const notificationsSub = supabase
       .channel('notifications-realtime')
@@ -801,8 +861,6 @@ export const AppProvider = ({ children }) => {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(connectionsSub);
-      supabase.removeChannel(requestsSub);
       supabase.removeChannel(notificationsSub);
       supabase.removeChannel(applicationsSub);
       supabase.removeChannel(membersSub);
@@ -1260,18 +1318,15 @@ export const AppProvider = ({ children }) => {
     return newProject;
   };
 
-  const applyToProject = async (projectId, proposalOrPitch, rate) => {
+  const applyToProject = useCallback(async (projectId, proposalOrPitch, rate) => {
     if (!currentUser) return;
     
-    let pitch = '';
-    let rateVal = '';
-    if (typeof proposalOrPitch === 'object' && proposalOrPitch !== null) {
-      pitch = proposalOrPitch.coverLetter || proposalOrPitch.pitch || '';
-      rateVal = proposalOrPitch.pricing || proposalOrPitch.rate || '';
-    } else {
-      pitch = proposalOrPitch;
-      rateVal = rate;
-    }
+    const pitch = (typeof proposalOrPitch === 'object' && proposalOrPitch !== null)
+      ? (proposalOrPitch.coverLetter || proposalOrPitch.pitch || '')
+      : (proposalOrPitch || '');
+    const rateVal = (typeof proposalOrPitch === 'object' && proposalOrPitch !== null)
+      ? (proposalOrPitch.pricing || proposalOrPitch.rate || '')
+      : (rate || '');
 
     const app = {
       id: `app-${Date.now()}`,
@@ -1302,7 +1357,7 @@ export const AppProvider = ({ children }) => {
         });
       }
     }
-  };
+  }, [currentUser, projects, addActivity, addNotification]);
 
   const acceptApplication = async (appId) => {
     const app = applications.find(a => a.id === appId);
@@ -1390,16 +1445,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const addConnection = async (user1Id, user2Id) => {
-    const connId = `conn-${Date.now()}`;
-    const newConn = {
-      id: connId,
-      user_id1: user1Id < user2Id ? user1Id : user2Id,
-      user_id2: user1Id < user2Id ? user2Id : user1Id
-    };
-    const { error } = await supabase.from('connections').insert([newConn]);
-    if (error) console.error('Error adding connection:', error);
-  };
+
 
   const inviteCreatorToProject = (projectId, creatorId) => {
     const creator = users.find(u => u.id === creatorId);
@@ -1648,13 +1694,6 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // P2P Messaging States
-  const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
-  const [activeTabToRedirect, setActiveTabToRedirect] = useState(null);
-  const [p2pMessages, setP2pMessages] = useState({});
-  const [presenceList, setPresenceList] = useState({});
-
   // Custom Confirmation Modal state
   const [confirmationModal, setConfirmationModal] = useState(null);
 
@@ -1667,70 +1706,13 @@ export const AppProvider = ({ children }) => {
     });
   };
 
-  // Refs to prevent stale closures in realtime subscriptions
-  const conversationsRef = useRef([]);
-  const activeConversationIdRef = useRef(null);
-
-  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
-  useEffect(() => { activeConversationIdRef.current = activeConversationId; }, [activeConversationId]);
-
-  const syncConversationIfNeeded = async (conversationId) => {
-    if (!currentUser || !conversationId) return;
-    const exists = conversationsRef.current.some(c => c.id === conversationId);
-    if (exists) return;
-
-    console.log('syncConversationIfNeeded: fetching conversation details from DB for:', conversationId);
-    try {
-      const { data: membersData } = await supabase
-        .from('conversation_members')
-        .select('user_id')
-        .eq('conversation_id', conversationId);
-
-      if (membersData && membersData.length > 0) {
-        const members = membersData.map(m => m.user_id);
-        if (members.includes(currentUser.id)) {
-          const otherUserId = members.find(mId => mId !== currentUser.id);
-          const conv = { id: conversationId, members, otherUserId };
-          setConversations(prev => {
-            if (prev.some(c => c.id === conversationId)) return prev;
-            return [...prev, conv];
-          });
-
-          // Fetch messages for this conversation as well
-          const { data: convMsgs } = await supabase
-            .from('messages')
-            .select('*')
-            .eq('conversation_id', conversationId)
-            .order('created_at', { ascending: true });
-          
-          if (convMsgs && convMsgs.length > 0) {
-            const formatted = convMsgs.map(m => ({
-              id: m.id,
-              conversationId: m.conversation_id,
-              senderId: m.sender_id,
-              text: m.message,
-              attachmentUrl: m.attachment_url,
-              messageType: m.message_type,
-              seen: m.seen,
-              timestamp: m.created_at
-            }));
-            setP2pMessages(prev => ({
-              ...prev,
-              [conversationId]: formatted
-            }));
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Error syncing conversation dynamically:', e);
-    }
-  };
-
   // Sync P2P conversations and messages on load/currentUser change
   useEffect(() => {
     if (!currentUser) {
-      setConversations([]);
-      return;
+      const timer = setTimeout(() => {
+        setConversations([]);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
     const fetchConversations = async () => {
@@ -1830,18 +1812,17 @@ export const AppProvider = ({ children }) => {
   // Sync P2P LocalStorage
 
 
-  // Realtime Messages Subscription (filtered at socket level for active conversation)
+  // Realtime Messages Subscription (global subscription for user's conversations)
   useEffect(() => {
-    if (!currentUser || !activeConversationId) return;
+    if (!currentUser) return;
 
-    console.log('Subscribing to realtime messages for conversation:', activeConversationId);
+    console.log('Subscribing to realtime messages globally');
     const messagesSubscription = supabase
-      .channel(`messages-${activeConversationId}`)
+      .channel('messages-realtime-global')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'messages',
-        filter: `conversation_id=eq.${activeConversationId}`
+        table: 'messages'
       }, async (payload) => {
         const msg = payload.new;
         if (!msg) return;
@@ -1878,7 +1859,8 @@ export const AppProvider = ({ children }) => {
             });
           });
 
-          if (msg.sender_id !== currentUser.id) {
+          // If the message is for the currently active chat and not from me, mark it seen
+          if (msg.sender_id !== currentUser.id && activeConversationIdRef.current === msg.conversation_id) {
             supabase
               .from('messages')
               .update({ seen: true })
@@ -1899,15 +1881,18 @@ export const AppProvider = ({ children }) => {
       .subscribe();
 
     return () => {
-      console.log('Unsubscribing from realtime messages for conversation:', activeConversationId);
+      console.log('Unsubscribing from global realtime messages');
       supabase.removeChannel(messagesSubscription);
     };
-  }, [currentUser, activeConversationId, clientVersion]);
+  }, [currentUser, clientVersion]);
 
   // Load first 30 messages when activeConversationId changes
   useEffect(() => {
     if (activeConversationId) {
-      loadMoreMessages(activeConversationId);
+      const timer = setTimeout(() => {
+        loadMoreMessages(activeConversationId);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [activeConversationId]);
 
@@ -2121,18 +2106,7 @@ export const AppProvider = ({ children }) => {
   };
 
   // === Connection System & Notifications ===
-  const addNotification = async (targetUserId, notifData) => {
-    const newNotif = {
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      user_id: targetUserId,
-      sender_id: currentUser.id,
-      type: notifData.type,
-      title: notifData.title,
-      message: notifData.message,
-      read: false
-    };
-    await supabase.from('notifications').insert([newNotif]);
-  };
+
 
   const markNotificationRead = async (notifId) => {
     await supabase.from('notifications').update({ read: true }).eq('id', notifId);
@@ -2162,120 +2136,7 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const isConnected = (userAId, userBId) => {
-    return connections.some(c =>
-      (c.user_id1 === userAId && c.user_id2 === userBId) ||
-      (c.user_id1 === userBId && c.user_id2 === userAId)
-    );
-  };
 
-  const getConnections = (userId) => {
-    return connections
-      .filter(c => c.user_id1 === userId || c.user_id2 === userId)
-      .map(c => c.user_id1 === userId ? c.user_id2 : c.user_id1);
-  };
-
-  const sendConnectionRequest = async (targetUserId) => {
-    const reqId = `req-${Date.now()}`;
-    const newReq = {
-      id: reqId,
-      sender_id: currentUser.id,
-      receiver_id: targetUserId,
-      status: 'Pending'
-    };
-    // Optimistic update
-    setConnectionRequests(prev => [...prev, newReq]);
-    const { error } = await supabase.from('connection_requests').insert([newReq]);
-    if (error) {
-      // Revert on failure
-      setConnectionRequests(prev => prev.filter(r => r.id !== reqId));
-      console.error('Error sending connection request:', error.message);
-    } else {
-      const displayName = currentUser.fullName || currentUser.businessName || 'Someone';
-      await addNotification(targetUserId, {
-        type: 'connection_request',
-        title: `🤝 ${displayName} sent you a connection request.`,
-        message: ''
-      });
-    }
-  };
-
-  const acceptConnectionRequest = async (requestId, senderId) => {
-    // Optimistic: remove the request and add the connection
-    setConnectionRequests(prev => prev.filter(r => r.id !== requestId));
-    const connId = `conn-${Date.now()}`;
-    const newConn = {
-      id: connId,
-      user_id1: currentUser.id < senderId ? currentUser.id : senderId,
-      user_id2: currentUser.id < senderId ? senderId : currentUser.id
-    };
-    setConnections(prev => [...prev, newConn]);
-
-    // Optimistically remove the notification
-    setNotifications(prev => prev.filter(n => 
-      !(n.user_id === currentUser.id && n.sender_id === senderId && n.type === 'connection_request')
-    ));
-
-    await supabase.from('connection_requests').delete().eq('id', requestId);
-    await supabase.from('notifications')
-      .delete()
-      .eq('user_id', currentUser.id)
-      .eq('sender_id', senderId)
-      .eq('type', 'connection_request');
-
-    const { error } = await supabase.from('connections').insert([newConn]);
-    if (!error) {
-      const sender = users.find(u => u.id === senderId);
-      const senderName = sender?.fullName || sender?.businessName || 'Someone';
-      const displayName = currentUser.fullName || currentUser.businessName || 'Someone';
-      
-      await addNotification(senderId, {
-        type: 'connection_accepted',
-        title: `You are now connected with ${displayName}.`,
-        message: ''
-      });
-      await addNotification(currentUser.id, {
-        type: 'connection_accepted',
-        title: `You are now connected with ${senderName}.`,
-        message: ''
-      });
-    }
-  };
-
-  const declineConnectionRequest = async (requestId, senderId = null) => {
-    let resolvedSenderId = senderId;
-    if (!resolvedSenderId) {
-      const req = connectionRequests.find(r => r.id === requestId);
-      resolvedSenderId = req ? req.sender_id : null;
-    }
-
-    setConnectionRequests(prev => prev.filter(r => r.id !== requestId));
-    if (resolvedSenderId) {
-      setNotifications(prev => prev.filter(n => 
-        !(n.user_id === currentUser.id && n.sender_id === resolvedSenderId && n.type === 'connection_request')
-      ));
-    }
-
-    await supabase.from('connection_requests').delete().eq('id', requestId);
-
-    if (resolvedSenderId) {
-      await supabase.from('notifications')
-        .delete()
-        .eq('user_id', currentUser.id)
-        .eq('sender_id', resolvedSenderId)
-        .eq('type', 'connection_request');
-    }
-  };
-
-  const removeConnection = async (targetUserId) => {
-    setConnections(prev => prev.filter(c => 
-      !(c.user_id1 === currentUser.id && c.user_id2 === targetUserId) &&
-      !(c.user_id1 === targetUserId && c.user_id2 === currentUser.id)
-    ));
-    await supabase.from('connections')
-      .delete()
-      .or(`and(user_id1.eq.${currentUser.id},user_id2.eq.${targetUserId}),and(user_id1.eq.${targetUserId},user_id2.eq.${currentUser.id})`);
-  };
 
   const isBlockedRelation = (targetUserId) => {
     return (blockedUsers || []).some(b => 
@@ -2291,14 +2152,6 @@ export const AppProvider = ({ children }) => {
     
     // Optimistic state updates
     setBlockedUsers(prev => [...prev, newBlock]);
-    setConnections(prev => prev.filter(c => 
-      !(c.user_id1 === currentUser.id && c.user_id2 === targetUserId) &&
-      !(c.user_id1 === targetUserId && c.user_id2 === currentUser.id)
-    ));
-    setConnectionRequests(prev => prev.filter(r => 
-      !(r.sender_id === currentUser.id && r.receiver_id === targetUserId) &&
-      !(r.sender_id === targetUserId && r.receiver_id === currentUser.id)
-    ));
 
     const conv = conversations.find(c => c.members.includes(targetUserId));
     if (conv) {
@@ -2315,12 +2168,6 @@ export const AppProvider = ({ children }) => {
 
     // Database updates
     await supabase.from('blocked_users').insert([newBlock]);
-    await supabase.from('connections')
-      .delete()
-      .or(`and(user_id1.eq.${currentUser.id},user_id2.eq.${targetUserId}),and(user_id1.eq.${targetUserId},user_id2.eq.${currentUser.id})`);
-    await supabase.from('connection_requests')
-      .delete()
-      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${targetUserId}),and(sender_id.eq.${targetUserId},receiver_id.eq.${currentUser.id})`);
     if (conv) {
       await supabase.from('conversations').delete().eq('id', conv.id);
     }
@@ -2371,7 +2218,6 @@ export const AppProvider = ({ children }) => {
       applyToProject,
       acceptApplication,
       rejectApplication,
-      addConnection,
       inviteCreatorToProject,
       activateCreatorTeam,
       sendMessage,
@@ -2397,14 +2243,6 @@ export const AppProvider = ({ children }) => {
       addNotification,
       markNotificationRead,
       clearNotifications,
-      connections,
-      isConnected,
-      getConnections,
-      connectionRequests,
-      sendConnectionRequest,
-      acceptConnectionRequest,
-      declineConnectionRequest,
-      removeConnection,
       activeDashboardTab,
       setActiveDashboardTab,
       markMessageNotificationsAsRead,

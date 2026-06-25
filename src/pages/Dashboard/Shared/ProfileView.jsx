@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../../../context/AppContext';
 import { 
-  Star, Heart, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
+  Star, Bookmark, ShieldCheck, AlertTriangle, Globe, Mail, 
   MapPin, Phone, Plus, X, Code, CheckCircle, FileText,
   Briefcase, ChevronDown, ChevronUp, MessageSquare, RefreshCw,
   Award, Settings
@@ -102,74 +102,6 @@ const ProfileErrorCard = () => {
   );
 };
 
-const CompleteYourProfile = ({ user, score, onNavigate, onBypass }) => {
-  const missingItems = [];
-  if (user.role === 'Business Holder') {
-    if (!user.profilePhoto && !user.logo) missingItems.push({ label: 'Profile Photo / Logo', desc: 'Add a brand logo or avatar' });
-    if (!user.fullName && !user.businessName) missingItems.push({ label: 'Business Name', desc: 'Specify your company or brand name' });
-    if (!user.bio && !user.description) missingItems.push({ label: 'Bio / Description', desc: 'Tell creators what your business does' });
-    if (!user.location) missingItems.push({ label: 'Location', desc: 'Set your corporate or regional location' });
-    if (!user.email && !user.mobileNumber) missingItems.push({ label: 'Contact Details', desc: 'Add an email or phone number for connection requests' });
-  } else if (user.role === 'Freelancer') {
-    if (!user.profilePhoto) missingItems.push({ label: 'Profile Photo', desc: 'Upload a professional headshot' });
-    if (!user.bio) missingItems.push({ label: 'Bio / Summary', desc: 'Write a quick summary of your expertise' });
-    if (!user.location) missingItems.push({ label: 'Location', desc: 'Specify your region or timezone' });
-    if (!user.skills || user.skills.length === 0) missingItems.push({ label: 'Skills & Tech Stack', desc: 'List at least one professional skill' });
-    if (!user.portfolio || user.portfolio.length === 0) missingItems.push({ label: 'Portfolio Item', desc: 'Add a project link or file to show off your work' });
-  } else if (user.role === 'Influencer') {
-    if (!user.profilePhoto) missingItems.push({ label: 'Profile Photo', desc: 'Upload an avatar' });
-    if (!user.platforms || Object.keys(user.platforms).length === 0) missingItems.push({ label: 'Social Platforms', desc: 'Connect at least one channel' });
-    if (!user.contentCategories || user.contentCategories.length === 0) missingItems.push({ label: 'Content Categories', desc: 'Specify your niche' });
-    if (!user.verificationStatus || user.verificationStatus === 'Basic Verified') missingItems.push({ label: 'Ecosystem Verification', desc: 'Complete identity checks' });
-  }
-
-  return (
-    <div className="glass-panel" style={{ padding: '32px 24px', margin: '20px auto', maxWidth: '600px', border: '1px solid var(--glass-border)', borderRadius: '24px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <span className="badge-premium" style={{ textTransform: 'uppercase' }}>Incomplete Profile</span>
-        <h2 style={{ fontSize: '22px', fontWeight: '800', marginTop: '8px', color: 'var(--text-white)' }}>Complete Your Profile</h2>
-        <p style={{ fontSize: '13.5px', color: 'var(--text-gray)', marginTop: '4px' }}>
-          Your profile is currently at <strong style={{ color: 'var(--accent-cyan)' }}>{score}%</strong> completion. Fill out missing details to unlock full features.
-        </p>
-        <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden', margin: '16px auto 0 auto', maxWidth: '300px' }}>
-          <div style={{ width: `${score}%`, height: '100%', background: 'linear-gradient(90deg, var(--accent-cyan) 0%, var(--accent-cyan-bright) 100%)' }} />
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '28px' }}>
-        {missingItems.map((item, idx) => (
-          <div key={idx} style={{ display: 'flex', gap: '12px', padding: '14px', borderRadius: '14px', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)' }}>
-            <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px dashed var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '10px', marginTop: '2px' }} />
-            <div>
-              <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-white)', margin: 0 }}>{item.label}</h4>
-              <p style={{ fontSize: '11.5px', color: 'var(--text-gray-light)', margin: 0, marginTop: '2px' }}>{item.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <button 
-          onClick={() => {
-            if (onNavigate) {
-              onNavigate('dashboard');
-            }
-          }}
-          className="btn-primary"
-          style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: '700' }}
-        >
-          Go to Settings Wizard
-        </button>
-        <button 
-          onClick={onBypass}
-          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}
-        >
-          View Public Profile Anyway
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) => {
   return (
@@ -219,19 +151,16 @@ const CollapsibleSection = ({ title, icon: Icon, isOpen, onToggle, children }) =
 const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
   const { 
     users, currentUser, toggleSaveUser, savedProfiles, 
-    toggleFollowUser, followedProfiles, updateProfile, startConversation,
-    conversations, projects, isConnected: isDbConnected, loading, initialized,
-    connectionRequests, sendConnectionRequest, acceptConnectionRequest, declineConnectionRequest, removeConnection, getConnections, setActiveDashboardTab,
+    updateProfile, startConversation,
+    loading, initialized,
     fetchFullProfile
   } = useContext(AppContext);
   const [searchParams] = useSearchParams();
   const queryUserId = searchParams.get('id');
   const targetUserId = queryUserId || userId || currentUser?.id;
-  const [bypassChecklist, setBypassChecklist] = useState(false);
   const { showSuccessToast } = useToast();
-  const { isMobile, isTablet, isDesktop } = useResponsive();
+  const { isDesktop } = useResponsive();
   const navigate = useNavigate();
-  const [activeProfileTab, setActiveProfileTab] = useState('overview');
 
   // Review states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -297,42 +226,27 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
     }
   };
 
-  const getProfileCompletionScore = (u) => {
-    if (!u) return 0;
-    let score = 0;
-    if (u.role === 'Business Holder') {
-      if (u.profilePhoto || u.logo) score += 20;
-      if (u.fullName || u.businessName) score += 20;
-      if (u.bio || u.description) score += 20;
-      if (u.location) score += 20;
-      if (u.email || u.mobileNumber) score += 20;
-    } else if (u.role === 'Freelancer') {
-      if (u.profilePhoto) score += 20;
-      if (u.bio) score += 20;
-      if (u.location) score += 20;
-      if (u.skills && u.skills.length > 0) score += 20;
-      if (u.portfolio && u.portfolio.length > 0) score += 20;
-    } else if (u.role === 'Influencer') {
-      score = 15;
-      if (u.profilePhoto) score += 20;
-      if (u.platforms && Object.keys(u.platforms).length > 0) score += 25;
-      if (u.contentCategories && u.contentCategories.length > 0) score += 20;
-      if (u.verificationStatus && u.verificationStatus !== 'Basic Verified') score += 20;
-    }
-    return score;
-  };
+  // getProfileCompletionScore removed
 
-  const [fetchingProfile, setFetchingProfile] = useState(true);
+  const [prevUserId, setPrevUserId] = useState(targetUserId);
+  const [fetchingProfile, setFetchingProfile] = useState(() => !!targetUserId);
+
+  if (targetUserId !== prevUserId) {
+    setPrevUserId(targetUserId);
+    setFetchingProfile(!!targetUserId);
+  }
 
   useEffect(() => {
-    if (!targetUserId) {
-      setFetchingProfile(false);
-      return;
-    }
-    setFetchingProfile(true);
+    if (!targetUserId) return;
+    
+    let active = true;
     fetchFullProfile(targetUserId).finally(() => {
-      setFetchingProfile(false);
+      if (active) setFetchingProfile(false);
     });
+    
+    return () => {
+      active = false;
+    };
   }, [targetUserId, fetchFullProfile]);
 
   if (loading || !initialized || fetchingProfile) {
@@ -345,20 +259,10 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
   }
 
   const isOwner = currentUser && currentUser.id === user.id;
-  const score = getProfileCompletionScore(user);
 
 
 
   const isSaved = savedProfiles ? savedProfiles.includes(user.id) : false;
-  const isFollowing = followedProfiles ? followedProfiles.includes(user.id) : false;
-
-  const isConnected = (() => {
-    if (!currentUser || !user) return false;
-    const myFollows = followedProfiles || [];
-    const mutualFollow = myFollows.includes(user.id);
-    const hasConversation = (conversations || []).some(c => c && c.members && Array.isArray(c.members) && c.members.includes(user.id));
-    return mutualFollow || hasConversation;
-  })();
 
   const canViewField = (key, legacyProperty) => {
     if (isOwner) return true;
@@ -378,7 +282,7 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
 
     if (setting === 'Public') return true;
     if (setting === 'Connections Only') {
-      return currentUser && isDbConnected(currentUser.id, user.id);
+      return !!currentUser;
     }
     return false; // Private
   };
@@ -391,7 +295,6 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
   const canViewSocialLinks = canViewField('social', user.socialLinksVisibility);
 
   // Keep these for backward compatibility where needed
-  const showBusinessContact = canViewContact || canViewEmail || canViewPhone;
   const showSocialLinks = canViewSocialLinks;
 
   const handlePostReview = (e) => {
@@ -515,19 +418,6 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
                 <Phone size={14} /> {user.mobileNumber}
               </span>
             )}
-            <span 
-              onClick={() => {
-                if (currentUser && currentUser.id === user.id) {
-                  if (onNavigate) {
-                    onNavigate('dashboard');
-                    setActiveDashboardTab('connections');
-                  }
-                }
-              }}
-              style={{ cursor: currentUser && currentUser.id === user.id ? 'pointer' : 'default', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-            >
-              👥 {getConnections(user.id).length} Connections
-            </span>
           </div>
         </div>
 
@@ -561,65 +451,6 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
               >
                 <MessageSquare size={14} /> Message
               </button>
-
-              {/* Connect Button and workflow */}
-              {(() => {
-                const isConnected = isDbConnected(currentUser.id, user.id);
-                const sentRequest = connectionRequests.find(r => r.sender_id === currentUser.id && r.receiver_id === user.id && r.status === 'Pending');
-                const receivedRequest = connectionRequests.find(r => r.sender_id === user.id && r.receiver_id === currentUser.id && r.status === 'Pending');
-
-                if (isConnected) {
-                  return (
-                    <button 
-                      onClick={() => removeConnection(user.id)}
-                      className="btn-secondary"
-                      style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-white)' }}
-                    >
-                      Connected ✓
-                    </button>
-                  );
-                }
-                if (sentRequest) {
-                  return (
-                    <button 
-                      disabled
-                      className="btn-secondary"
-                      style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7, cursor: 'not-allowed' }}
-                    >
-                      Request Sent
-                    </button>
-                  );
-                }
-                if (receivedRequest) {
-                  return (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button 
-                        onClick={() => acceptConnectionRequest(receivedRequest.id, user.id)}
-                        className="btn-primary"
-                        style={{ height: '48px', padding: '0 16px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: '#22c55e', borderColor: '#22c55e' }}
-                      >
-                        Accept
-                      </button>
-                      <button 
-                        onClick={() => declineConnectionRequest(receivedRequest.id)}
-                        className="btn-secondary"
-                        style={{ height: '48px', padding: '0 16px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  );
-                }
-                return (
-                  <button 
-                    onClick={() => sendConnectionRequest(user.id)}
-                    className="btn-outline-cyan"
-                    style={{ height: '48px', padding: '0 20px', fontSize: '13px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                  >
-                    Connect
-                  </button>
-                );
-              })()}
 
               {/* Bookmark Button */}
               {user.role !== 'Freelancer' && !(user.role === 'Business Holder' && user.contactVisibility !== 'Public') && (
@@ -1127,7 +958,7 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
             const hasSocialLinks = user.socialLinks && Object.values(user.socialLinks).some(val => val && val.trim() !== '');
             return (
               <CollapsibleSection 
-                title="Contact & Connections" 
+                title="Contact Details" 
                 icon={Mail} 
                 isOpen={openSections.contactInfo} 
                 onToggle={() => toggleSection('contactInfo')}
@@ -1177,7 +1008,7 @@ const ProfileViewInner = ({ userId, onClose, onNavigate }) => {
 
                   {user.role === 'Influencer' && hasSocialLinks && (
                     <div className="info-item" style={{ gridColumn: 'span 2', marginTop: '6px' }}>
-                      <span className="info-label">Social Connections</span>
+                      <span className="info-label">Social Links</span>
                       {canViewSocialLinks ? (
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
                           {Object.entries(user.socialLinks).map(([platform, url]) => {

@@ -3,7 +3,7 @@ import { AppContext } from '../../../context/AppContext';
 import { 
   Send, Paperclip, Smile, Image as ImageIcon, FileText, Mic, 
   Volume2, Square, User, X, ChevronLeft, Check, CheckCheck, 
-  Search, ShieldAlert, Award, Star, MapPin, Globe, ExternalLink,
+  Search, Award, Star, MapPin,
   MoreVertical, Ban, Eye, Phone, Video, Plus, Trash2
 } from 'lucide-react';
 import { supabase } from '../../../supabaseClient';
@@ -292,7 +292,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
   const { 
     currentUser, users, conversations, activeConversationId, 
     setActiveConversationId, p2pMessages, sendP2PMessage, 
-    markMessagesAsSeen, presenceList, getConnections, startConversation,
+    markMessagesAsSeen, presenceList, startConversation,
     markMessageNotificationsAsRead, blockUser, deleteConversation, isBlockedRelation,
     showConfirmation, loadMoreMessages
   } = useContext(AppContext);
@@ -420,7 +420,6 @@ export const MessagingCenter = ({ onOpenProfile }) => {
 
   // Attachment uploads
   const triggerAttachment = (type) => {
-    setShowAttachmentMenu(false);
     if (fileInputRef.current) {
       fileInputRef.current.setAttribute('accept', type === 'image' ? 'image/*' : (type === 'video' ? 'video/*' : '*/*'));
       fileInputRef.current.click();
@@ -487,7 +486,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
       recordingTimer.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
-    } catch (err) {
+    } catch {
       showSuccessToast({ title: '⚠ Microphone Unavailable', subtitle: 'Simulating dynamic voice note...' });
       // Simulated/Mock voice note fallback
       setIsRecording(true);
@@ -950,7 +949,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
               <div style={{ display: 'flex', alignItems: 'center', gap: isDesktop ? '12px' : '8px', overflow: 'hidden' }}>
                 <button 
                   onClick={() => setActiveConversationId(null)}
-                  style={{ display: isDesktop ? 'none' : 'block', background: 'none', border: 'none', color: 'var(--text-white)', cursor: 'pointer', paddingRight: '4px', display: 'flex', alignItems: 'center' }}
+                  style={{ display: isDesktop ? 'none' : 'flex', background: 'none', border: 'none', color: 'var(--text-white)', cursor: 'pointer', paddingRight: '4px', alignItems: 'center' }}
                   id="chat-back-btn"
                 >
                   <ChevronLeft size={24} />
@@ -1179,7 +1178,7 @@ export const MessagingCenter = ({ onOpenProfile }) => {
         )}
 
         {profileDrawerOpen && otherUser && (
-          <aside className="glass-panel animate-scale-up" style={{
+          <aside className={isMobile ? "animate-scale-up" : "glass-panel animate-scale-up"} style={{
             position: 'absolute',
             top: 0,
             right: 0,
