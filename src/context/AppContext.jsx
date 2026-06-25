@@ -523,8 +523,20 @@ export const AppProvider = ({ children }) => {
           }
         }
 
+        // Fetch initial data streams in parallel to minimize network serialization latency
+        const [
+          { data: dbUsers, error: usersErr },
+          { data: dbProjects, error: projErr },
+          { data: dbActivities, error: actErr },
+          { data: dbApps, error: appsErr }
+        ] = await Promise.all([
+          supabase.from('profiles').select(LIGHTWEIGHT_COLUMNS),
+          supabase.from('projects').select('*'),
+          supabase.from('activities').select('*').order('created_at', { ascending: false }),
+          supabase.from('applications').select('*')
+        ]);
+
         // 1. Fetch Users
-        const { data: dbUsers, error: usersErr } = await supabase.from('profiles').select(LIGHTWEIGHT_COLUMNS);
         let finalUsers = [];
         if (usersErr) {
           console.warn('Error fetching users from Supabase:', usersErr);
@@ -534,7 +546,6 @@ export const AppProvider = ({ children }) => {
         setUsers(finalUsers);
 
         // 2. Fetch Projects
-        const { data: dbProjects, error: projErr } = await supabase.from('projects').select('*');
         let finalProjects = [];
         if (projErr) {
           console.warn('Error fetching projects from Supabase:', projErr);
@@ -544,7 +555,6 @@ export const AppProvider = ({ children }) => {
         setProjects(finalProjects);
 
         // 3. Fetch Activities
-        const { data: dbActivities, error: actErr } = await supabase.from('activities').select('*').order('created_at', { ascending: false });
         let finalActivities = [];
         if (actErr) {
           console.warn('Error fetching activities from Supabase:', actErr);
@@ -553,10 +563,7 @@ export const AppProvider = ({ children }) => {
         }
         setActivityFeed(finalActivities);
 
-        // 4. Messages fetch removed (workspace messages load in memory or dynamically)
-
         // 4.5 Fetch Applications
-        const { data: dbApps, error: appsErr } = await supabase.from('applications').select('*');
         let finalApps = [];
         if (appsErr) {
           console.warn('Error fetching applications from Supabase:', appsErr);
