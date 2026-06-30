@@ -614,76 +614,16 @@ html, body {
     margin-bottom: 4px !important;
   }
 
-  /* Mobile Spacious & Edge-to-Edge Layout Overrides */
+  /* Mobile Spacious Section mapping back to standard Glass Panel */
   .mobile-spacious-section {
-    background: transparent !important;
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    padding-top: 16px !important;
-    padding-bottom: 16px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-
-  /* Force uploader components to fill width on mobile */
-  .dashboard-layout .photo-uploader,
-  .dashboard-layout .photo-drop-zone {
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  /* Make cover image banner span full screen on mobile */
-  .dashboard-layout .biz-cover-wrap {
-    margin-left: -16px !important;
-    margin-right: -16px !important;
-    width: calc(100% + 32px) !important;
-    max-width: none !important;
-    border-radius: 0 !important;
-  }
-  .dashboard-layout .biz-cover-wrap .photo-drop-zone {
-    border-radius: 0 !important;
-  }
-  .dashboard-layout .biz-cover-wrap .photo-preview-img {
-    border-radius: 0 !important;
-  }
-  .dashboard-layout .biz-cover-wrap .photo-preview-overlay {
-    border-radius: 0 !important;
-  }
-
-  /* Neatly align logo/profile image upload below the banner */
-  .dashboard-layout .biz-logo-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: 16px !important;
-    width: 100% !important;
-  }
-  .dashboard-layout .biz-logo-wrap > div {
-    width: 100% !important;
-    max-width: 180px !important;
-  }
-
-  /* Form clean divider instead of nested containers */
-  .mobile-divider {
-    height: 1px;
-    background-color: var(--glass-border);
-    margin: 20px 0;
-    border: none;
-    width: 100%;
-  }
-
-  /* Vertical inputs & spacing */
-  .dashboard-layout .biz-field {
-    margin-bottom: 18px !important;
-  }
-
-  /* Bottom spacing and overlapping prevention */
-  .dashboard-layout main {
-    padding-bottom: 120px !important; /* Prevent bottom nav and FAB overlapping forms */
+    background: var(--glass-bg) !important;
+    backdrop-filter: var(--glass-filter) !important;
+    -webkit-backdrop-filter: var(--glass-filter) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: var(--border-radius-global) !important;
+    box-shadow: var(--shadow-glass) !important;
+    padding: var(--card-padding) !important;
+    margin-bottom: 20px !important;
   }
 }
 
